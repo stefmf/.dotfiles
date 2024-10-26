@@ -1,0 +1,35 @@
+{
+    "ignored_packages": [
+        "Vintage"
+    ],
+
+    // Theme
+    "theme": "auto",
+    "light_theme": "Default.sublime-theme",
+    "dark_theme": "Adaptive.sublime-theme",
+    "color_scheme": "auto",
+    "light_color_scheme": "Catppuccin Latte.sublime-color-scheme",
+    "dark_color_scheme": "Catppuccin Frappe.sublime-color-scheme",
+
+    // Visual Enhancements
+    "highlight_line": true,
+    "caret_style": "phase",
+    "line_padding_bottom": 2,
+    "line_padding_top": 2,
+    "ui_native_titlebar": false,
+    "ui_separator": true,
+    "ui_wide_scrollbars": true,
+    "highlight_modified_tabs": true,
+
+    // Other Enhancements
+    "auto_indent": true,
+    "smart_indent": true,
+    "indent_to_bracket": true,
+    "draw_indent_guides": true,
+    "word_wrap": true,
+    "wrap_width": 0,
+    "save_on_focus_lost": true,
+    "show_encoding": true,
+    "font_face": "JetBrainsMono Nerd Font Mono",
+    "font_size": 14,
+}

@@ -1,0 +1,59 @@
+{
+    "logo": {
+        "type": "file-raw",
+        "source": "-",
+        "padding": {
+            "left": 0,
+            "right": 2
+        },
+        "position": "right"
+    },
+    "display": {
+        "separator": ": ",
+        "color": {
+            "keys": "blue",
+            "title": "cyan",
+            "output": "white"
+        },
+        "brightColor": true,
+        "disableLinewrap": true,
+        "hideCursor": true
+    },
+    "modules": [
+        {
+            "type": "command",
+            "shell": "/bin/bash",
+            "text": "EMOJIS=('🔧' '🤖' '💻' '🛠️' '🚀' '✨'); COLORS=(32 35 31); RANDOM_EMOJI=${EMOJIS[$RANDOM % ${#EMOJIS[@]}]}; RANDOM_COLOR_CODE=${COLORS[$RANDOM % ${#COLORS[@]}]}; USERNAME=$(whoami); if [ \"$USERNAME\" = 'user' ]; then MESSAGE=\"Welcome to your Terminal! $RANDOM_EMOJI\"; else MESSAGE=\"Welcome to your Terminal $USERNAME! $RANDOM_EMOJI\"; fi; echo -e \"\\033[1;${RANDOM_COLOR_CODE}m$MESSAGE\\033[0m\"",
+            "key": " "
+        },
+        {
+            "type": "command",
+            "shell": "/bin/bash",
+            "text": "hostname -s",
+            "key": "Host"
+        },
+        {
+            "type": "command",
+            "shell": "/bin/bash",
+            "text": "date '+%A, %B %d, %Y %I:%M:%S %p'",
+            "key": "Date & Time"
+        },
+        {
+            "type": "os",
+            "key": "Operating System"
+        },
+        {
+            "type": "uptime",
+            "key": "Uptime"
+        },
+        {
+            "type": "cpu",
+            "key": "Processor",
+            "outputColor": "yellow"
+        },
+        {
+            "type": "memory",
+            "key": "Memory Usage"
+        }
+    ]
+}

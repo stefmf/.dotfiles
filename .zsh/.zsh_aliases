@@ -1,0 +1,161 @@
+#!/bin/bash
+
+#==============================================================================
+# Aliases Configuration
+#==============================================================================
+
+#------------------------------------------------------------------------------
+# Helper Functions
+#------------------------------------------------------------------------------
+
+# Check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+#------------------------------------------------------------------------------
+# Core System Commands
+#------------------------------------------------------------------------------
+
+# Shell Management
+alias reload='source ~/.zshrc'
+alias c='clear'
+
+# Editor
+alias vim="nvim"
+
+# System Monitoring
+if command_exists htop; then
+    alias top='htop'
+else
+    alias top='/usr/bin/top'
+fi
+
+#------------------------------------------------------------------------------
+# File Operations and Navigation
+#------------------------------------------------------------------------------
+
+# Directory Operations
+alias mkdir='mkdir -p'
+
+# File Listing
+if command_exists eza; then
+    # Modern file listing with icons and git integration
+    alias ls='eza -la --group-directories-first --color=always --git --classify --sort=modified --reverse --header --icons'
+    alias tree='eza --icons --tree --all --level=3 --color=always'
+elif command_exists gls; then
+    # GNU ls fallback
+    alias ls='gls -la --group-directories-first --color=always'
+else
+    # Basic ls fallback
+    alias ls='/bin/ls -la --color=auto'
+fi
+
+# File Viewing
+if command_exists bat; then
+    alias cat='bat'
+elif command_exists gcat; then
+    alias cat='gcat'
+else
+    alias cat='/bin/cat'
+fi
+
+# File Comparison
+alias diff='delta --config ~/.dotfiles/.config/delta/deltarc'
+
+#------------------------------------------------------------------------------
+# Git Version Control
+#------------------------------------------------------------------------------
+
+alias gst='git status'
+alias ga='git add'
+alias gcm='git commit -m'
+alias gco='git checkout'
+alias gbr='git branch'
+alias gpsh='git push'
+alias gpl='git pull'
+alias glg='git log --oneline --graph --decorate'
+
+#------------------------------------------------------------------------------
+# System Information and Monitoring
+#------------------------------------------------------------------------------
+
+alias df='df -h'                # Disk usage in human readable
+alias du='du -h'               # Directory size in human readable
+alias free='free -m'           # Memory usage
+alias path='echo -e ${PATH//:/\\n}'  # Show PATH entries
+alias now='date +"%T"'         # Current time
+alias nowdate='date +"%d-%m-%Y"'     # Current date
+alias ports='netstat -tulanp'  # Show active ports
+
+#------------------------------------------------------------------------------
+# Network Operations
+#------------------------------------------------------------------------------
+
+alias wget='wget -c'           # Continue interrupted downloads
+alias ping='ping -c 5'         # Limit ping to 5 packets
+
+#------------------------------------------------------------------------------
+# System Administration
+#------------------------------------------------------------------------------
+
+# Elevated privileges
+alias plz='sudo $(fc -ln -1)'  # Repeat last command with sudo
+alias reboot='sudo reboot'
+alias shutdown='sudo shutdown -h now'
+
+#------------------------------------------------------------------------------
+# OS-Specific Configuration
+#------------------------------------------------------------------------------
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    #--------------------------------------------------------------------------
+    # macOS Configuration
+    #--------------------------------------------------------------------------
+    
+    # System updates
+    alias update="brew update && brew upgrade"
+
+    # GNU command alternatives
+    gnu_commands=(
+        "cp" "mv" "rm" "mkdir" "rmdir" "ln" "du" "df"
+        "head" "tail" "sort" "wc" "cut" "grep" "xargs" "find"
+        "chmod" "chown" "date" "stat" "touch"
+    )
+
+    # Only alias GNU commands if their BSD counterparts aren't available
+    for cmd in "${gnu_commands[@]}"; do
+        if command_exists "g$cmd" && ! command_exists "${cmd/g/}"; then
+            alias "$cmd"="g$cmd"
+        fi
+    done
+
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    #--------------------------------------------------------------------------
+    # Linux Configuration
+    #--------------------------------------------------------------------------
+    
+    alias update="sudo apt update && sudo apt upgrade"
+
+fi
+
+#------------------------------------------------------------------------------
+# Entertainment and Visual
+#------------------------------------------------------------------------------
+
+alias pipes='pipes.sh'
+alias fastfetch="$HOME/.dotfiles/.config/fastfetch/fastfetch_wrapper.sh"
+
+#------------------------------------------------------------------------------
+# Keyboard Shortcut Reference
+#------------------------------------------------------------------------------
+
+# Emacs-style keyboard shortcuts reference
+alias emacs='echo "\033[1;36m# CURSOR MOVEMENT\033[0m
+\033[1;35mopt+f/b\033[0m: move forward/back word | \033[1;35mctrl+a/e\033[0m: move to line start/end
+
+\033[1;33m# CASE OPERATIONS\033[0m
+\033[1;35mopt+l/u\033[0m: lowercase/uppercase word
+
+\033[1;31m# DELETION\033[0m
+\033[1;35mctrl+k\033[0m: delete to line end | \033[1;35mctrl+u\033[0m: delete entire line | \033[1;35mopt+d\033[0m: delete next word | \033[1;35mctrl+w\033[0m: delete prev word"'

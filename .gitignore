@@ -1,0 +1,32 @@
+# Macos
+.DS_Store
+
+# Vim
+.viminfo
+.config/nvim/lazy-lock.json
+
+# GitHub CLI
+.config/gh/
+
+# iTerm2
+.config/iterm2/*
+!.config/iterm2/Stef.json
+!.config/iterm2/themes/
+## Ignore
+.config/iterm2/AppSupport/
+.config/iterm2/sockets/
+
+# Synced by Application
+.vscode/
+.config/raycast/
+
+# Zsh Generated Files
+.zsh/.zcompdump
+.zsh/.zsh_history
+.zsh/.zsh_sessions/
+
+# Zsh compiled files
+**/*.zwc
+**/*.zwc.old
+.zshrc.zwc
+.zsh/.zshrc.zwc
