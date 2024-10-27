@@ -6,6 +6,16 @@ setopt PIPE_FAIL  # Exit on pipe failure
 setopt UNSET      # Exit on undefined variable
 
 # ---------------------------
+# Request Sudo Privileges
+# ---------------------------
+
+# Prompt for sudo password upfront
+sudo -v
+
+# Keep-alive: update existing `sudo` time stamp until script has finished
+while true; do sudo -n true; sleep 60; kill -0 "$" || exit; done 2>/dev/null &
+
+# ---------------------------
 # Constants and Configuration
 # ---------------------------
 
@@ -60,6 +70,23 @@ check_macos() {
         log_error "This script is designed for macOS."
     else
         log_info "Operating system is macOS."
+    fi
+}
+
+# ---------------------------
+# Xcode Command Line Tools Update
+# ---------------------------
+
+update_command_line_tools() {
+    if ! xcode-select --print-path &> /dev/null; then
+        log_info "Installing Command Line Tools..."
+        xcode-select --install
+    else
+        log_info "Command Line Tools already installed. Checking for updates..."
+        softwareupdate -l | grep -q "Command Line Tools" && {
+            log_info "Updating Command Line Tools..."
+            sudo softwareupdate -i "Command Line Tools"
+        } || log_info "No updates found for Command Line Tools."
     fi
 }
 
@@ -163,6 +190,26 @@ get_user_inputs() {
 }
 
 # ---------------------------
+# Handle Existing Links or Files
+# ---------------------------
+
+handle_existing_links() {
+    local links=(
+        "$HOME/.zshrc"
+        "$HOME/.config"
+        "$HOME/.vscode"
+        "$HOME/Library/Application Support/Sublime Text/Packages/User"
+    )
+
+    for link in "${links[@]}"; do
+        if [[ -e "$link" || -L "$link" ]]; then
+            log_info "Removing existing link or file: $link"
+            rm -rf "$link"
+        fi
+    done
+}
+
+# ---------------------------
 # Main Installation Process
 # ---------------------------
 
@@ -175,8 +222,14 @@ main() {
     # Perform system check
     check_macos
     
+    # Update Xcode Command Line Tools
+    update_command_line_tools
+    
     # Check for required dependencies
     check_dependencies
+    
+    # Handle existing links or files
+    handle_existing_links
     
     # Execute installation steps
     install_homebrew
@@ -184,7 +237,12 @@ main() {
     run_dotbot
     setup_git
     
-    log_info "Bootstrap complete! 🎉"
+    $1
+
+    # Source zshrc to apply changes
+    log_info "Bootstrap complete! 🎉 Applying changes..."
+    log_info "Applying changes..."
+    source "$ZSH_PROFILE"
 }
 
 # ---------------------------
@@ -192,3 +250,4 @@ main() {
 # ---------------------------
 
 main "$@"
+
