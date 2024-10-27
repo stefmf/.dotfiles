@@ -17,6 +17,9 @@ command_exists() {
 # Core System Commands
 #------------------------------------------------------------------------------
 
+# TLDR
+alias man='tldr'
+
 # Shell Management
 alias reload='source ~/.zshrc'
 alias c='clear'
@@ -115,6 +118,9 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     
     # System updates
     alias update="brew update && brew upgrade"
+
+    # Brewfile management
+    alias brewdump='brew bundle dump --force --no-vscode'
 
     # GNU command alternatives
     gnu_commands=(

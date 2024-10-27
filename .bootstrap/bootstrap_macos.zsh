@@ -26,7 +26,7 @@ done 2>/dev/null &
 DOTFILES_DIR="$HOME/.dotfiles"
 BREW_FILE="$DOTFILES_DIR/Brewfile"
 DOTBOT_INSTALL="$DOTFILES_DIR/install"
-ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zshrc"
+ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zprofile"
 
 # ---------------------------
 # Color Output Setup
@@ -46,8 +46,8 @@ typeset -A COLORS=(
 
 # Logging Functions
 log_info() { print -P "${COLORS[info]}[INFO] $1%f"; }
-log_warning() { print -P "${COLORS[warning]}[WARNING] ⚠️ $1%f"; }
-log_error() { print -P "${COLORS[error]}[ERROR] ❌ $1%f"; }
+log_warning() { print -P "${COLORS[warning]}[WARNING] $1%f"; }
+log_error() { print -P "${COLORS[error]}[ERROR] $1%f"; }
 
 # ---------------------------
 # Privacy & Security Settings Helper
@@ -82,6 +82,11 @@ install_packages() {
         log_info "🔧 Installing specific casks that require elevated permissions..."
         
         for cask in "${special_casks[@]}"; do
+            if ! brew search --casks "$cask" &> /dev/null; then
+                log_info "❌ Cask '$cask' does not exist in the Homebrew repository. Skipping..."
+                continue
+            fi
+            
             if brew list --cask "$cask" &> /dev/null; then
                 log_info "✅ Cask '$cask' is already installed. Skipping..."
                 continue
@@ -145,35 +150,74 @@ check_macos() {
 update_command_line_tools() {
     log_info "🔍 Checking for Xcode Command Line Tools updates..."
     
-    softwareupdate_output=$(softwareupdate -l)
-    log_info "📄 Software Update Output:\n$softwareupdate_output"
-    
-    # Extract the exact name of the Command Line Tools update
-    command_line_tools_update=$(echo "$softwareupdate_output" | grep -i "Command Line Tools" | head -n 1 | awk -F'* ' '{print $2}')
-    
-    if [[ -n "$command_line_tools_update" ]]; then
-        log_info "🔄 Found update for Command Line Tools: $command_line_tools_update"
-        log_info "🔧 Initiating update for Command Line Tools..."
-        sudo softwareupdate -i "$command_line_tools_update" --verbose
-        log_info "✅ Command Line Tools update completed."
-    else
-        log_info "🛠️ Command Line Tools already up to date. Reinstalling to ensure they are current..."
-        sudo rm -rf /Library/Developer/CommandLineTools
-        log_info "🗑️ Removed existing Command Line Tools."
+    # Get current CLI tools version
+    current_version=$(pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | grep version | awk '{print $2}')
+    if [[ -z "$current_version" ]]; then
+        log_warning "⚠️ Unable to determine current Command Line Tools version."
+        log_info "🔧 Initiating installation of Command Line Tools..."
         xcode-select --install
         
         log_info "⏳ Waiting for Command Line Tools installation to complete..."
-        # Wait until Command Line Tools are installed
+        local wait_message="⏳ Still waiting for Command Line Tools to install"
         until xcode-select --print-path &> /dev/null; do
-            sleep 15
-            log_info "⏳ Still waiting for Command Line Tools to install..."
-            while ! xcode-select --print-path &> /dev/null; do
-                printf "."
-                sleep 10
-            done
-            echo ""  # Move to the next line after the dots
+            sleep 10
+            wait_message+="."
+            log_info "$wait_message"
         done
         log_info "✅ Command Line Tools installation completed."
+        return
+    fi
+    
+    # Extract major.minor version
+    current_major_minor=$(echo "$current_version" | cut -d. -f1,2)
+    required_version="16.0"
+    
+    log_info "📦 Current Command Line Tools version: $current_major_minor"
+    log_info "📦 Required minimum version: $required_version"
+    
+    if [[ "$current_major_minor" < "$required_version" ]]; then
+        log_info "🔄 Command Line Tools version is below the required minimum. Attempting to update..."
+        
+        # Check for available updates
+        softwareupdate_output=$(softwareupdate -l)
+        log_info "📄 Software Update Output:\n$softwareupdate_output"
+        
+        # Extract the exact name of the Command Line Tools update using sed to avoid awk errors
+        command_line_tools_update=$(echo "$softwareupdate_output" | grep -i "Command Line Tools for Xcode" | head -n 1 | sed 's/^\* Label: //')
+        
+        if [[ -n "$command_line_tools_update" ]]; then
+            log_info "🔄 Found update for Command Line Tools: $command_line_tools_update"
+            log_info "🔧 Initiating update for Command Line Tools..."
+            sudo softwareupdate -i "$command_line_tools_update" --verbose
+            log_info "✅ Command Line Tools update completed."
+        else
+            log_info "🛠️ No update found via softwareupdate. Reinstalling Command Line Tools to ensure they are current..."
+            sudo rm -rf /Library/Developer/CommandLineTools
+            log_info "🗑️ Removed existing Command Line Tools."
+            xcode-select --install
+            
+            log_info "⏳ Waiting for Command Line Tools installation to complete..."
+            local wait_message="⏳ Still waiting for Command Line Tools to install"
+            until xcode-select --print-path &> /dev/null; do
+                sleep 10
+                wait_message+="."
+                log_info "$wait_message"
+            done
+            log_info "✅ Command Line Tools installation completed."
+        fi
+        
+        # Re-check the version after update
+        current_version=$(pkgutil --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null | grep version | awk '{print $2}')
+        current_major_minor=$(echo "$current_version" | cut -d. -f1,2)
+        log_info "📦 Updated Command Line Tools version: $current_major_minor"
+        
+        if [[ "$current_major_minor" < "$required_version" ]]; then
+            log_warning "⚠️ Command Line Tools are still below the required version ($required_version). Please update them manually."
+        else
+            log_info "✅ Command Line Tools meet the required version ($required_version)."
+        fi
+    else
+        log_info "✅ Command Line Tools are up to date (version: $current_major_minor)."
     fi
 }
 

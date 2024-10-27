@@ -7,12 +7,10 @@
 
 - create:
     - ~/.zsh_sessions
-    - ~/.vscode
     - ~/.config
     - ~/Library/Application Support/Sublime Text/Packages/User
 
 - link:
-    ~/.vscode: .vscode
     ~/.config: .config
     ~/.zlogout: .zsh/.zlogout
     ~/.zlogin: .zsh/.zlogin
