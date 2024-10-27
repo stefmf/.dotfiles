@@ -8,7 +8,8 @@
 - create:
     - ~/.zsh_sessions
     - ~/.config
-    - ~/Library/Application Support/Sublime Text/Packages/User
+    - "~/Library/Application Support/Sublime Text/Packages/User"
+    - "~/Library/Application Support/Sublime Text/Installed Packages"
 
 - link:
     ~/.config: .config
@@ -17,7 +18,8 @@
     ~/.zshenv: .zsh/.zshenv
     ~/.zprofile: .zsh/.zprofile
     ~/.zshrc: .zsh/.zshrc
-    ~/Library/Application Support/Sublime Text/Packages/User: .config/sublime
+    "~/Library/Application Support/Sublime Text/Packages/User": .config/sublime/User
+    "~/Library/Application Support/Sublime Text/Installed Packages": .config/sublime/Installed Packages
 
 - shell:
     - [git submodule update --init --recursive, Installing submodules]
