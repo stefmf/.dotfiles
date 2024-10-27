@@ -174,6 +174,9 @@ update_command_line_tools() {
             echo ""  # Move to the next line after the dots
         done
         log_info "✅ Command Line Tools installation completed."
+    fi
+}
+
 # ---------------------------
 # Homebrew Installation
 # ---------------------------
