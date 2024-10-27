@@ -1,12 +1,14 @@
 - defaults:
     link:
       relink: true
+      force: true  # Add force option to override existing files
 
 - clean: ['~']
 
 - create:
     - ~/.zsh_sessions
     - ~/.vscode
+    - ~/.config
     - ~/Library/Application Support/Sublime Text/Packages/User
 
 - link:
