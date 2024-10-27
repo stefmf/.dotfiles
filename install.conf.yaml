@@ -12,7 +12,7 @@
     ~/.zshenv: .zsh/.zshenv
     ~/.zprofile: .zsh/.zprofile
     ~/.zshrc: .zsh/.zshrc
-
+    ~/Library/Application Support/Sublime Text/Packages/User: .config/sublime
 - create:
     - ~/.zsh_sessions
 
