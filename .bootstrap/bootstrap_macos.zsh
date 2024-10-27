@@ -22,11 +22,11 @@ done 2>/dev/null &
 # Constants and Configuration
 # ---------------------------
 
-# Determine the parent directory of the script
-DOTFILES_DIR="$(cd "$(dirname "${(%):-%N}")" && cd ../.. && pwd)"
+# Set Dotfiles directory
+DOTFILES_DIR="$HOME/.dotfiles"
 BREW_FILE="$DOTFILES_DIR/Brewfile"
 DOTBOT_INSTALL="$DOTFILES_DIR/install"
-ZSH_PROFILE="$HOME/.zshrc"
+ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zshrc"
 
 # ---------------------------
 # Color Output Setup
@@ -45,7 +45,7 @@ typeset -A COLORS=(
 # ---------------------------
 
 # Logging Functions
-log_info() { print -P "${COLORS[info]}[INFO] 🚀 $1%f"; }
+log_info() { print -P "${COLORS[info]}[INFO] $1%f"; }
 log_warning() { print -P "${COLORS[warning]}[WARNING] ⚠️ $1%f"; }
 log_error() { print -P "${COLORS[error]}[ERROR] ❌ $1%f"; }
 
@@ -165,13 +165,15 @@ update_command_line_tools() {
         log_info "⏳ Waiting for Command Line Tools installation to complete..."
         # Wait until Command Line Tools are installed
         until xcode-select --print-path &> /dev/null; do
-            sleep 5
+            sleep 15
             log_info "⏳ Still waiting for Command Line Tools to install..."
+            while ! xcode-select --print-path &> /dev/null; do
+                printf "."
+                sleep 10
+            done
+            echo ""  # Move to the next line after the dots
         done
         log_info "✅ Command Line Tools installation completed."
-    fi
-}
-
 # ---------------------------
 # Homebrew Installation
 # ---------------------------
