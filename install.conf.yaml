@@ -4,6 +4,11 @@
 
 - clean: ['~']
 
+- create:
+    - ~/.zsh_sessions
+    - ~/.vscode
+    - ~/Library/Application Support/Sublime Text/Packages/User
+
 - link:
     ~/.vscode: .vscode
     ~/.config: .config
@@ -13,8 +18,6 @@
     ~/.zprofile: .zsh/.zprofile
     ~/.zshrc: .zsh/.zshrc
     ~/Library/Application Support/Sublime Text/Packages/User: .config/sublime
-- create:
-    - ~/.zsh_sessions
 
 - shell:
     - [git submodule update --init --recursive, Installing submodules]
