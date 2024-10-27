@@ -1,7 +1,6 @@
 #!/usr/bin/env zsh
 
 # Enable strict error handling
-setopt ERR_EXIT   # Exit on error
 setopt PIPE_FAIL  # Exit on pipe failure
 setopt UNSET      # Exit on undefined variable
 
@@ -24,7 +23,7 @@ done 2>/dev/null &
 # ---------------------------
 
 # Determine the parent directory of the script
-DOTFILES_DIR="${0:a:h:h}"
+DOTFILES_DIR="$(cd "$(dirname "${(%):-%N}")" && cd ../.. && pwd)"
 BREW_FILE="$DOTFILES_DIR/Brewfile"
 DOTBOT_INSTALL="$DOTFILES_DIR/install"
 ZSH_PROFILE="$HOME/.zshrc"
@@ -46,9 +45,9 @@ typeset -A COLORS=(
 # ---------------------------
 
 # Logging Functions
-log_info() { print -P "${COLORS[info]}[INFO]%f $1"; }
-log_warning() { print -P "${COLORS[warning]}[WARNING]%f $1"; }
-log_error() { print -P "${COLORS[error]}[ERROR]%f $1"; exit 1; }
+log_info() { print -P "${COLORS[info]}[INFO] 🚀 $1%f"; }
+log_warning() { print -P "${COLORS[warning]}[WARNING] ⚠️ $1%f"; }
+log_error() { print -P "${COLORS[error]}[ERROR] ❌ $1%f"; }
 
 # ---------------------------
 # Privacy & Security Settings Helper
@@ -62,11 +61,9 @@ open_privacy_settings() {
         reveal anchor "Privacy_AppBundles" of pane id "com.apple.settings.PrivacySecurity.extension"
     end tell'
     
-    log_info "=============================================================="
-    log_info "📌 **Important:**"
-    log_info "Please enable **App Management** in the Privacy & Security settings."
-    log_info "This is necessary for installing certain applications that require elevated permissions."
-    log_info "=============================================================="
+    log_info "📌 Important: Please enable App Management in the Privacy & Security settings."
+    log_info "🔒 This is necessary for installing certain applications that require elevated permissions."
+    log_info "✅ Once enabled, press Enter to continue with the installation."
     read -r "?Press Enter after enabling App Management to continue..."
 }
 
@@ -76,20 +73,20 @@ open_privacy_settings() {
 
 install_packages() {
     if [[ -f "$BREW_FILE" ]]; then
-        log_info "Starting package installation process..."
-
+        log_info "📦 Starting package installation process..."
+        
         # Define special casks that need special handling
         local special_casks=("parallels" "adobe-acrobat-pro" "microsoft-auto-update" "windows-app")
-
+        
         # Step 1: Handle special casks that require elevated permissions
         log_info "🔧 Installing specific casks that require elevated permissions..."
-
+        
         for cask in "${special_casks[@]}"; do
             if brew list --cask "$cask" &> /dev/null; then
                 log_info "✅ Cask '$cask' is already installed. Skipping..."
                 continue
             fi
-
+            
             if [[ "$cask" == "parallels" ]]; then
                 log_info "🚀 Preparing to install Parallels..."
                 open_privacy_settings
@@ -100,19 +97,17 @@ install_packages() {
                 brew install --cask "$cask" --verbose || log_warning "❌ $cask installation failed"
             fi
         done
-
+        
         # Step 2: Install the rest of the packages from Brewfile
         log_info "📦 Installing remaining packages from Brewfile..."
-
+        
         brew bundle --file="$BREW_FILE" || {
             log_warning "⚠️ Some packages failed to install."
-            return 1
         }
-
-        log_info "✅ All packages installed successfully."
+        
+        log_info "✅ Package installation process completed."
     else
         log_warning "⚠️ No Brewfile found at $BREW_FILE. Skipping package installation."
-        return 1
     fi
 }
 
@@ -148,12 +143,25 @@ check_macos() {
 # ---------------------------
 
 update_command_line_tools() {
-    log_info "🔍 Checking for Xcode Command Line Tools..."
-
-    if ! xcode-select --print-path &> /dev/null; then
-        log_info "🛠️ Command Line Tools not found. Initiating installation..."
+    log_info "🔍 Checking for Xcode Command Line Tools updates..."
+    
+    softwareupdate_output=$(softwareupdate -l)
+    log_info "📄 Software Update Output:\n$softwareupdate_output"
+    
+    # Extract the exact name of the Command Line Tools update
+    command_line_tools_update=$(echo "$softwareupdate_output" | grep -i "Command Line Tools" | head -n 1 | awk -F'* ' '{print $2}')
+    
+    if [[ -n "$command_line_tools_update" ]]; then
+        log_info "🔄 Found update for Command Line Tools: $command_line_tools_update"
+        log_info "🔧 Initiating update for Command Line Tools..."
+        sudo softwareupdate -i "$command_line_tools_update" --verbose
+        log_info "✅ Command Line Tools update completed."
+    else
+        log_info "🛠️ Command Line Tools already up to date. Reinstalling to ensure they are current..."
+        sudo rm -rf /Library/Developer/CommandLineTools
+        log_info "🗑️ Removed existing Command Line Tools."
         xcode-select --install
-
+        
         log_info "⏳ Waiting for Command Line Tools installation to complete..."
         # Wait until Command Line Tools are installed
         until xcode-select --print-path &> /dev/null; do
@@ -161,29 +169,6 @@ update_command_line_tools() {
             log_info "⏳ Still waiting for Command Line Tools to install..."
         done
         log_info "✅ Command Line Tools installation completed."
-    else
-        log_info "🛠️ Command Line Tools already installed. Checking for updates..."
-        softwareupdate_output=$(softwareupdate -l)
-        log_info "📄 Software Update Output:\n$softwareupdate_output"
-
-        if echo "$softwareupdate_output" | grep -q "Command Line Tools"; then
-            log_info "🔄 Updating Command Line Tools..."
-            sudo softwareupdate -i "Command Line Tools" --verbose
-            log_info "✅ Command Line Tools update completed."
-        else
-            log_info "🔄 No updates found for Command Line Tools. Reinstalling to ensure they are up to date..."
-            sudo rm -rf /Library/Developer/CommandLineTools
-            log_info "🗑️ Removed existing Command Line Tools."
-            xcode-select --install
-
-            log_info "⏳ Waiting for Command Line Tools reinstallation to complete..."
-            # Wait until Command Line Tools are reinstalled
-            until xcode-select --print-path &> /dev/null; do
-                sleep 5
-                log_info "⏳ Still waiting for Command Line Tools to reinstall..."
-            done
-            log_info "✅ Command Line Tools reinstallation completed."
-        fi
     fi
 }
 
@@ -192,7 +177,7 @@ update_command_line_tools() {
 # ---------------------------
 
 install_homebrew() {
-    if (( ! $+commands[brew] )); then
+    if ! command -v brew > /dev/null; then
         log_info "🍺 Installing Homebrew..."
         if command -v curl > /dev/null; then
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -240,7 +225,7 @@ run_dotbot() {
         handle_existing_links
         
         # Run Dotbot with verbose output
-        "$DOTBOT_INSTALL" -v || log_error "🚫 Dotbot installation failed."
+        "$DOTBOT_INSTALL" -v || log_warning "⚠️ Dotbot installation failed."
     else
         log_error "🚫 Dotbot install script not found at $DOTBOT_INSTALL"
     fi
@@ -251,9 +236,14 @@ run_dotbot() {
 # ---------------------------
 
 setup_git() {
+    if [[ -z "$GIT_USER_NAME" || -z "$GIT_USER_EMAIL" ]]; then
+        log_warning "⚠️ Git user name or email not set. Skipping Git configuration."
+        return
+    fi
+    
     log_info "🛠️ Configuring Git..."
-    git config --global user.name "$GIT_USER_NAME"
-    git config --global user.email "$GIT_USER_EMAIL"
+    git config --global user.name "$GIT_USER_NAME" || log_warning "⚠️ Failed to set Git user name."
+    git config --global user.email "$GIT_USER_EMAIL" || log_warning "⚠️ Failed to set Git user email."
     log_info "✅ Git configured for user: $GIT_USER_NAME <$GIT_USER_EMAIL>"
 }
 
@@ -266,7 +256,7 @@ get_user_inputs() {
     
     # Collect Git User Name
     while true; do
-        read -r "GIT_USER_NAME?Enter Git user name: "
+        read -r "GIT_USER_NAME?🔍 Enter Git user name: "
         if [[ -n "$GIT_USER_NAME" ]]; then
             break
         else
@@ -276,15 +266,13 @@ get_user_inputs() {
     
     # Collect Git User Email with Validation
     while true; do
-        read -r "GIT_USER_EMAIL?Enter Git user email: "
+        read -r "GIT_USER_EMAIL?📧 Enter Git user email: "
         if [[ "$GIT_USER_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
             break
         else
             log_warning "⚠️ Please enter a valid email address."
         fi
     done
-
-    # Note: Removed Sudo Password Collection for Security
 }
 
 # ---------------------------
@@ -302,14 +290,14 @@ handle_existing_links() {
     for link in "${links[@]}"; do
         if [[ -e "$link" || -L "$link" ]]; then
             log_info "🗑️ Removing existing link or file: $link"
-            rm -rf "$link"
+            rm -rf "$link" || log_warning "⚠️ Failed to remove $link"
         fi
 
         # Ensure parent directory exists
         local parent_dir="${link:h}"
         if [[ ! -d "$parent_dir" ]]; then
             log_info "📁 Creating parent directory: $parent_dir"
-            mkdir -p "$parent_dir"
+            mkdir -p "$parent_dir" || log_warning "⚠️ Failed to create directory: $parent_dir"
         fi
     done
 }
@@ -320,24 +308,24 @@ handle_existing_links() {
 
 main() {
     log_info "🚀 Starting machine bootstrap process..."
-
+    
     # Gather user inputs
     get_user_inputs
-
+    
     # Perform system check
     check_macos
-
+    
     # Update Xcode Command Line Tools
     update_command_line_tools
-
+    
     # Check for required dependencies
     check_dependencies
-
+    
     # Execute installation steps
-    install_homebrew || return 1
-    install_packages || return 1
-    run_dotbot || return 1
-    setup_git || return 1
+    install_homebrew
+    run_dotbot
+    install_packages
+    setup_git
 
     # Source zshrc to apply changes
     if [[ -f "$ZSH_PROFILE" ]]; then
@@ -345,7 +333,6 @@ main() {
         source "$ZSH_PROFILE"
     else
         log_warning "⚠️ No .zshrc found after installation."
-        return 1
     fi
 }
 
