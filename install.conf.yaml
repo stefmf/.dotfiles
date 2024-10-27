@@ -1,0 +1,21 @@
+- defaults:
+    link:
+      relink: true
+
+- clean: ['~']
+
+- link:
+    ~/.vscode: .vscode
+    ~/.config: .config
+    ~/.zlogout: .zsh/.zlogout
+    ~/.zlogin: .zsh/.zlogin
+    ~/.zshenv: .zsh/.zshenv
+    ~/.zprofile: .zsh/.zprofile
+    ~/.zshrc: .zsh/.zshrc
+
+- create:
+    - ~/.zsh_sessions
+
+- shell:
+    - [git submodule update --init --recursive, Installing submodules]
+    - [rm -f ~/.bashrc ~/.bash_profile, Removing Bash configuration files]
