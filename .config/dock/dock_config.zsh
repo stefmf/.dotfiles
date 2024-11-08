@@ -22,7 +22,7 @@ dockutil --add /System/Applications/iPhone\ Mirroring.app --no-restart
 dockutil --add /System/Applications/System\ Settings.app --no-restart
 
 # Add Downloads folder as a stack in list view
-dockutil --add '~/Downloads' --view list --display stack --no-restart
+dockutil --add '~/Downloads' --view list --display folder --no-restart
 
 # Set additional Dock preferences
 defaults write com.apple.dock minimize-to-application -bool true # Minimize into app icon
