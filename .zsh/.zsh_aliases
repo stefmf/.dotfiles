@@ -25,6 +25,7 @@ alias reload='source ~/.zshrc'
 alias c='clear'
 
 # Editor
+alias vi='nvim'
 alias vim="nvim"
 
 # System Monitoring
@@ -150,7 +151,7 @@ fi
 #------------------------------------------------------------------------------
 
 alias pipes='pipes.sh'
-alias fastfetch="$HOME/.dotfiles/.config/fastfetch/fastfetch_wrapper.sh"
+alias fastfetch="$HOME/.dotfiles/.config/fastfetch/fastfetch_wrapper.zsh"
 
 #------------------------------------------------------------------------------
 # Keyboard Shortcut Reference
