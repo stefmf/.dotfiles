@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 
 # Function to count the number of non-break modules in the config file
 count_modules() {
