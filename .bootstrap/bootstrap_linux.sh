@@ -79,6 +79,7 @@ fi
 if [[ "$SHELL" != "$(which zsh)" ]]; then
   log_info "Changing shell to zsh..."
   chsh -s "$(which zsh)"
+  log_info "✅ SUCCESS! Shell set to zsh."
 else
   log_info "✅ Default shell is already set to zsh."
 fi
@@ -89,7 +90,11 @@ fi
 
 if ! command -v brew &> /dev/null; then
   log_info "Installing Homebrew..."
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  /bin/bash -c "$(curl -k -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || {
+      log_error "🚫 Homebrew installation failed due to SSL issues. Trying again with insecure options..."
+      sudo apt install -y --no-install-recommends ca-certificates curl
+      /bin/bash -c "$(curl -k -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  }
 
   # Add Homebrew to the PATH
   echo 'eval "$($(brew --prefix)/bin/brew shellenv)"' >> ~/.zprofile
@@ -101,6 +106,7 @@ if ! command -v brew &> /dev/null; then
       log_info "🔍 Current PATH: $PATH"
   else
       log_error "🚫 Homebrew installation failed or is not in PATH."
+      exit 1
   fi
 else
   log_info "🍺 Homebrew is already installed."
@@ -113,7 +119,7 @@ fi
 
 if [[ -f "$BREW_FILE" ]]; then
   log_info "Installing brew packages from Brewfile..."
-  brew bundle --file="$BREW_FILE" --no-upgrade --no-cask
+  brew bundle --file="$BREW_FILE" --no-upgrade --no-cask || log_error "🚫 Failed to install brew packages."
 else
   log_warning "Brewfile not found at $BREW_FILE"
 fi
