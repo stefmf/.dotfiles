@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 
 # Exit immediately if a command exits with a non-zero status
 set -e
@@ -31,22 +31,19 @@ ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zprofile"
 # Color Output Setup
 # ---------------------------
 
-autoload -U colors && colors
-typeset -A COLORS=(
-    [info]=$fg[green]
-    [warning]=$fg[yellow]
-    [error]=$fg[red]
-    [debug]=$fg[blue]
-)
+COLORS_INFO="\e[32m"
+COLORS_WARNING="\e[33m"
+COLORS_ERROR="\e[31m"
+COLORS_RESET="\e[0m"
 
 # ---------------------------
 # Helper Functions
 # ---------------------------
 
 # Logging Functions
-log_info() { print -P "${COLORS[info]}[INFO] $1%f"; }
-log_warning() { print -P "${COLORS[warning]}[WARNING] $1%f"; }
-log_error() { print -P "${COLORS[error]}[ERROR] $1%f"; }
+log_info() { echo -e "${COLORS_INFO}[INFO] $1${COLORS_RESET}"; }
+log_warning() { echo -e "${COLORS_WARNING}[WARNING] $1${COLORS_RESET}"; }
+log_error() { echo -e "${COLORS_ERROR}[ERROR] $1${COLORS_RESET}"; }
 
 # ---------------------------
 # System Check
@@ -65,14 +62,31 @@ check_linux() {
 check_linux
 
 # ---------------------------
+# Install Zsh
+# ---------------------------
+
+if ! command -v zsh &> /dev/null; then
+    log_info "Installing Zsh..."
+    sudo apt update && sudo apt install -y zsh
+else
+    log_info "✅ Zsh is already installed."
+fi
+
+# ---------------------------
 # Change shell to zsh
+# ---------------------------
+
 if [[ "$SHELL" != "$(which zsh)" ]]; then
   log_info "Changing shell to zsh..."
   chsh -s "$(which zsh)"
+else
+  log_info "✅ Default shell is already set to zsh."
 fi
 
 # ---------------------------
 # Install Homebrew for Linux
+# ---------------------------
+
 if ! command -v brew &> /dev/null; then
   log_info "Installing Homebrew..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -95,6 +109,8 @@ fi
 
 # ---------------------------
 # Install brew packages from Brewfile (no casks)
+# ---------------------------
+
 if [[ -f "$BREW_FILE" ]]; then
   log_info "Installing brew packages from Brewfile..."
   brew bundle --file="$BREW_FILE" --no-upgrade --no-cask
@@ -127,7 +143,7 @@ get_user_inputs() {
     
     # Collect Git User Name
     while true; do
-        read -r "GIT_USER_NAME?🔍 Enter Git user name: "
+        read -r -p "🔍 Enter Git user name: " GIT_USER_NAME
         if [[ -n "$GIT_USER_NAME" ]]; then
             break
         else
@@ -137,7 +153,7 @@ get_user_inputs() {
     
     # Collect Git User Email with Validation
     while true; do
-        read -r "GIT_USER_EMAIL?📧 Enter Git user email: "
+        read -r -p "📧 Enter Git user email: " GIT_USER_EMAIL
         if [[ "$GIT_USER_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
             break
         else
@@ -164,7 +180,7 @@ handle_existing_links() {
         fi
 
         # Ensure parent directory exists
-        local parent_dir="${link:h}"
+        local parent_dir="$(dirname "$link")"
         if [[ ! -d "$parent_dir" ]]; then
             log_info "📁 Creating parent directory: $parent_dir"
             mkdir -p "$parent_dir" || log_warning "⚠️ Failed to create directory: $parent_dir"
