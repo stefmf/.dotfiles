@@ -25,7 +25,7 @@ done 2>/dev/null &
 DOTFILES_DIR="$HOME/.dotfiles"
 PACKAGES_FILE="$DOTFILES_DIR/.bootstrap/linux/base_packages.list"
 DOTBOT_INSTALL="$DOTFILES_DIR/install"
-ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zprofile"
+ZPROFILE="$HOME/.zprofile"  # New variable for .zprofile
 
 # ---------------------------
 # Color Output Setup
@@ -63,49 +63,32 @@ check_linux() {
 # ---------------------------
 
 check_zsh() {
-    log_info "🔍 Checking if ZSH is the default shell..."
+    log_info "🔍 Checking if ZSH is installed..."
 
-    if [[ "$SHELL" != "$(which zsh)" ]]; then
-        log_info "ZSH is not the default shell."
+    if command -v zsh &> /dev/null; then
+        log_info "✅ ZSH is already installed."
+    else
+        log_info "ZSH is not installed. Installing ZSH..."
 
-        if command -v zsh &> /dev/null; then
-            log_info "✅ ZSH is already installed."
-        else
-            log_info "ZSH is not installed. Installing ZSH..."
+        local max_attempts=3
+        local attempt=1
 
-            local max_attempts=3
-            local attempt=1
-
-            while [[ $attempt -le 3 ]]; do
-                log_info "Attempt $attempt of 3 to install ZSH..."
-                if sudo apt update && sudo apt install -y zsh; then
-                    log_info "✅ ZSH installed successfully."
-                    break
-                else
-                    log_warning "⚠️ Failed to install ZSH on attempt $attempt."
-                    ((attempt++))
-                    sleep 2
-                fi
-            done
-
-            if [[ $attempt -gt 3 ]]; then
-                log_error "🚫 ZSH installation failed after 3 attempts."
-                exit 1
+        while [[ $attempt -le 3 ]]; do
+            log_info "Attempt $attempt of 3 to install ZSH..."
+            if sudo apt update && sudo apt install -y zsh; then
+                log_info "✅ ZSH installed successfully."
+                break
+            else
+                log_warning "⚠️ Failed to install ZSH on attempt $attempt."
+                ((attempt++))
+                sleep 2
             fi
-        fi
+        done
 
-        log_info "Changing default shell to ZSH..."
-        if chsh -s "$(which zsh)" "$USER"; then
-            log_info "✅ Default shell changed to ZSH."
-            log_info "🔄 Please log out and log back in for the changes to take effect."
-            log_info "🔄 After logging back in, rerun this script to continue the bootstrap process."
-            exit 0
-        else
-            log_error "🚫 Failed to change the default shell to ZSH."
+        if [[ $attempt -gt 3 ]]; then
+            log_error "🚫 ZSH installation failed after 3 attempts."
             exit 1
         fi
-    else
-        log_info "✅ Default shell is already set to ZSH. No changes needed."
     fi
 }
 
@@ -193,8 +176,25 @@ install_packages() {
 
 install_atuin() {
     log_info "🔄 Installing Atuin..."
-    if bash <(curl -s https://raw.githubusercontent.com/atuinsh/atuin/main/install.sh); then
+
+    # Check if cargo is installed
+    if ! command -v cargo &> /dev/null; then
+        log_warning "⚠️ Cargo is not installed. Installing Rust toolchain..."
+        if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
+            source "$HOME/.cargo/env"
+        else
+            log_error "🚫 Failed to install Rust toolchain."
+            return
+        fi
+    fi
+
+    # Install Atuin using official method
+    if git clone https://github.com/atuinsh/atuin.git "$HOME/atuin_temp" && \
+       cd "$HOME/atuin_temp/crates/atuin" && \
+       cargo install --path .; then
         log_info "✅ Atuin installed successfully!"
+        # Clean up
+        rm -rf "$HOME/atuin_temp"
     else
         log_warning "⚠️ Failed to install Atuin."
     fi
@@ -202,9 +202,25 @@ install_atuin() {
 
 install_awscli() {
     log_info "☁️ Installing AWS CLI..."
-    if curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; then
+    local arch
+    arch=$(uname -m)
+    local url
+    case "$arch" in
+        x86_64)
+            url="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+            ;;
+        aarch64)
+            url="https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip"
+            ;;
+        *)
+            log_warning "⚠️ Unsupported architecture: $arch"
+            return
+            ;;
+    esac
+
+    if curl "$url" -o "awscliv2.zip"; then
         sudo apt install -y unzip
-        if unzip awscliv2.zip && sudo ./aws/install; then
+        if unzip -q awscliv2.zip && sudo ./aws/install; then
             rm -rf aws awscliv2.zip
             log_info "✅ AWS CLI installed successfully!"
         else
@@ -309,8 +325,8 @@ install_go() {
         if sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-${ARCH}.tar.gz"; then
             rm "go${GO_VERSION}.linux-${ARCH}.tar.gz"
 
-            # Add Go to PATH in profile
-            echo 'export PATH=$PATH:/usr/local/go/bin' >> "$HOME/.profile"
+            # Add Go to PATH in zprofile
+            echo 'export PATH="$PATH:/usr/local/go/bin"' >> "$ZPROFILE"
             export PATH="$PATH:/usr/local/go/bin"
             log_info "✅ Go installed successfully!"
         else
@@ -380,7 +396,7 @@ install_oh_my_posh() {
         # Ensure install_dir is in PATH
         if [[ ":$PATH:" != *":$install_dir:"* ]]; then
             export PATH="$install_dir:$PATH"
-            echo 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' >> "$HOME/.zprofile"
+            echo 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' >> "$ZPROFILE"
             log_info "🔧 Updated PATH to include $install_dir"
         fi
     else
@@ -407,10 +423,25 @@ install_jetbrains_mono_nerd_font() {
     fi
 }
 
+setup_bat_symlink() {
+    log_info "🔧 Setting up bat symlink if needed..."
+    if ! command -v bat &> /dev/null; then
+        if command -v batcat &> /dev/null; then
+            mkdir -p "$HOME/.local/bin"
+            ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
+            log_info "✅ Created symlink from batcat to bat."
+        else
+            log_warning "⚠️ Neither bat nor batcat found. Please install bat."
+        fi
+    else
+        log_info "✅ bat command is already available."
+    fi
+}
+
 update_path() {
     log_info "🔧 Ensuring ~/.local/bin and ~/bin are in PATH..."
 
-    local profile_file="$HOME/.zprofile"
+    local profile_file="$ZPROFILE"
 
     if ! grep -q 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' "$profile_file"; then
         echo 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' >> "$profile_file"
@@ -438,6 +469,7 @@ install_additional_packages() {
     install_kind
     install_zsh_you_should_use
     install_jetbrains_mono_nerd_font
+    setup_bat_symlink  # Added function call to setup bat symlink
 
     log_info "✅ All additional packages installed successfully!"
 }
@@ -495,13 +527,14 @@ get_user_inputs() {
 }
 
 # ---------------------------
-# Create .zprofile
+# Create .zprofile in Dotfiles Directory
 # ---------------------------
 
 create_zprofile() {
-    local zprofile_path="$HOME/.zprofile"
+    local zprofile_path="$DOTFILES_DIR/.zsh/.zprofile"
     if [[ ! -f "$zprofile_path" ]]; then
         log_info "📝 Creating basic .zprofile at $zprofile_path"
+        mkdir -p "$(dirname "$zprofile_path")"
         cat << 'EOF' > "$zprofile_path"
 # ~/.zprofile
 
@@ -583,6 +616,23 @@ run_dotbot() {
 }
 
 # ---------------------------
+# Change Default Shell to ZSH and Reboot
+# ---------------------------
+
+change_shell() {
+    log_info "🔄 Changing default shell to ZSH..."
+
+    if chsh -s "$(which zsh)" "$USER"; then
+        log_info "✅ Default shell changed to ZSH."
+        log_info "🔄 The system will reboot in 10 seconds to apply changes..."
+        sleep 10
+        sudo reboot
+    else
+        log_error "🚫 Failed to change the default shell to ZSH."
+    fi
+}
+
+# ---------------------------
 # Main Installation Process
 # ---------------------------
 
@@ -592,11 +642,8 @@ main() {
     # Perform initial system check
     check_linux
 
-    if [[ -z "$BOOTSTRAP_ZSH_RERUN" ]]; then
-        check_zsh
-    else
-        log_info "✅ Already running in ZSH, proceeding..."
-    fi
+    # Check if ZSH is installed
+    check_zsh
 
     # Update system
     update_system
@@ -616,15 +663,8 @@ main() {
     run_dotbot
     setup_git
 
-    # Source zsh profile to apply changes
-    if [[ -f "$ZSH_PROFILE" ]]; then
-        log_info "🎉 Bootstrap complete! Applying changes..."
-        source "$ZSH_PROFILE"
-    else
-        log_warning "⚠️ No ZSH profile found after installation."
-    fi
-
-    log_info "🔄 Please log out and log back in for all changes to take effect."
+    # Change default shell to ZSH at the end and trigger reboot
+    change_shell
 }
 
 # Execute main function
