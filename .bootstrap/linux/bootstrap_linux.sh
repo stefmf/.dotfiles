@@ -59,6 +59,26 @@ check_linux() {
 }
 
 # ---------------------------
+# Clear Cache
+# ---------------------------
+
+clear_cache() {
+    log_info "🧹 Clearing local package cache and updating..."
+
+    # Clear the package list cache
+    sudo rm -rf /var/lib/apt/lists/*
+    
+    # Update the package list
+    if sudo apt update; then
+        log_info "✅ Package cache cleared and updated successfully."
+    else
+        log_error "🚫 Failed to update package list. Please check your network connection or repository configuration."
+        return 1
+    fi
+}
+
+
+# ---------------------------
 # Clock Sync
 # ---------------------------
 
@@ -678,6 +698,9 @@ main() {
 
     # Clock Sync
     sync_system_clock
+
+    # Clear Cache
+    clear_cache
 
     # Check if ZSH is installed
     check_zsh
