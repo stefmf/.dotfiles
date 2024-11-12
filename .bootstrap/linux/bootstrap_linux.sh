@@ -59,6 +59,26 @@ check_linux() {
 }
 
 # ---------------------------
+# System Update
+# ---------------------------
+
+update_system() {
+    log_info "🔄 Updating system packages..."
+    sudo apt update && sudo apt upgrade -y
+    
+    # Install common dependencies
+    sudo apt install -y \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        gnupg \
+        lsb-release \
+        software-properties-common
+        
+    log_info "✅ System update complete!"
+}
+
+# ---------------------------
 # Install Zsh
 # ---------------------------
 
@@ -75,8 +95,8 @@ fi
 
 if [[ "$SHELL" != "$(which zsh)" ]]; then
     log_info "Changing shell to zsh..."
-    chsh -s "$(which zsh)"
-    log_info "✅ SUCCESS! Shell set to zsh."
+    sudo chsh -s "$(which zsh)" "$USER"
+    log_info "✅ SUCCESS! Shell set to zsh. Please log out and log back in for changes to take effect."
 else
     log_info "✅ Default shell is already set to zsh."
 fi
@@ -112,6 +132,51 @@ install_packages() {
     done
 
     log_info "✅ Package installation complete!"
+}
+
+# ---------------------------
+# Install Missing Packages
+# ---------------------------
+
+install_atuin() {
+    log_info "🔄 Installing Atuin..."
+    bash <(curl https://raw.githubusercontent.com/atuinsh/atuin/main/install.sh)
+    log_info "✅ Atuin installed successfully!"
+}
+
+install_awscli() {
+    log_info "☁️ Installing AWS CLI..."
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    sudo apt install -y unzip
+    unzip awscliv2.zip
+    sudo ./aws/install
+    rm -rf aws awscliv2.zip
+    log_info "✅ AWS CLI installed successfully!"
+}
+
+install_fastfetch() {
+    log_info "📊 Installing Fastfetch..."
+    # Add the repository for Fastfetch
+    echo "deb [signed-by=/usr/share/keyrings/fastfetch-archive-keyring.gpg] https://repos.fastfetch.org/debian/ $(lsb_release -cs) main" | \
+        sudo tee /etc/apt/sources.list.d/fastfetch.list
+    curl -fsSL https://repos.fastfetch.org/key.asc | \
+        sudo gpg --dearmor -o /usr/share/keyrings/fastfetch-archive-keyring.gpg
+    sudo apt update
+    sudo apt install -y fastfetch
+    log_info "✅ Fastfetch installed successfully!"
+}
+
+install_kind() {
+    log_info "🔄 Installing Kind..."
+    # Install Kind using Go (ensure Go is installed first)
+    if command -v go &> /dev/null; then
+        go install sigs.k8s.io/kind@latest
+        # Add KIND to PATH by creating a symbolic link
+        sudo ln -sf "$(go env GOPATH)/bin/kind" /usr/local/bin/kind
+        log_info "✅ Kind installed successfully!"
+    else
+        log_error "❌ Go is required for Kind installation. Please install Go first."
+    fi
 }
 
 # ---------------------------
@@ -195,12 +260,19 @@ install_oh_my_posh() {
 install_additional_packages() {
     log_info "🚀 Installing additional packages..."
     
+    # Core tools
     install_docker
     install_go
     install_helm
     install_kubectl
     install_terraform
     install_oh_my_posh
+    
+    # Previously missing packages
+    install_atuin
+    install_awscli
+    install_fastfetch
+    install_kind
     
     log_info "✅ All additional packages installed successfully!"
 }
@@ -300,6 +372,9 @@ run_dotbot() {
 main() {
     log_info "🚀 Starting machine bootstrap process..."
     
+    # Update system first
+    update_system
+    
     # Gather user inputs
     get_user_inputs
     
@@ -318,6 +393,8 @@ main() {
     else
         log_warning "⚠️ No .zshrc found after installation."
     fi
+    
+    log_info "🔄 Please log out and log back in for all changes to take effect."
 }
 
 # Perform initial system check
