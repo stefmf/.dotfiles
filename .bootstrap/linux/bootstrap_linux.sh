@@ -92,10 +92,10 @@ install_packages() {
     }
 
     log_info "📦 Updating package lists..."
-    sudo apt update || {
+    if ! sudo apt update; then
         log_error "Failed to update package lists"
         exit 1
-    }
+    fi
 
     # Read packages from file, filtering out comments and empty lines
     local packages=()
