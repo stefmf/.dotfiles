@@ -14,7 +14,7 @@ sudo -v
 while true; do
     sudo -n true
     sleep 60
-    kill -0 "$" || exit
+    kill -0 "$$" || exit  # Fixed: Changed "$" to "$$" to reference the script's PID
 done 2>/dev/null &
 
 # ---------------------------
@@ -89,7 +89,7 @@ install_packages() {
     if [[ ! -f "$PACKAGES_FILE" ]]; then
         log_error "🚫 Package list not found at $PACKAGES_FILE"
         exit 1
-    }
+    fi
 
     log_info "📦 Updating package lists..."
     if ! sudo apt update; then
@@ -213,7 +213,7 @@ setup_git() {
     if [[ -z "$GIT_USER_NAME" || -z "$GIT_USER_EMAIL" ]]; then
         log_warning "⚠️ Git user name or email not set. Skipping Git configuration."
         return
-    }
+    fi
     
     log_info "🛠️ Configuring Git..."
     git config --global user.name "$GIT_USER_NAME" || log_warning "⚠️ Failed to set Git user name."
