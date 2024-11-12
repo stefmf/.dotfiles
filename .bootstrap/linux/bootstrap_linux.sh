@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Exit immediately if a command exits with a non-zero status
+set -e
+
 # ---------------------------
 # Request Sudo Privileges
 # ---------------------------
@@ -69,22 +72,39 @@ check_zsh() {
             log_info "✅ ZSH is already installed."
         else
             log_info "ZSH is not installed. Installing ZSH..."
-            if sudo apt update && sudo apt install -y zsh; then
-                log_info "✅ ZSH installed successfully."
-            else
-                log_error "Failed to install ZSH."
-                return 1
+
+            local max_attempts=3
+            local attempt=1
+
+            while [[ $attempt -le 3 ]]; do
+                log_info "Attempt $attempt of 3 to install ZSH..."
+                if sudo apt update && sudo apt install -y zsh; then
+                    log_info "✅ ZSH installed successfully."
+                    break
+                else
+                    log_warning "⚠️ Failed to install ZSH on attempt $attempt."
+                    ((attempt++))
+                    sleep 2
+                fi
+            done
+
+            if [[ $attempt -gt 3 ]]; then
+                log_error "🚫 ZSH installation failed after 3 attempts."
+                exit 1
             fi
         fi
 
         log_info "Changing default shell to ZSH..."
         if chsh -s "$(which zsh)" "$USER"; then
             log_info "✅ Default shell changed to ZSH."
-            log_info "Please close and rerun the script after restarting your shell."
-            exit 0
+            log_info "Switching to ZSH shell..."
+
+            export SHELL=$(which zsh)
+            export BOOTSTRAP_ZSH_RERUN=1
+            exec "$(which zsh)" "$0" "$@"
         else
             log_error "Failed to change the default shell to ZSH."
-            return 1
+            exit 1
         fi
     else
         log_info "✅ Default shell is already set to ZSH. No changes needed."
@@ -103,7 +123,6 @@ update_system() {
 
     while [[ $attempt -le $max_attempts ]]; do
         log_info "Attempt $attempt of $max_attempts..."
-
         if sudo apt update && sudo apt upgrade -y; then
             log_info "✅ System update complete!"
             break
@@ -294,6 +313,7 @@ install_go() {
 
             # Add Go to PATH in profile
             echo 'export PATH=$PATH:/usr/local/go/bin' >> "$HOME/.profile"
+            export PATH="$PATH:/usr/local/go/bin"
             log_info "✅ Go installed successfully!"
         else
             log_warning "⚠️ Failed to extract Go tarball."
@@ -344,11 +364,65 @@ install_terraform() {
 
 install_oh_my_posh() {
     log_info "🥳 Installing Oh My Posh..."
-    if curl -s https://ohmyposh.dev/install.sh | bash -s; then
-        log_info "✅ Oh My Posh installed successfully!"
+
+    # Determine installation directory
+    local install_dir
+    if [ -d "$HOME/bin" ]; then
+        install_dir="$HOME/bin"
+    elif [ -d "$HOME/.local/bin" ]; then
+        install_dir="$HOME/.local/bin"
+    else
+        mkdir -p "$HOME/.local/bin"
+        install_dir="$HOME/.local/bin"
+    fi
+
+    if curl -s https://ohmyposh.dev/install.sh | bash -s -- -d "$install_dir"; then
+        log_info "✅ Oh My Posh installed successfully in $install_dir"
+
+        # Ensure install_dir is in PATH
+        if [[ ":$PATH:" != *":$install_dir:"* ]]; then
+            export PATH="$install_dir:$PATH"
+            echo 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' >> "$HOME/.zprofile"
+            log_info "🔧 Updated PATH to include $install_dir"
+        fi
     else
         log_warning "⚠️ Failed to install Oh My Posh."
     fi
+}
+
+install_jetbrains_mono_nerd_font() {
+    log_info "🎨 Installing JetBrains Mono Nerd Font..."
+
+    local font_dir="$HOME/.local/share/fonts"
+    mkdir -p "$font_dir"
+
+    local url="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip"
+    local zip_file="/tmp/JetBrainsMono.zip"
+
+    if wget -O "$zip_file" "$url"; then
+        unzip -o "$zip_file" -d "$font_dir"
+        fc-cache -fv "$font_dir"
+        rm "$zip_file"
+        log_info "✅ JetBrains Mono Nerd Font installed successfully!"
+    else
+        log_warning "⚠️ Failed to download JetBrains Mono Nerd Font."
+    fi
+}
+
+update_path() {
+    log_info "🔧 Ensuring ~/.local/bin and ~/bin are in PATH..."
+
+    local profile_file="$HOME/.zprofile"
+
+    if ! grep -q 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' "$profile_file"; then
+        echo 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' >> "$profile_file"
+        log_info "✅ Updated PATH in $profile_file"
+    else
+        log_info "✅ PATH already includes ~/.local/bin and ~/bin"
+    fi
+
+    # Export the PATH in the current session
+    export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
 }
 
 install_additional_packages() {
@@ -365,6 +439,7 @@ install_additional_packages() {
     install_fastfetch
     install_kind
     install_zsh_you_should_use
+    install_jetbrains_mono_nerd_font
 
     log_info "✅ All additional packages installed successfully!"
 }
@@ -419,6 +494,38 @@ get_user_inputs() {
             log_warning "⚠️ Please enter a valid email address."
         fi
     done
+}
+
+# ---------------------------
+# Create .zprofile
+# ---------------------------
+
+create_zprofile() {
+    local zprofile_path="$HOME/.zprofile"
+    if [[ ! -f "$zprofile_path" ]]; then
+        log_info "📝 Creating basic .zprofile at $zprofile_path"
+        cat << 'EOF' > "$zprofile_path"
+# ~/.zprofile
+
+# OS detection and basic configuration
+case "$(uname)" in
+    Darwin)
+        # macOS-specific configuration
+        if command -v brew &>/dev/null; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        fi
+        ;;
+    Linux)
+        # Linux-specific configuration (if any)
+        ;;
+    *)
+        # Other operating systems
+        ;;
+esac
+EOF
+    else
+        log_info "✅ .zprofile already exists at $zprofile_path"
+    fi
 }
 
 # ---------------------------
@@ -487,11 +594,17 @@ main() {
     # Perform initial system check
     check_linux
 
-    # Check and configure ZSH
-    check_zsh
+    if [[ -z "$BOOTSTRAP_ZSH_RERUN" ]]; then
+        check_zsh
+    else
+        log_info "✅ Already running in ZSH, proceeding..."
+    fi
 
     # Update system
     update_system
+
+    # Ensure PATH includes ~/.local/bin and ~/bin
+    update_path
 
     # Gather user inputs
     get_user_inputs
@@ -501,6 +614,7 @@ main() {
     install_additional_packages
 
     # Execute installation steps
+    create_zprofile
     run_dotbot
     setup_git
 
