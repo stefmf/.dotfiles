@@ -70,7 +70,7 @@ check_zsh() {
 
         if command -v zsh &> /dev/null; then
             log_info "✅ ZSH is already installed."
-        else
+        else:
             log_info "ZSH is not installed. Installing ZSH..."
 
             local max_attempts=3
@@ -97,11 +97,9 @@ check_zsh() {
         log_info "Changing default shell to ZSH..."
         if chsh -s "$(which zsh)" "$USER"; then
             log_info "✅ Default shell changed to ZSH."
-            log_info "Switching to ZSH shell..."
-
-            export SHELL=$(which zsh)
-            export BOOTSTRAP_ZSH_RERUN=1
-            exec "$(which zsh)" "$0" "$@"
+            log_info "Please log out and log back in for the changes to take effect."
+            # Exit the script after changing the shell
+            exit 0
         else
             log_error "Failed to change the default shell to ZSH."
             exit 1
@@ -594,10 +592,12 @@ main() {
     # Perform initial system check
     check_linux
 
-    if [[ -z "$BOOTSTRAP_ZSH_RERUN" ]]; then
-        check_zsh
-    else
-        log_info "✅ Already running in ZSH, proceeding..."
+    check_zsh
+
+    # The script may exit during check_zsh if the shell was changed
+    if [[ $? -ne 0 ]]; then
+        log_info "🛑 Bootstrap process halted. Please re-run the script after logging back in."
+        exit 0
     fi
 
     # Update system
