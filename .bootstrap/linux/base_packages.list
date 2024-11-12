@@ -1,18 +1,14 @@
 # Description: Core packages for initial system setup
 # Each line represents a single package to be installed via apt
 ansible
-atuin
-awscli
 bat
 eza
-fastfetch
 fzf
 gh
 git
 git-delta
 glab
 htop
-kind
 neovim
 nmap
 python3
