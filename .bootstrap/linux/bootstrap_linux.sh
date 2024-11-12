@@ -23,7 +23,7 @@ done 2>/dev/null &
 
 # Set Dotfiles directory
 DOTFILES_DIR="$HOME/.dotfiles"
-BREW_FILE="$DOTFILES_DIR/Brewfile"
+PACKAGES_FILE="$DOTFILES_DIR/.bootstrap/linux/base_packages.list"
 DOTBOT_INSTALL="$DOTFILES_DIR/install"
 ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zprofile"
 
@@ -58,9 +58,6 @@ check_linux() {
     fi
 }
 
-# Run system check
-check_linux
-
 # ---------------------------
 # Install Zsh
 # ---------------------------
@@ -77,52 +74,136 @@ fi
 # ---------------------------
 
 if [[ "$SHELL" != "$(which zsh)" ]]; then
-  log_info "Changing shell to zsh..."
-  chsh -s "$(which zsh)"
-  log_info "✅ SUCCESS! Shell set to zsh."
+    log_info "Changing shell to zsh..."
+    chsh -s "$(which zsh)"
+    log_info "✅ SUCCESS! Shell set to zsh."
 else
-  log_info "✅ Default shell is already set to zsh."
+    log_info "✅ Default shell is already set to zsh."
 fi
 
 # ---------------------------
-# Install Homebrew for Linux
+# APT Package Installation
 # ---------------------------
 
-if ! command -v brew &> /dev/null; then
-  log_info "Installing Homebrew..."
-  /bin/bash -c "$(curl -k -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || {
-      log_error "🚫 Homebrew installation failed due to SSL issues. Trying again with insecure options..."
-      sudo apt install -y --no-install-recommends ca-certificates curl
-      /bin/bash -c "$(curl -k -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  }
+install_packages() {
+    if [[ ! -f "$PACKAGES_FILE" ]]; then
+        log_error "🚫 Package list not found at $PACKAGES_FILE"
+        exit 1
+    }
 
-  # Add Homebrew to the PATH
-  echo 'eval "$($(brew --prefix)/bin/brew shellenv)"' >> ~/.zprofile
-  eval "$($(brew --prefix)/bin/brew shellenv)"
+    log_info "📦 Updating package lists..."
+    sudo apt update || {
+        log_error "Failed to update package lists"
+        exit 1
+    }
 
-  # Verify Homebrew is in PATH
-  if command -v brew > /dev/null; then
-      log_info "✅ Homebrew is successfully installed and added to PATH."
-      log_info "🔍 Current PATH: $PATH"
-  else
-      log_error "🚫 Homebrew installation failed or is not in PATH."
-      exit 1
-  fi
-else
-  log_info "🍺 Homebrew is already installed."
-  log_info "🔍 Current PATH: $PATH"
-fi
+    # Read packages from file, filtering out comments and empty lines
+    local packages=()
+    while IFS= read -r line; do
+        # Skip comments and empty lines
+        [[ $line =~ ^#.*$ || -z $line ]] && continue
+        packages+=("$line")
+    done < "$PACKAGES_FILE"
+
+    log_info "📦 Installing packages..."
+    for package in "${packages[@]}"; do
+        log_info "Installing $package..."
+        sudo apt install -y "$package" || log_warning "⚠️ Failed to install $package"
+    done
+
+    log_info "✅ Package installation complete!"
+}
 
 # ---------------------------
-# Install brew packages from Brewfile (no casks)
+# Additional Package Installation
 # ---------------------------
 
-if [[ -f "$BREW_FILE" ]]; then
-  log_info "Installing brew packages from Brewfile..."
-  brew bundle --file="$BREW_FILE" --no-upgrade --no-cask || log_error "🚫 Failed to install brew packages."
-else
-  log_warning "Brewfile not found at $BREW_FILE"
-fi
+install_docker() {
+    log_info "🐳 Installing Docker CE..."
+    
+    # Add Docker's official GPG key
+    sudo apt-get update
+    sudo apt-get install -y ca-certificates curl gnupg
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+    # Add the repository to apt sources
+    echo \
+    "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+    "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    # Install Docker packages
+    sudo apt-get update
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    # Add user to docker group
+    sudo usermod -aG docker "$USER"
+    log_info "✅ Docker CE installed successfully!"
+}
+
+install_go() {
+    log_info "🔧 Installing Go..."
+    local GO_VERSION="1.22.0"  # Update this version as needed
+    local ARCH="$(dpkg --print-architecture)"
+    
+    # Download and install Go
+    wget "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz"
+    sudo rm -rf /usr/local/go
+    sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-${ARCH}.tar.gz"
+    rm "go${GO_VERSION}.linux-${ARCH}.tar.gz"
+
+    # Add Go to PATH in profile
+    echo 'export PATH=$PATH:/usr/local/go/bin' >> "$HOME/.profile"
+    log_info "✅ Go installed successfully!"
+}
+
+install_helm() {
+    log_info "⎈ Installing Helm..."
+    curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+    sudo apt-get update
+    sudo apt-get install -y helm
+    log_info "✅ Helm installed successfully!"
+}
+
+install_kubectl() {
+    log_info "☸️ Installing kubectl..."
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    sudo apt-get update
+    sudo apt-get install -y kubectl
+    log_info "✅ kubectl installed successfully!"
+}
+
+install_terraform() {
+    log_info "🏗️ Installing Terraform..."
+    wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+    sudo apt update
+    sudo apt install -y terraform
+    log_info "✅ Terraform installed successfully!"
+}
+
+install_oh_my_posh() {
+    log_info "🥳 Installing Oh My Posh..."
+    curl -s https://ohmyposh.dev/install.sh | bash -s
+    log_info "✅ Oh My Posh installed successfully!"
+}
+
+install_additional_packages() {
+    log_info "🚀 Installing additional packages..."
+    
+    install_docker
+    install_go
+    install_helm
+    install_kubectl
+    install_terraform
+    install_oh_my_posh
+    
+    log_info "✅ All additional packages installed successfully!"
+}
 
 # ---------------------------
 # Git Configuration
@@ -132,7 +213,7 @@ setup_git() {
     if [[ -z "$GIT_USER_NAME" || -z "$GIT_USER_EMAIL" ]]; then
         log_warning "⚠️ Git user name or email not set. Skipping Git configuration."
         return
-    fi
+    }
     
     log_info "🛠️ Configuring Git..."
     git config --global user.name "$GIT_USER_NAME" || log_warning "⚠️ Failed to set Git user name."
@@ -222,8 +303,9 @@ main() {
     # Gather user inputs
     get_user_inputs
     
-    # Perform system check
-    check_linux
+    # Install packages
+    install_packages
+    install_additional_packages
     
     # Execute installation steps
     run_dotbot
@@ -238,8 +320,8 @@ main() {
     fi
 }
 
-# ---------------------------
-# Execute Main Function
-# ---------------------------
+# Perform initial system check
+check_linux
 
+# Execute main function
 main "$@"
