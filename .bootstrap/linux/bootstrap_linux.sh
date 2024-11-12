@@ -65,37 +65,47 @@ check_linux() {
 check_zsh() {
     log_info "🔍 Checking if ZSH is the default shell..."
 
-    if [[ "$SHELL" != "$(which zsh)" ]]; then
+    local zsh_path
+    zsh_path="$(command -v zsh)"
+
+    if [[ -z "$zsh_path" ]]; then
+        log_info "ZSH is not installed. Installing ZSH..."
+
+        local max_attempts=3
+        local attempt=1
+
+        while [[ $attempt -le 3 ]]; do
+            log_info "Attempt $attempt of 3 to install ZSH..."
+            if sudo apt update && sudo apt install -y zsh; then
+                log_info "✅ ZSH installed successfully."
+                zsh_path="$(command -v zsh)"
+                break
+            else
+                log_warning "⚠️ Failed to install ZSH on attempt $attempt."
+                ((attempt++))
+                sleep 2
+            fi
+        done
+
+        if [[ $attempt -gt 3 ]]; then
+            log_error "🚫 ZSH installation failed after 3 attempts."
+            exit 1
+        fi
+    else
+        log_info "✅ ZSH is already installed at $zsh_path."
+    fi
+
+    # Ensure zsh is in /etc/shells
+    if ! grep -Fxq "$zsh_path" /etc/shells; then
+        log_info "Adding $zsh_path to /etc/shells..."
+        echo "$zsh_path" | sudo tee -a /etc/shells
+    fi
+
+    if [[ "$SHELL" != "$zsh_path" ]]; then
         log_info "ZSH is not the default shell."
 
-        if command -v zsh &> /dev/null; then
-            log_info "✅ ZSH is already installed."
-        else:
-            log_info "ZSH is not installed. Installing ZSH..."
-
-            local max_attempts=3
-            local attempt=1
-
-            while [[ $attempt -le 3 ]]; do
-                log_info "Attempt $attempt of 3 to install ZSH..."
-                if sudo apt update && sudo apt install -y zsh; then
-                    log_info "✅ ZSH installed successfully."
-                    break
-                else
-                    log_warning "⚠️ Failed to install ZSH on attempt $attempt."
-                    ((attempt++))
-                    sleep 2
-                fi
-            done
-
-            if [[ $attempt -gt 3 ]]; then
-                log_error "🚫 ZSH installation failed after 3 attempts."
-                exit 1
-            fi
-        fi
-
         log_info "Changing default shell to ZSH..."
-        if chsh -s "$(which zsh)" "$USER"; then
+        if chsh -s "$zsh_path" "$USER"; then
             log_info "✅ Default shell changed to ZSH."
             log_info "Please log out and log back in for the changes to take effect."
             # Exit the script after changing the shell
