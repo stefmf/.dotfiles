@@ -24,9 +24,11 @@ done 2>/dev/null &
 
 # Set Dotfiles directory
 DOTFILES_DIR="$HOME/.dotfiles"
-BREW_FILE="$DOTFILES_DIR/Brewfile"
+BREW_FILE="$DOTFILES_DIR/.bootstrap/macos/Brewfile"
 DOTBOT_INSTALL="$DOTFILES_DIR/install"
 ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zprofile"
+DOCK_CONFIG="$DOTFILES_DIR/.config/dock/dock_config.zsh"
+
 
 # ---------------------------
 # Color Output Setup
@@ -383,6 +385,10 @@ main() {
     else
         log_warning "⚠️ No .zshrc found after installation."
     fi
+
+    # Run Dock configuration script
+    log_info "⚙️ Configuring Dock..."
+    source "$DOCK_CONFIG"
 }
 
 # ---------------------------

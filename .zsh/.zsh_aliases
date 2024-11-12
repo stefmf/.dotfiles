@@ -121,7 +121,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     alias update="brew update && brew upgrade"
 
     # Brewfile management
-    alias brewdump='brew bundle dump --force --no-vscode'
+    alias brewdump='brew bundle dump --force --no-vscode --file ~/.dotfiles/.bootstrap/macos/Brewfile'
 
     # GNU command alternatives
     gnu_commands=(
