@@ -2,7 +2,6 @@
 
 # Exit immediately if a command exits with a non-zero status
 set -e
-set -x  # Enable debugging
 
 # ---------------------------
 # Request Sudo Privileges
@@ -10,6 +9,13 @@ set -x  # Enable debugging
 
 # Prompt for sudo password upfront
 sudo -v
+
+# Keep-alive: update existing `sudo` time stamp until script has finished
+while true; do
+    sudo -n true
+    sleep 60
+    kill -0 "$$" || exit  # Fixed: Changed "$" to "$$" to reference the script's PID
+done 2>/dev/null &
 
 # ---------------------------
 # Constants and Configuration
@@ -59,51 +65,43 @@ check_linux() {
 check_zsh() {
     log_info "🔍 Checking if ZSH is the default shell..."
 
-    local zsh_path
-    zsh_path="$(command -v zsh)"
-
-    if [[ -z "$zsh_path" ]]; then
-        log_info "ZSH is not installed. Installing ZSH..."
-
-        local max_attempts=3
-        local attempt=1
-
-        while [[ $attempt -le 3 ]]; do
-            log_info "Attempt $attempt of 3 to install ZSH..."
-            if sudo apt update && sudo apt install -y zsh; then
-                log_info "✅ ZSH installed successfully."
-                zsh_path="$(command -v zsh)"
-                break
-            else
-                log_warning "⚠️ Failed to install ZSH on attempt $attempt."
-                ((attempt++))
-                sleep 2
-            fi
-        done
-
-        if [[ $attempt -gt 3 ]]; then
-            log_error "🚫 ZSH installation failed after 3 attempts."
-            exit 1
-        fi
-    else
-        log_info "✅ ZSH is already installed at $zsh_path."
-    fi
-
-    # Ensure zsh is in /etc/shells
-    if ! grep -Fxq "$zsh_path" /etc/shells; then
-        log_info "Adding $zsh_path to /etc/shells..."
-        echo "$zsh_path" | sudo tee -a /etc/shells
-    fi
-
-    if [[ "$SHELL" != "$zsh_path" ]]; then
+    if [[ "$SHELL" != "$(which zsh)" ]]; then
         log_info "ZSH is not the default shell."
 
+        if command -v zsh &> /dev/null; then
+            log_info "✅ ZSH is already installed."
+        else
+            log_info "ZSH is not installed. Installing ZSH..."
+
+            local max_attempts=3
+            local attempt=1
+
+            while [[ $attempt -le 3 ]]; do
+                log_info "Attempt $attempt of 3 to install ZSH..."
+                if sudo apt update && sudo apt install -y zsh; then
+                    log_info "✅ ZSH installed successfully."
+                    break
+                else
+                    log_warning "⚠️ Failed to install ZSH on attempt $attempt."
+                    ((attempt++))
+                    sleep 2
+                fi
+            done
+
+            if [[ $attempt -gt 3 ]]; then
+                log_error "🚫 ZSH installation failed after 3 attempts."
+                exit 1
+            fi
+        fi
+
         log_info "Changing default shell to ZSH..."
-        if chsh -s "$zsh_path" "$USER"; then
+        if chsh -s "$(which zsh)" "$USER"; then
             log_info "✅ Default shell changed to ZSH."
-            log_info "Please log out and log back in for the changes to take effect."
-            # Exit the script after changing the shell
-            exit 0
+            log_info "Switching to ZSH shell..."
+
+            export SHELL=$(which zsh)
+            export BOOTSTRAP_ZSH_RERUN=1
+            exec "$(which zsh)" "$0" "$@"
         else
             log_error "Failed to change the default shell to ZSH."
             exit 1
@@ -596,19 +594,16 @@ main() {
     # Perform initial system check
     check_linux
 
-    check_zsh
-
-    # The script may exit during check_zsh if the shell was changed
-    if [[ $? -ne 0 ]]; then
-        log_info "🛑 Bootstrap process halted. Please re-run the script after logging back in."
-        exit 0
+    if [[ -z "$BOOTSTRAP_ZSH_RERUN" ]]; then
+        check_zsh
+    else
+        log_info "✅ Already running in ZSH, proceeding..."
     fi
 
     # Update system
     update_system
 
     # Ensure PATH includes ~/.local/bin and ~/bin
-    create_zprofile
     update_path
 
     # Gather user inputs
@@ -619,6 +614,7 @@ main() {
     install_additional_packages
 
     # Execute installation steps
+    create_zprofile
     run_dotbot
     setup_git
 
