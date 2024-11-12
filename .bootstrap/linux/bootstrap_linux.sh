@@ -59,6 +59,40 @@ check_linux() {
 }
 
 # ---------------------------
+# Clock Sync
+# ---------------------------
+
+sync_system_clock() {
+    log_info "🔄 Synchronizing system clock..."
+
+    if command -v timedatectl &> /dev/null; then
+        # Most modern systems (Ubuntu, CentOS 7+, etc.)
+        sudo timedatectl set-ntp true
+        log_info "✅ System clock synchronized using timedatectl."
+
+    elif command -v ntpdate &> /dev/null; then
+        # Older systems or fallback to ntpdate if available
+        sudo ntpdate -u pool.ntp.org
+        log_info "✅ System clock synchronized using ntpdate."
+
+    elif command -v chronyd &> /dev/null; then
+        # Some distributions like CentOS 8+ use chronyd as the default NTP client
+        sudo systemctl start chronyd
+        sudo chronyc -a makestep
+        log_info "✅ System clock synchronized using chronyd."
+
+    elif command -v openntpd &> /dev/null; then
+        # OpenNTPD, an alternative NTP client
+        sudo systemctl start openntpd
+        log_info "✅ System clock synchronized using openntpd."
+
+    else
+        log_error "🚫 No suitable time synchronization tool found. Please install ntpdate, timedatectl, chrony, or openntpd."
+        return 1
+    fi
+}
+
+# ---------------------------
 # Shell Check
 # ---------------------------
 
@@ -641,6 +675,9 @@ main() {
 
     # Perform initial system check
     check_linux
+
+    # Clock Sync
+    sync_system_clock
 
     # Check if ZSH is installed
     check_zsh
