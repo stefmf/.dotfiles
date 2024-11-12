@@ -708,6 +708,9 @@ main() {
     # Update system
     update_system
 
+    # Create Zprofile
+    create_zprofile
+
     # Ensure PATH includes ~/.local/bin and ~/bin
     update_path
 
@@ -719,7 +722,6 @@ main() {
     install_additional_packages
 
     # Execute installation steps
-    create_zprofile
     run_dotbot
     setup_git
 
