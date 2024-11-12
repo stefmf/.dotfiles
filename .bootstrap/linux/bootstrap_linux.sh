@@ -25,7 +25,7 @@ done 2>/dev/null &
 DOTFILES_DIR="$HOME/.dotfiles"
 PACKAGES_FILE="$DOTFILES_DIR/.bootstrap/linux/base_packages.list"
 DOTBOT_INSTALL="$DOTFILES_DIR/install"
-ZPROFILE="$HOME/.zprofile"  # New variable for .zprofile
+ZPROFILE="$DOTFILES_DIR/.zsh/.zprofile"
 
 # ---------------------------
 # Color Output Setup
@@ -273,8 +273,8 @@ install_awscli() {
     esac
 
     if curl "$url" -o "awscliv2.zip"; then
-        sudo apt install -y unzip
-        if unzip -q awscliv2.zip && sudo ./aws/install; then
+        unzip awscliv2.zip
+        if sudo ./aws/install; then
             rm -rf aws awscliv2.zip
             log_info "✅ AWS CLI installed successfully!"
         else
@@ -327,10 +327,14 @@ install_kind() {
 install_zsh_you_should_use() {
     log_info "🔌 Installing zsh-you-should-use plugin..."
 
-    ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+    ZSH_PLUGIN_DIR="$HOME/.zsh/.zshplugins"
 
-    if [[ ! -d "$ZSH_CUSTOM/plugins/you-should-use" ]]; then
-        if git clone https://github.com/MichaelAquilina/zsh-you-should-use "$ZSH_CUSTOM/plugins/you-should-use"; then
+    if [[ ! -d "$ZSH_PLUGIN_DIR" ]]; then
+        mkdir -p "$ZSH_PLUGIN_DIR"
+    fi
+
+    if [[ ! -d "$ZSH_PLUGIN_DIR/you-should-use" ]]; then
+        if git clone https://github.com/MichaelAquilina/zsh-you-should-use "$ZSH_PLUGIN_DIR/you-should-use"; then
             log_info "✅ zsh-you-should-use plugin installed successfully!"
         else
             log_warning "⚠️ Failed to clone zsh-you-should-use plugin."
@@ -495,7 +499,13 @@ setup_bat_symlink() {
 update_path() {
     log_info "🔧 Ensuring ~/.local/bin and ~/bin are in PATH..."
 
-    local profile_file="$ZPROFILE"
+    local profile_file="$HOME/.zprofile"
+
+    # Create .zprofile if it doesn't exist
+    if [[ ! -f "$profile_file" ]]; then
+        log_info "📝 Creating .zprofile at $profile_file"
+        touch "$profile_file"
+    fi
 
     if ! grep -q 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' "$profile_file"; then
         echo 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' >> "$profile_file"
@@ -580,38 +590,6 @@ get_user_inputs() {
     done
 }
 
-# ---------------------------
-# Create .zprofile in Dotfiles Directory
-# ---------------------------
-
-create_zprofile() {
-    local zprofile_path="$DOTFILES_DIR/.zsh/.zprofile"
-    if [[ ! -f "$zprofile_path" ]]; then
-        log_info "📝 Creating basic .zprofile at $zprofile_path"
-        mkdir -p "$(dirname "$zprofile_path")"
-        cat << 'EOF' > "$zprofile_path"
-# ~/.zprofile
-
-# OS detection and basic configuration
-case "$(uname)" in
-    Darwin)
-        # macOS-specific configuration
-        if command -v brew &>/dev/null; then
-            eval "$(/opt/homebrew/bin/brew shellenv)"
-        fi
-        ;;
-    Linux)
-        # Linux-specific configuration (if any)
-        ;;
-    *)
-        # Other operating systems
-        ;;
-esac
-EOF
-    else
-        log_info "✅ .zprofile already exists at $zprofile_path"
-    fi
-}
 
 # ---------------------------
 # Handle Existing Links or Files
@@ -707,9 +685,6 @@ main() {
 
     # Update system
     update_system
-
-    # Create Zprofile
-    create_zprofile
 
     # Ensure PATH includes ~/.local/bin and ~/bin
     update_path
