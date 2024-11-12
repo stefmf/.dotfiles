@@ -2,6 +2,7 @@
 
 # Exit immediately if a command exits with a non-zero status
 set -e
+set -x  # Enable debugging
 
 # ---------------------------
 # Request Sudo Privileges
@@ -9,13 +10,6 @@ set -e
 
 # Prompt for sudo password upfront
 sudo -v
-
-# Keep-alive: update existing `sudo` time stamp until script has finished
-while true; do
-    sudo -n true
-    sleep 60
-    kill -0 "$$" || exit  # Fixed: Changed "$" to "$$" to reference the script's PID
-done 2>/dev/null &
 
 # ---------------------------
 # Constants and Configuration
