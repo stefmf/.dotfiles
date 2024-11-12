@@ -97,13 +97,11 @@ check_zsh() {
         log_info "Changing default shell to ZSH..."
         if chsh -s "$(which zsh)" "$USER"; then
             log_info "✅ Default shell changed to ZSH."
-            log_info "Switching to ZSH shell..."
-
-            export SHELL=$(which zsh)
-            export BOOTSTRAP_ZSH_RERUN=1
-            exec "$(which zsh)" "$0" "$@"
+            log_info "🔄 Please log out and log back in for the changes to take effect."
+            log_info "🔄 After logging back in, rerun this script to continue the bootstrap process."
+            exit 0
         else
-            log_error "Failed to change the default shell to ZSH."
+            log_error "🚫 Failed to change the default shell to ZSH."
             exit 1
         fi
     else
