@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 #==============================================================================
 # Aliases Configuration
@@ -26,7 +26,7 @@ alias c='clear'
 
 # Editor
 alias vi='nvim'
-alias vim="nvim"
+alias vim='nvim'
 
 # System Monitoring
 if command_exists htop; then
@@ -52,7 +52,7 @@ elif command_exists gls; then
     alias ls='gls -la --group-directories-first --color=always'
 else
     # Basic ls fallback
-    alias ls='/bin/ls -la --color=auto'
+    alias ls='ls -la'
 fi
 
 # File Viewing
@@ -61,7 +61,7 @@ if command_exists bat; then
 elif command_exists gcat; then
     alias cat='gcat'
 else
-    alias cat='/bin/cat'
+    alias cat='cat'
 fi
 
 # File Comparison
@@ -84,27 +84,27 @@ alias glg='git log --oneline --graph --decorate'
 # System Information and Monitoring
 #------------------------------------------------------------------------------
 
-alias df='df -h'                # Disk usage in human readable
-alias du='du -h'               # Directory size in human readable
-alias free='free -m'           # Memory usage
-alias path='echo -e ${PATH//:/\\n}'  # Show PATH entries
-alias now='date +"%T"'         # Current time
+alias df='df -h'                     # Disk usage in human readable format
+alias du='du -h'                     # Directory size in human readable format
+alias free='free -m'                 # Memory usage
+alias path='echo ${(F)path}'         # Show PATH entries, one per line
+alias now='date +"%T"'               # Current time
 alias nowdate='date +"%d-%m-%Y"'     # Current date
-alias ports='netstat -tulanp'  # Show active ports
+alias ports='netstat -tulanp'        # Show active ports
 
 #------------------------------------------------------------------------------
 # Network Operations
 #------------------------------------------------------------------------------
 
-alias wget='wget -c'           # Continue interrupted downloads
-alias ping='ping -c 5'         # Limit ping to 5 packets
+alias wget='wget -c'                 # Continue interrupted downloads
+alias ping='ping -c 5'               # Limit ping to 5 packets
 
 #------------------------------------------------------------------------------
 # System Administration
 #------------------------------------------------------------------------------
 
 # Elevated privileges
-alias plz='sudo $(fc -ln -1)'  # Repeat last command with sudo
+alias plz='sudo $(fc -ln -1)'        # Repeat last command with sudo
 alias reboot='sudo reboot'
 alias shutdown='sudo shutdown -h now'
 
@@ -112,46 +112,48 @@ alias shutdown='sudo shutdown -h now'
 # OS-Specific Configuration
 #------------------------------------------------------------------------------
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
+case "$OSTYPE" in
+  darwin*)
     #--------------------------------------------------------------------------
     # macOS Configuration
     #--------------------------------------------------------------------------
-    
+
     # System updates
-    alias update="brew update && brew upgrade"
+    alias update='brew update && brew upgrade'
 
     # Brewfile management
     alias brewdump='brew bundle dump --force --no-vscode --file ~/.dotfiles/.bootstrap/macos/Brewfile'
 
     # GNU command alternatives
     gnu_commands=(
-        "cp" "mv" "rm" "mkdir" "rmdir" "ln" "du" "df"
-        "head" "tail" "sort" "wc" "cut" "grep" "xargs" "find"
-        "chmod" "chown" "date" "stat" "touch"
+        cp mv rm mkdir rmdir ln du df
+        head tail sort wc cut grep xargs find
+        chmod chown date stat touch
     )
 
-    # Only alias GNU commands if their BSD counterparts aren't available
+    # Only alias GNU commands if they are installed
     for cmd in "${gnu_commands[@]}"; do
-        if command_exists "g$cmd" && ! command_exists "${cmd/g/}"; then
+        if command_exists "g$cmd"; then
             alias "$cmd"="g$cmd"
         fi
     done
-
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    ;;
+  linux-gnu*|linux-musl*)
     #--------------------------------------------------------------------------
     # Linux Configuration
     #--------------------------------------------------------------------------
-    
-    alias update="sudo apt update && sudo apt upgrade"
 
-fi
+    alias update='sudo apt update && sudo apt upgrade -y'
+
+    ;;
+esac
 
 #------------------------------------------------------------------------------
 # Entertainment and Visual
 #------------------------------------------------------------------------------
 
 alias pipes='pipes.sh'
-alias fastfetch="$HOME/.dotfiles/.config/fastfetch/fastfetch_wrapper.zsh"
+alias fastfetch='$HOME/.dotfiles/.config/fastfetch/fastfetch_wrapper.zsh'
 
 #------------------------------------------------------------------------------
 # Keyboard Shortcut Reference
