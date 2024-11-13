@@ -565,16 +565,13 @@ setup_bat_symlink() {
     # Create new symlink if batcat exists
     if command -v batcat &> /dev/null; then
         ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
-        log_info "✅ Created symlink from batcat to bat"
         
         # Verify symlink
         if [[ -L "$HOME/.local/bin/bat" ]]; then
-            log_info "✅ Verified bat symlink exists"
             
             # Update current session PATH and verify bat command
             export PATH="$HOME/.local/bin:$PATH"
             if command -v bat &> /dev/null; then
-                log_info "✅ bat command is now available: $(command -v bat)"
             else
                 log_warning "⚠️ bat command still not in PATH"
                 log_info "Current PATH: $PATH"

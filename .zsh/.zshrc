@@ -99,21 +99,22 @@ fi
 # - Right arrow: Accept suggestion
 # - Ctrl+→: Accept next word
 # - Alt+→: Accept next word
-if type zsh-autosuggestions &>/dev/null || [ -f "$HOME/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
-    ZSH_AUTOSUGGEST_LOCATIONS=(
-        "/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-        "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
-        "$(brew --prefix 2>/dev/null)/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-        "$HOME/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh"
-    )
 
-    for plugin in "${ZSH_AUTOSUGGEST_LOCATIONS[@]}"; do
-        if [ -f "$plugin" ]; then
-            source "$plugin"
-            break
-        fi
-    done
-fi
+# Paths where zsh-autosuggestions might be installed
+ZSH_AUTOSUGGEST_LOCATIONS=(
+    "/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    "$(brew --prefix zsh-autosuggestions 2>/dev/null)/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    "$HOME/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    "$HOME/.dotfiles/.zsh/.zshplugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+)
+
+for plugin in "${ZSH_AUTOSUGGEST_LOCATIONS[@]}"; do
+    if [ -f "$plugin" ]; then
+        source "$plugin"
+        break
+    fi
+done
 
 # Auto-suggestion Settings
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
@@ -124,6 +125,7 @@ ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#808080'
 # Additional key bindings for autosuggestions
 bindkey '^[[1;3C' forward-word      # Alt + →
 bindkey '^[[1;5C' forward-word      # Ctrl + →
+
 
 # You-Should-Use Configuration
 YSU_PLUGIN_PATHS=(
