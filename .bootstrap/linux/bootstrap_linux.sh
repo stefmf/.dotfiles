@@ -524,6 +524,24 @@ install_zsh_syntax_highlighting() {
     popd > /dev/null
 }
 
+install_zsh_autosuggestions() {
+    log_info "🔌 Installing zsh-autosuggestions plugin..."
+
+    ZSH_PLUGIN_DIR="$DOTFILES_DIR/.zsh/.zshplugins"
+    mkdir -p "$ZSH_PLUGIN_DIR"
+
+    pushd "$ZSH_PLUGIN_DIR" > /dev/null
+    if [[ ! -d "zsh-autosuggestions" ]]; then
+        if git clone https://github.com/zsh-users/zsh-autosuggestions.git; then
+            log_info "✅ zsh-autosuggestions plugin installed successfully!"
+        else
+            log_warning "⚠️ Failed to clone zsh-autosuggestions plugin."
+        fi
+    else
+        log_info "✅ zsh-autosuggestions plugin is already installed."
+    fi
+    popd > /dev/null
+}
 
 # ---------------------------
 # Path Management
@@ -669,6 +687,7 @@ install_additional_packages() {
     install_zsh_you_should_use
     install_jetbrains_mono_nerd_font
     install_zsh_syntax_highlighting
+    install_zsh_autosuggestions
     setup_bat_symlink
 
     log_info "✅ All additional packages installed successfully!"

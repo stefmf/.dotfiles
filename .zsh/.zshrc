@@ -127,8 +127,8 @@ bindkey '^[[1;5C' forward-word      # Ctrl + →
 
 # You-Should-Use Configuration
 YSU_PLUGIN_PATHS=(
-    "$HOME/.dotfiles/.zsh/.zshplugins/you-should-use/you-should-use.plugin.zsh"
-    "/usr/share/zsh-you-should-use/you-should-use.plugin.zsh"
+    "$HOME/.dotfiles/.zsh/.zshplugins/zsh-you-should-use/you-should-use.plugin.zsh"
+    "/usr/share/zsh-you-should-use/zsh-you-should-use.plugin.zsh"
     "$(brew --prefix 2>/dev/null)/share/zsh-you-should-use/you-should-use.plugin.zsh"
 )
 
