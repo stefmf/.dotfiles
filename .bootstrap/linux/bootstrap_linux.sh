@@ -627,26 +627,6 @@ verify_environment() {
     
     # Check PATH
     log_info "Current PATH: $PATH"
-    
-    # Check if bat/batcat is available
-    if command -v bat &> /dev/null; then
-        log_info "✅ bat command is available: $(command -v bat)"
-    else
-        log_warning "⚠️ bat command not found"
-    fi
-    
-    if command -v batcat &> /dev/null; then
-        log_info "✅ batcat command is available: $(command -v batcat)"
-    else
-        log_warning "⚠️ batcat command not found"
-    fi
-    
-    # Check symlink
-    if [[ -L "$HOME/.local/bin/bat" ]]; then
-        log_info "✅ bat symlink exists: $(readlink -f "$HOME/.local/bin/bat")"
-    else
-        log_warning "⚠️ bat symlink not found"
-    fi
 }
 
 # ---------------------------
@@ -824,14 +804,10 @@ main() {
 
     # Set up PATH
     update_path
-    verify_environment
 
     # Install packages
     install_packages
     install_additional_packages
-
-    # Verify environment again after installation
-    verify_environment
 
     # Gather user inputs
     get_user_inputs
