@@ -118,10 +118,13 @@ elif [ -f "$HOME/.oh-my-zsh/custom/plugins/you-should-use/you-should-use.plugin.
     source "$HOME/.oh-my-zsh/custom/plugins/you-should-use/you-should-use.plugin.zsh"
 elif type brew &>/dev/null && [ -f "$(brew --prefix)/share/zsh-you-should-use/you-should-use.plugin.zsh" ]; then
     source "$(brew --prefix)/share/zsh-you-should-use/you-should-use.plugin.zsh"
+elif [ -f "$HOME/.zsh/.zshplugins/you-should-use/you-should-use.plugin.zsh" ]; then
+    source "$HOME/.zsh/.zshplugins/you-should-use/you-should-use.plugin.zsh"
 fi
 
 YSU_MESSAGE_POSITION="after"  # Show alias message after command
 YSU_MODE=ALL                  # Show all matching aliases
+
 
 #------------------------------------------------------------------------------
 # Terminal UI and Appearance
