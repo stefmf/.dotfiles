@@ -569,14 +569,8 @@ setup_bat_symlink() {
         # Verify symlink
         if [[ -L "$HOME/.local/bin/bat" ]]; then
             
-            # Update current session PATH and verify bat command
+            # Update current session PATH
             export PATH="$HOME/.local/bin:$PATH"
-            if command -v bat &> /dev/null; then
-            else
-                log_warning "⚠️ bat command still not in PATH"
-                log_info "Current PATH: $PATH"
-                log_info "Symlink location: $(ls -l $HOME/.local/bin/bat)"
-            fi
         else
             log_warning "⚠️ Failed to create bat symlink"
         fi
