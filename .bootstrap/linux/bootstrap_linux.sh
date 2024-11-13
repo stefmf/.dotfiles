@@ -505,6 +505,26 @@ install_jetbrains_mono_nerd_font() {
     fi
 }
 
+install_zsh_syntax_highlighting() {
+    log_info "🔌 Installing zsh-syntax-highlighting plugin..."
+
+    ZSH_PLUGIN_DIR="$DOTFILES_DIR/.zsh/.zshplugins"
+    mkdir -p "$ZSH_PLUGIN_DIR"
+
+    pushd "$ZSH_PLUGIN_DIR" > /dev/null
+    if [[ ! -d "zsh-syntax-highlighting" ]]; then
+        if git clone https://github.com/zsh-users/zsh-syntax-highlighting.git; then
+            log_info "✅ zsh-syntax-highlighting plugin installed successfully!"
+        else
+            log_warning "⚠️ Failed to clone zsh-syntax-highlighting plugin."
+        fi
+    else
+        log_info "✅ zsh-syntax-highlighting plugin is already installed."
+    fi
+    popd > /dev/null
+}
+
+
 # ---------------------------
 # Path Management
 # ---------------------------
@@ -648,6 +668,7 @@ install_additional_packages() {
     install_kind
     install_zsh_you_should_use
     install_jetbrains_mono_nerd_font
+    install_zsh_syntax_highlighting
     setup_bat_symlink
 
     log_info "✅ All additional packages installed successfully!"
