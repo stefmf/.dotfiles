@@ -353,7 +353,7 @@ install_kind() {
 install_zsh_you_should_use() {
     log_info "🔌 Installing zsh-you-should-use plugin..."
 
-    ZSH_PLUGIN_DIR="$HOME/.zsh/.zshplugins"
+    ZSH_PLUGIN_DIR="$DOTFILES_DIR/.zsh/.zshplugins"
     mkdir -p "$ZSH_PLUGIN_DIR"
 
     pushd "$ZSH_PLUGIN_DIR" > /dev/null
