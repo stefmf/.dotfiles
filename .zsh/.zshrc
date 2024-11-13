@@ -65,17 +65,23 @@ zstyle ':completion:*' group-name ''                      # Group matches
 # - Ctrl+T: File search
 # - Alt+C: Directory search
 if type fzf &>/dev/null; then
-    if [ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]; then
-        source /usr/share/doc/fzf/examples/key-bindings.zsh
-        source /usr/share/doc/fzf/examples/completion.zsh
-    elif [ -f /usr/local/opt/fzf/shell/key-bindings.zsh ]; then
-        source /usr/local/opt/fzf/shell/key-bindings.zsh
-        source /usr/local/opt/fzf/shell/completion.zsh
-    elif type brew &>/dev/null && [ -f "$(brew --prefix)/opt/fzf/shell/key-bindings.zsh" ]; then
-        source "$(brew --prefix)/opt/fzf/shell/key-bindings.zsh"
-        source "$(brew --prefix)/opt/fzf/shell/completion.zsh"
-    fi
+    # List of possible locations for fzf scripts
+    FZF_LOCATIONS=(
+        "/usr/share/doc/fzf/examples"
+        "/usr/local/opt/fzf/shell"
+        "$HOME/.fzf/shell"
+        "$(brew --prefix fzf 2>/dev/null)/shell"
+    )
 
+    for fzf_dir in "${FZF_LOCATIONS[@]}"; do
+        if [ -f "$fzf_dir/key-bindings.zsh" ]; then
+            source "$fzf_dir/key-bindings.zsh"
+            source "$fzf_dir/completion.zsh"
+            break
+        fi
+    done
+
+    # Set key bindings
     bindkey '^T' fzf-file-widget
     bindkey '\ec' fzf-cd-widget
 fi
@@ -93,12 +99,20 @@ fi
 # - Right arrow: Accept suggestion
 # - Ctrl+→: Accept next word
 # - Alt+→: Accept next word
-if [ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
-    source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-elif [ -f "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
-    source "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
-elif type brew &>/dev/null && [ -f "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
-    source "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+if type zsh-autosuggestions &>/dev/null || [ -f "$HOME/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
+    ZSH_AUTOSUGGEST_LOCATIONS=(
+        "/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+        "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+        "$(brew --prefix 2>/dev/null)/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+        "$HOME/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    )
+
+    for plugin in "${ZSH_AUTOSUGGEST_LOCATIONS[@]}"; do
+        if [ -f "$plugin" ]; then
+            source "$plugin"
+            break
+        fi
+    done
 fi
 
 # Auto-suggestion Settings
@@ -112,19 +126,21 @@ bindkey '^[[1;3C' forward-word      # Alt + →
 bindkey '^[[1;5C' forward-word      # Ctrl + →
 
 # You-Should-Use Configuration
-if [ -f /usr/share/zsh-you-should-use/you-should-use.plugin.zsh ]; then
-    source /usr/share/zsh-you-should-use/you-should-use.plugin.zsh
-elif [ -f "$HOME/.oh-my-zsh/custom/plugins/you-should-use/you-should-use.plugin.zsh" ]; then
-    source "$HOME/.oh-my-zsh/custom/plugins/you-should-use/you-should-use.plugin.zsh"
-elif type brew &>/dev/null && [ -f "$(brew --prefix)/share/zsh-you-should-use/you-should-use.plugin.zsh" ]; then
-    source "$(brew --prefix)/share/zsh-you-should-use/you-should-use.plugin.zsh"
-elif [ -f "$HOME/.zsh/.zshplugins/you-should-use/you-should-use.plugin.zsh" ]; then
-    source "$HOME/.zsh/.zshplugins/you-should-use/you-should-use.plugin.zsh"
-fi
+YSU_PLUGIN_PATHS=(
+    "$HOME/.dotfiles/.zsh/.zshplugins/you-should-use/you-should-use.plugin.zsh"
+    "/usr/share/zsh-you-should-use/you-should-use.plugin.zsh"
+    "$(brew --prefix 2>/dev/null)/share/zsh-you-should-use/you-should-use.plugin.zsh"
+)
+
+for ysu_plugin in "${YSU_PLUGIN_PATHS[@]}"; do
+    if [ -f "$ysu_plugin" ]; then
+        source "$ysu_plugin"
+        break
+    fi
+done
 
 YSU_MESSAGE_POSITION="after"  # Show alias message after command
 YSU_MODE=ALL                  # Show all matching aliases
-
 
 #------------------------------------------------------------------------------
 # Terminal UI and Appearance
@@ -142,21 +158,30 @@ fi
 
 # Oh My Posh Theme (skip for Apple Terminal)
 if [ "$TERM_PROGRAM" != "Apple_Terminal" ]; then
-    eval "$(oh-my-posh init zsh --config ~/.dotfiles/.config/ohmyposh/prompt.toml)"
+    if type oh-my-posh &>/dev/null; then
+        eval "$(oh-my-posh init zsh --config ~/.dotfiles/.config/ohmyposh/prompt.toml)"
+    fi
 fi
 
 # Terminal Screensaver Configuration
 TMOUT=600
 TRAPALRM() {
-    tty-clock -S -c -B < /dev/tty > /dev/tty
+    if type tty-clock &>/dev/null; then
+        tty-clock -S -c -B < /dev/tty > /dev/tty
+    fi
     zle reset-prompt
 }
 
 # Syntax Highlighting (Must be last)
-if [ -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
-    source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-elif [ -f "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]; then
-    source "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-elif type brew &>/dev/null && [ -f "$(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]; then
-    source "$(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-fi
+ZSH_SYNTAX_HIGHLIGHT_LOCATIONS=(
+    "$HOME/.dotfiles/.zsh/.zshplugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+    "/usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+    "$(brew --prefix 2>/dev/null)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+)
+
+for syntax_plugin in "${ZSH_SYNTAX_HIGHLIGHT_LOCATIONS[@]}"; do
+    if [ -f "$syntax_plugin" ]; then
+        source "$syntax_plugin"
+        break
+    fi
+done
