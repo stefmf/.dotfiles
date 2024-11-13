@@ -512,6 +512,9 @@ install_jetbrains_mono_nerd_font() {
 setup_bat_symlink() {
     log_info "🔧 Setting up bat symlink..."
 
+    # First ensure PATH is properly set up
+    update_path
+
     # Ensure .local/bin exists
     mkdir -p "$HOME/.local/bin"
 
@@ -526,18 +529,18 @@ setup_bat_symlink() {
         ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
         log_info "✅ Created symlink from batcat to bat"
         
-        # Update PATH immediately
-        source "$ZPROFILE" 2>/dev/null || true
-        
         # Verify symlink
         if [[ -L "$HOME/.local/bin/bat" ]]; then
             log_info "✅ Verified bat symlink exists"
-            # Test bat command
+            
+            # Update current session PATH and verify bat command
+            export PATH="$HOME/.local/bin:$PATH"
             if command -v bat &> /dev/null; then
-                log_info "✅ bat command is now available"
+                log_info "✅ bat command is now available: $(command -v bat)"
             else
-                log_warning "⚠️ bat command still not in PATH. Running path update..."
-                update_path
+                log_warning "⚠️ bat command still not in PATH"
+                log_info "Current PATH: $PATH"
+                log_info "Symlink location: $(ls -l $HOME/.local/bin/bat)"
             fi
         else
             log_warning "⚠️ Failed to create bat symlink"
@@ -563,14 +566,7 @@ update_path() {
     mkdir -p "$HOME/.local/bin"
     mkdir -p "$HOME/bin"
 
-    # Array of directories to add to PATH
-    local dirs=(
-        "$HOME/.local/bin"
-        "$HOME/bin"
-        "$HOME/.cargo/bin"
-    )
-
-    # Create or clear .zprofile PATH entries
+    # Ensure we start with a fresh ZPROFILE
     if [[ ! -f "$ZPROFILE" ]]; then
         touch "$ZPROFILE"
         log_info "Created new profile at $ZPROFILE"
@@ -582,22 +578,28 @@ update_path() {
     grep -v "export PATH=" "$ZPROFILE" > "$temp_file" || true
     mv "$temp_file" "$ZPROFILE"
 
-    # Add a clean PATH declaration to .zprofile
+    # Add PATH configuration at the BEGINNING of .zprofile
     {
         echo "# Path configuration"
-        echo "export PATH=\"\$PATH"
-        for dir in "${dirs[@]}"; do
-            if [[ -d "$dir" ]]; then
-                echo ":$dir"
-            fi
-        done
-        echo "\""
-    } >> "$ZPROFILE"
+        echo "# Added by bootstrap script"
+        echo "if [[ \"\$PATH\" != *\"\$HOME/.local/bin\"* ]]; then"
+        echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+        echo "fi"
+        echo "if [[ \"\$PATH\" != *\"\$HOME/bin\"* ]]; then"
+        echo "    export PATH=\"\$HOME/bin:\$PATH\""
+        echo "fi"
+        echo "if [[ \"\$PATH\" != *\"\$HOME/.cargo/bin\"* ]]; then"
+        echo "    export PATH=\"\$HOME/.cargo/bin:\$PATH\""
+        echo "fi"
+        echo ""
+        cat "$ZPROFILE"
+    } > "${ZPROFILE}.tmp"
+    mv "${ZPROFILE}.tmp" "$ZPROFILE"
 
     log_info "✅ Updated PATH configuration in $ZPROFILE"
 
-    # Source the profile immediately
-    source "$ZPROFILE" 2>/dev/null || true
+    # Export PATH for current session
+    export PATH="$HOME/.local/bin:$HOME/bin:$HOME/.cargo/bin:$PATH"
     
     # Verify PATH updates
     log_info "Current PATH: $PATH"
@@ -820,19 +822,26 @@ main() {
     # Update system
     update_system
 
-    # Ensure PATH includes necessary directories
+    # Set up PATH
     update_path
-
-    # Gather user inputs
-    get_user_inputs
+    verify_environment
 
     # Install packages
     install_packages
     install_additional_packages
 
+    # Verify environment again after installation
+    verify_environment
+
+    # Gather user inputs
+    get_user_inputs
+
     # Execute installation steps
     run_dotbot
     setup_git
+
+    # Final environment verification
+    verify_environment
 
     # Change default shell to ZSH at the end and trigger reboot
     change_shell
