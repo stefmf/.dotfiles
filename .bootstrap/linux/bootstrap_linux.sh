@@ -64,6 +64,15 @@ check_linux() {
 
 clear_cache() {
     log_info "🧹 Clearing local package cache and updating..."
+    
+    # Clear ZPROFILE PATH entries if ZPROFILE is set and exists
+    if [[ -n "$ZPROFILE" && -f "$ZPROFILE" ]]; then
+        local temp_file
+        temp_file=$(mktemp)
+        grep -v "export PATH=" "$ZPROFILE" > "$temp_file" || true
+        mv "$temp_file" "$ZPROFILE"
+        log_info "✅ Cleaned up PATH entries in $ZPROFILE"
+    fi
 
     # Clear the package list cache
     sudo rm -rf /var/lib/apt/lists/*
@@ -496,48 +505,151 @@ install_jetbrains_mono_nerd_font() {
     fi
 }
 
+# ---------------------------
+# Path Management
+# ---------------------------
+
 setup_bat_symlink() {
-    log_info "🔧 Setting up bat symlink if needed..."
-    if ! command -v bat &> /dev/null; then
-        if command -v batcat &> /dev/null; then
-            mkdir -p "$HOME/.local/bin"
-            ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
-            log_info "✅ Created symlink from batcat to bat."
-        else
-            log_warning "⚠️ Neither bat nor batcat found. Please install bat."
-        fi
-    else
-        log_info "✅ bat command is already available."
+    log_info "🔧 Setting up bat symlink..."
+
+    # Ensure .local/bin exists
+    mkdir -p "$HOME/.local/bin"
+
+    # Remove existing symlink if it exists
+    if [[ -L "$HOME/.local/bin/bat" ]]; then
+        rm "$HOME/.local/bin/bat"
+        log_info "Removed existing bat symlink"
     fi
 
-    # Ensure ~/.local/bin is in PATH
-    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
-        export PATH="$HOME/.local/bin:$PATH"
-        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$ZPROFILE"
-        log_info "🔧 Updated PATH to include $HOME/.local/bin"
+    # Create new symlink if batcat exists
+    if command -v batcat &> /dev/null; then
+        ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
+        log_info "✅ Created symlink from batcat to bat"
+        
+        # Update PATH immediately
+        source "$ZPROFILE" 2>/dev/null || true
+        
+        # Verify symlink
+        if [[ -L "$HOME/.local/bin/bat" ]]; then
+            log_info "✅ Verified bat symlink exists"
+            # Test bat command
+            if command -v bat &> /dev/null; then
+                log_info "✅ bat command is now available"
+            else
+                log_warning "⚠️ bat command still not in PATH. Running path update..."
+                update_path
+            fi
+        else
+            log_warning "⚠️ Failed to create bat symlink"
+        fi
+    else
+        log_warning "⚠️ batcat not found. Please install bat package first"
     fi
 }
 
 update_path() {
     log_info "🔧 Ensuring necessary directories are in PATH..."
 
-    local profile_file="$HOME/.zprofile"
-
-    # Create .zprofile if it doesn't exist
-    if [[ ! -f "$profile_file" ]]; then
-        log_info "📝 Creating .zprofile at $profile_file"
-        touch "$profile_file"
+    # Ensure ZPROFILE is set and the directory exists
+    if [[ -z "$ZPROFILE" ]]; then
+        log_error "ZPROFILE variable is not set!"
+        return 1
     fi
 
-    # Add necessary directories to PATH
-    for dir in "$HOME/.local/bin" "$HOME/bin" "$HOME/.cargo/bin"; do
-        if [[ ":$PATH:" != *":$dir:"* ]]; then
-            export PATH="$dir:$PATH"
-            echo "export PATH=\"$dir:\$PATH\"" >> "$profile_file"
-            log_info "✅ Added $dir to PATH"
-        fi
-    done
+    # Create parent directory if it doesn't exist
+    mkdir -p "$(dirname "$ZPROFILE")"
+
+    # Create local bin directories if they don't exist
+    mkdir -p "$HOME/.local/bin"
+    mkdir -p "$HOME/bin"
+
+    # Array of directories to add to PATH
+    local dirs=(
+        "$HOME/.local/bin"
+        "$HOME/bin"
+        "$HOME/.cargo/bin"
+    )
+
+    # Create or clear .zprofile PATH entries
+    if [[ ! -f "$ZPROFILE" ]]; then
+        touch "$ZPROFILE"
+        log_info "Created new profile at $ZPROFILE"
+    fi
+
+    # Remove any existing PATH exports from .zprofile
+    local temp_file
+    temp_file=$(mktemp)
+    grep -v "export PATH=" "$ZPROFILE" > "$temp_file" || true
+    mv "$temp_file" "$ZPROFILE"
+
+    # Add a clean PATH declaration to .zprofile
+    {
+        echo "# Path configuration"
+        echo "export PATH=\"\$PATH"
+        for dir in "${dirs[@]}"; do
+            if [[ -d "$dir" ]]; then
+                echo ":$dir"
+            fi
+        done
+        echo "\""
+    } >> "$ZPROFILE"
+
+    log_info "✅ Updated PATH configuration in $ZPROFILE"
+
+    # Source the profile immediately
+    source "$ZPROFILE" 2>/dev/null || true
+    
+    # Verify PATH updates
+    log_info "Current PATH: $PATH"
 }
+
+verify_environment() {
+    log_info "🔍 Verifying environment setup..."
+    
+    # Check ZPROFILE
+    if [[ -n "$ZPROFILE" ]]; then
+        log_info "ZPROFILE is set to: $ZPROFILE"
+        if [[ -f "$ZPROFILE" ]]; then
+            log_info "✅ ZPROFILE file exists"
+            if grep -q "export PATH=" "$ZPROFILE"; then
+                log_info "✅ PATH is configured in ZPROFILE"
+            else
+                log_warning "⚠️ No PATH configuration found in ZPROFILE"
+            fi
+        else
+            log_warning "⚠️ ZPROFILE file does not exist"
+        fi
+    else
+        log_error "❌ ZPROFILE variable is not set"
+    fi
+    
+    # Check PATH
+    log_info "Current PATH: $PATH"
+    
+    # Check if bat/batcat is available
+    if command -v bat &> /dev/null; then
+        log_info "✅ bat command is available: $(command -v bat)"
+    else
+        log_warning "⚠️ bat command not found"
+    fi
+    
+    if command -v batcat &> /dev/null; then
+        log_info "✅ batcat command is available: $(command -v batcat)"
+    else
+        log_warning "⚠️ batcat command not found"
+    fi
+    
+    # Check symlink
+    if [[ -L "$HOME/.local/bin/bat" ]]; then
+        log_info "✅ bat symlink exists: $(readlink -f "$HOME/.local/bin/bat")"
+    else
+        log_warning "⚠️ bat symlink not found"
+    fi
+}
+
+# ---------------------------
+# Install Wrapper
+# ---------------------------
 
 install_additional_packages() {
     log_info "🚀 Installing additional packages..."
