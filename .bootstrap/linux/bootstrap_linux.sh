@@ -77,7 +77,6 @@ clear_cache() {
     fi
 }
 
-
 # ---------------------------
 # Clock Sync
 # ---------------------------
@@ -243,15 +242,20 @@ install_atuin() {
     fi
 
     # Install Atuin using official method
-    if git clone https://github.com/atuinsh/atuin.git "$HOME/atuin_temp" && \
-       cd "$HOME/atuin_temp/crates/atuin" && \
+    local temp_dir
+    temp_dir=$(mktemp -d)
+    pushd "$temp_dir" > /dev/null
+
+    if git clone https://github.com/atuinsh/atuin.git && \
+       cd atuin/crates/atuin && \
        cargo install --path .; then
         log_info "✅ Atuin installed successfully!"
-        # Clean up
-        rm -rf "$HOME/atuin_temp"
     else
         log_warning "⚠️ Failed to install Atuin."
     fi
+
+    popd > /dev/null
+    rm -rf "$temp_dir"
 }
 
 install_awscli() {
@@ -272,10 +276,13 @@ install_awscli() {
             ;;
     esac
 
-    if curl "$url" -o "awscliv2.zip"; then
+    local temp_dir
+    temp_dir=$(mktemp -d)
+    pushd "$temp_dir" > /dev/null
+
+    if curl -sSL "$url" -o "awscliv2.zip"; then
         unzip awscliv2.zip
         if sudo ./aws/install; then
-            rm -rf aws awscliv2.zip
             log_info "✅ AWS CLI installed successfully!"
         else
             log_warning "⚠️ Failed to install AWS CLI."
@@ -283,6 +290,9 @@ install_awscli() {
     else
         log_warning "⚠️ Failed to download AWS CLI."
     fi
+
+    popd > /dev/null
+    rm -rf "$temp_dir"
 }
 
 install_fastfetch() {
@@ -310,15 +320,22 @@ install_fastfetch() {
 
 install_kind() {
     log_info "🔄 Installing Kind..."
-    # Install Kind using Go (ensure Go is installed first)
     if command -v go &> /dev/null; then
+        # Use a temporary directory
+        local temp_dir
+        temp_dir=$(mktemp -d)
+        pushd "$temp_dir" > /dev/null
+
         if go install sigs.k8s.io/kind@latest; then
-            # Add KIND to PATH by creating a symbolic link
+            # Add KIND to PATH
             sudo ln -sf "$(go env GOPATH)/bin/kind" /usr/local/bin/kind
             log_info "✅ Kind installed successfully!"
         else
             log_warning "⚠️ Failed to install Kind."
         fi
+
+        popd > /dev/null
+        rm -rf "$temp_dir"
     else
         log_error "❌ Go is required for Kind installation. Please install Go first."
     fi
@@ -328,13 +345,11 @@ install_zsh_you_should_use() {
     log_info "🔌 Installing zsh-you-should-use plugin..."
 
     ZSH_PLUGIN_DIR="$HOME/.zsh/.zshplugins"
+    mkdir -p "$ZSH_PLUGIN_DIR"
 
-    if [[ ! -d "$ZSH_PLUGIN_DIR" ]]; then
-        mkdir -p "$ZSH_PLUGIN_DIR"
-    fi
-
-    if [[ ! -d "$ZSH_PLUGIN_DIR/you-should-use" ]]; then
-        if git clone https://github.com/MichaelAquilina/zsh-you-should-use "$ZSH_PLUGIN_DIR/you-should-use"; then
+    pushd "$ZSH_PLUGIN_DIR" > /dev/null
+    if [[ ! -d "you-should-use" ]]; then
+        if git clone https://github.com/MichaelAquilina/zsh-you-should-use.git; then
             log_info "✅ zsh-you-should-use plugin installed successfully!"
         else
             log_warning "⚠️ Failed to clone zsh-you-should-use plugin."
@@ -454,7 +469,7 @@ install_oh_my_posh() {
         # Ensure install_dir is in PATH
         if [[ ":$PATH:" != *":$install_dir:"* ]]; then
             export PATH="$install_dir:$PATH"
-            echo 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' >> "$ZPROFILE"
+            echo "export PATH=\"$install_dir:\$PATH\"" >> "$ZPROFILE"
             log_info "🔧 Updated PATH to include $install_dir"
         fi
     else
@@ -494,10 +509,17 @@ setup_bat_symlink() {
     else
         log_info "✅ bat command is already available."
     fi
+
+    # Ensure ~/.local/bin is in PATH
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        export PATH="$HOME/.local/bin:$PATH"
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$ZPROFILE"
+        log_info "🔧 Updated PATH to include $HOME/.local/bin"
+    fi
 }
 
 update_path() {
-    log_info "🔧 Ensuring ~/.local/bin and ~/bin are in PATH..."
+    log_info "🔧 Ensuring necessary directories are in PATH..."
 
     local profile_file="$HOME/.zprofile"
 
@@ -507,15 +529,14 @@ update_path() {
         touch "$profile_file"
     fi
 
-    if ! grep -q 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' "$profile_file"; then
-        echo 'export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' >> "$profile_file"
-        log_info "✅ Updated PATH in $profile_file"
-    else
-        log_info "✅ PATH already includes ~/.local/bin and ~/bin"
-    fi
-
-    # Export the PATH in the current session
-    export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+    # Add necessary directories to PATH
+    for dir in "$HOME/.local/bin" "$HOME/bin" "$HOME/.cargo/bin"; do
+        if [[ ":$PATH:" != *":$dir:"* ]]; then
+            export PATH="$dir:$PATH"
+            echo "export PATH=\"$dir:\$PATH\"" >> "$profile_file"
+            log_info "✅ Added $dir to PATH"
+        fi
+    done
 }
 
 install_additional_packages() {
@@ -533,7 +554,7 @@ install_additional_packages() {
     install_kind
     install_zsh_you_should_use
     install_jetbrains_mono_nerd_font
-    setup_bat_symlink  # Added function call to setup bat symlink
+    setup_bat_symlink
 
     log_info "✅ All additional packages installed successfully!"
 }
@@ -543,6 +564,7 @@ install_additional_packages() {
 # ---------------------------
 
 setup_git() {
+    cd "$DOTFILES_DIR"
     if [[ -z "$GIT_USER_NAME" || -z "$GIT_USER_EMAIL" ]]; then
         log_warning "⚠️ Git user name or email not set. Skipping Git configuration."
         return
@@ -589,7 +611,6 @@ get_user_inputs() {
         fi
     done
 }
-
 
 # ---------------------------
 # Handle Existing Links or Files
@@ -669,6 +690,7 @@ change_shell() {
 # ---------------------------
 
 main() {
+    cd "$HOME"
     log_info "🚀 Starting machine bootstrap process..."
 
     # Perform initial system check
@@ -686,7 +708,7 @@ main() {
     # Update system
     update_system
 
-    # Ensure PATH includes ~/.local/bin and ~/bin
+    # Ensure PATH includes necessary directories
     update_path
 
     # Gather user inputs
