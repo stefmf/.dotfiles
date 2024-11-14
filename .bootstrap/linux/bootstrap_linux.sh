@@ -27,8 +27,8 @@ PACKAGES_FILE="$DOTFILES_DIR/.bootstrap/linux/base_packages.list"
 DOTBOT_INSTALL="$DOTFILES_DIR/install"
 ZPROFILE="$DOTFILES_DIR/.zsh/.zprofile"
 
-# Set environment variable to indicate non-TTY session
-IS_TTY_SESSION=false
+# Set environment variable to indicate non-console session
+IS_CONSOLE=false
 
 # ---------------------------
 # Color Output Setup
@@ -62,16 +62,16 @@ check_os() {
 }
 
 # ---------------------------
-# Check if TTY Session
+# Check if Console Session
 # ---------------------------
 
-check_tty_session() {
-    if [[ -t 1 && "$(tty)" == /dev/tty[0-9]* ]]; then
-        log_info "🔍 TTY session detected."
-        IS_TTY_SESSION=true
+check_term() {
+    if [ "$TERM" = "linux" ]; then
+        log_info "🔍 Console detected. TERM=$TERM"
+        IS_CONSOLE=true
     else
-        log_info "🚫 Not a TTY session."
-        IS_TTY_SESSION=false
+        log_info "🔍 Terminal detected. TERM=$TERM"
+        IS_CONSOLE=false
     fi
 }
 
@@ -492,8 +492,8 @@ install_fastfetch() {
 }
 
 install_oh_my_posh() {
-    if [ "$IS_TTY_SESSION" = true ]; then
-        log_info "🚫 TTY session detected. Skipping Oh My Posh installation."
+    if [ "$IS_CONSOLE" = true ]; then
+        log_info "🚫 Console session detected. Skipping Oh My Posh installation."
         return
     fi
 
@@ -525,8 +525,8 @@ install_oh_my_posh() {
 }
 
 install_atuin() {
-    if [ "$IS_TTY_SESSION" = true ]; then
-        log_info "🚫 TTY session detected. Skipping Atuin installation."
+    if [ "$IS_CONSOLE" = true ]; then
+        log_info "🚫 Console session detected. Skipping Atuin installation."
         return
     fi
 
@@ -620,8 +620,8 @@ install_zsh_you_should_use() {
 # ---------------------------
 
 install_jetbrains_mono_nerd_font() {
-    if [ "$IS_TTY_SESSION" = true ]; then
-        log_info "🚫 TTY session detected. Skipping Font installation."
+    if [ "$IS_CONSOLE" = true ]; then
+        log_info "🚫 Console session detected. Skipping Font installation."
         return
     fi
 
@@ -844,8 +844,8 @@ verify_environment() {
 set_terminal_font() {
     set +e  # Disable exit on error
 
-    if [ "$IS_TTY_SESSION" = true ]; then
-        log_info "🚫 TTY session detected. Skipping Font Setting."
+    if [ "$IS_CONSOLE" = true ]; then
+        log_info "🚫 Console session detected. Skipping Font Setting."
         set -e  # Re-enable exit on error
         return
     fi
@@ -1002,8 +1002,8 @@ main() {
     # Perform initial system check
     check_os
 
-    # Check if TTY session
-    check_tty_session
+    # Check if Console session
+    check_term
 
     # Clock Sync
     sync_system_clock
