@@ -81,36 +81,40 @@ check_tty_session() {
 # ---------------------------
 
 sync_system_clock() {
-    log_info "🔄 Synchronizing system clock..."
+    printf "🔄 Synchronizing system clock..."
+
+    local tool_name=""
 
     if command -v timedatectl &> /dev/null; then
-        # Most modern systems (Ubuntu, CentOS 7+, etc.)
         sudo timedatectl set-ntp true
-        log_info "✅ System clock synchronized using timedatectl."
+        tool_name="timedatectl"
 
     elif command -v ntpdate &> /dev/null; then
-        # Older systems or fallback to ntpdate if available
         sudo ntpdate -u pool.ntp.org
-        log_info "✅ System clock synchronized using ntpdate."
+        tool_name="ntpdate"
 
     elif command -v chronyd &> /dev/null; then
-        # Some distributions like CentOS 8+ use chronyd as the default NTP client
         sudo systemctl start chronyd
         sudo chronyc -a makestep
-        log_info "✅ System clock synchronized using chronyd."
+        tool_name="chronyd"
 
     elif command -v openntpd &> /dev/null; then
-        # OpenNTPD, an alternative NTP client
         sudo systemctl start openntpd
-        log_info "✅ System clock synchronized using openntpd."
+        tool_name="openntpd"
 
     else
         log_error "🚫 No suitable time synchronization tool found. Please install ntpdate, timedatectl, chrony, or openntpd."
         return 1
     fi
 
-    # Sleep for 60 seconds after syncing the clock
-    sleep 60
+    # Sleep for 30 seconds after syncing to stabilize the clock
+    for i in $(seq 1 30); do
+        printf "."
+        sleep 1
+    done
+    echo ""
+
+    log_info "✅ System clock synchronized using $tool_name."
 }
 
 # ---------------------------
@@ -150,13 +154,13 @@ check_zsh() {
     if command -v zsh &> /dev/null; then
         log_info "✅ ZSH is already installed."
     else
-        log_info "ZSH is not installed. Installing ZSH..."
+        log_info "🚫 ZSH is not installed. Installing ZSH..."
 
         local max_attempts=3
         local attempt=1
 
         while [[ $attempt -le 3 ]]; do
-            log_info "Attempt $attempt of 3 to install ZSH..."
+            log_info "🔄 Attempt $attempt of 3 to install ZSH..."
             if sudo apt update && sudo apt install -y zsh; then
                 log_info "✅ ZSH installed successfully."
                 break
@@ -185,7 +189,7 @@ update_system() {
     local attempt=1
 
     while [[ $attempt -le $max_attempts ]]; do
-        log_info "Attempt $attempt of $max_attempts..."
+        log_info "🔄 Attempt $attempt of $max_attempts..."
         if sudo apt update && sudo apt upgrade -y; then
             log_info "✅ System update complete!"
             break
