@@ -45,8 +45,13 @@ alias mkdir='mkdir -p'
 # File Listing
 if command_exists eza; then
     # Modern file listing with icons and git integration
-    alias ls='eza -la --group-directories-first --color=always --git --classify --sort=modified --reverse --header --icons'
-    alias tree='eza --icons --tree --all --level=3 --color=always'
+    if [ -t 1 ]; then
+        alias ls='eza -la --group-directories-first --color=always --git --classify --sort=modified --reverse --header --icons'
+        alias tree='eza --icons --tree --all --level=3 --color=always'
+    else
+        alias ls='eza -la --group-directories-first --color=always --git --classify --sort=modified --reverse --header'
+        alias tree='eza --tree --all --level=3 --color=always'
+    fi
 elif command_exists gls; then
     # GNU ls fallback
     alias ls='gls -la --group-directories-first --color=always'
