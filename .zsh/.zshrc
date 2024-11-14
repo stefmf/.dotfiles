@@ -90,7 +90,7 @@ fi
 # Key Bindings:
 # - Ctrl+R: Search history with full UI
 # - Up Arrow: Search history for current line
-if type atuin &>/dev/null; then
+if [[ -t 1 ]] && type atuin &>/dev/null; then
     eval "$(atuin init zsh)"
 fi
 
@@ -158,8 +158,8 @@ if type zoxide &>/dev/null; then
     eval "$(zoxide init --cmd cd zsh)"
 fi
 
-# Oh My Posh Theme (skip for Apple Terminal)
-if [ "$TERM_PROGRAM" != "Apple_Terminal" ]; then
+# Oh My Posh Theme (skip for Apple Terminal and tty sessions)
+if [ "$TERM_PROGRAM" != "Apple_Terminal" ] && [ -t 1 ]; then
     if type oh-my-posh &>/dev/null; then
         eval "$(oh-my-posh init zsh --config ~/.dotfiles/.config/ohmyposh/prompt.toml)"
     fi
