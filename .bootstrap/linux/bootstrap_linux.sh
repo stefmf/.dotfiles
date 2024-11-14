@@ -269,7 +269,7 @@ update_path() {
     export PATH="$HOME/.local/bin:$HOME/bin:$HOME/.cargo/bin:$PATH"
     
     # Verify PATH updates
-    log_info "Current PATH: $PATH"
+    log_info "📍 Current PATH: $PATH"
 }
 
 # ---------------------------
@@ -451,7 +451,7 @@ install_awscli() {
 }
 
 install_terraform() {
-    log_info "🏗️ Installing Terraform..."
+    log_info "🏗️  Installing Terraform..."
     if wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg && \
        echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
        sudo tee /etc/apt/sources.list.d/hashicorp.list && \
@@ -529,7 +529,7 @@ install_atuin() {
 
     # Check if cargo is installed
     if ! command -v cargo &> /dev/null; then
-        log_warning "⚠️ Cargo is not installed. Installing Rust toolchain..."
+        log_warning "⚠️  Cargo is not installed. Installing Rust toolchain..."
         if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
             source "$HOME/.cargo/env"
         else
@@ -760,7 +760,7 @@ handle_existing_links() {
 
     for link in "${links[@]}"; do
         if [[ -e "$link" || -L "$link" ]]; then
-            log_info "🗑️ Removing existing link or file: $link"
+            log_info "🗑️  Removing existing link or file: $link"
             if rm -rf "$link"; then
                 log_info "✅ Removed $link"
             else
