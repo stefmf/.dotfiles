@@ -492,11 +492,6 @@ install_fastfetch() {
 }
 
 install_oh_my_posh() {
-    # if [ "$IS_CONSOLE" = true ]; then
-    #     log_info "🚫 Console session detected. Skipping Oh My Posh installation."
-    #     return
-    # fi
-
     log_info "🥳 Installing Oh My Posh..."
 
     # Determine installation directory
@@ -525,11 +520,6 @@ install_oh_my_posh() {
 }
 
 install_atuin() {
-    if [ "$IS_CONSOLE" = true ]; then
-        log_info "🚫 Console session detected. Skipping Atuin installation."
-        return
-    fi
-
     log_info "🔄 Installing Atuin..."
 
     # Check if cargo is installed
@@ -984,7 +974,13 @@ change_shell() {
     if chsh -s "$(which zsh)" "$USER"; then
         log_info "✅ Default shell changed to ZSH."
         log_info "🔄 The system will reboot in 5 seconds to apply changes..."
-        sleep 5
+        
+        for i in $(seq 1 5); do
+            printf "."
+            sleep 1
+        done
+        echo ""
+        
         sudo reboot
     else
         log_error "🚫 Failed to change the default shell to ZSH."
