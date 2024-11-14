@@ -973,8 +973,8 @@ change_shell() {
 
     if chsh -s "$(which zsh)" "$USER"; then
         log_info "✅ Default shell changed to ZSH."
-        log_info "🔄 The system will reboot in 5 seconds to apply changes..."
-        
+        printf "🔄 The system will reboot in 5 seconds to apply changes"
+
         for i in $(seq 1 5); do
             printf "."
             sleep 1
