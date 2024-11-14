@@ -66,13 +66,15 @@ check_os() {
 # ---------------------------
 
 check_tty_session() {
-    if [[ -t 1 ]]; then
+    if [[ -t 1 && "$(tty)" == /dev/tty[0-9]* ]]; then
         log_info "ℹ️ TTY session detected."
         IS_TTY_SESSION=true
     else
         log_info "ℹ️ Not a TTY session."
+        IS_TTY_SESSION=false
     fi
 }
+
 
 # ---------------------------
 # Clock Sync
