@@ -67,10 +67,10 @@ check_os() {
 
 check_tty_session() {
     if [[ -t 1 && "$(tty)" == /dev/tty[0-9]* ]]; then
-        log_info "ℹ️ TTY session detected."
+        log_info "🔍 TTY session detected."
         IS_TTY_SESSION=true
     else
-        log_info "ℹ️ Not a TTY session."
+        log_info "🚫 Not a TTY session."
         IS_TTY_SESSION=false
     fi
 }
@@ -488,7 +488,7 @@ install_fastfetch() {
 
 install_oh_my_posh() {
     if [ "$IS_TTY_SESSION" = true ]; then
-        log_info "TTY session detected. Skipping Oh My Posh installation."
+        log_info "🚫 TTY session detected. Skipping Oh My Posh installation."
         return
     fi
 
@@ -521,7 +521,7 @@ install_oh_my_posh() {
 
 install_atuin() {
     if [ "$IS_TTY_SESSION" = true ]; then
-        log_info "TTY session detected. Skipping Atuin installation."
+        log_info "🚫 TTY session detected. Skipping Atuin installation."
         return
     fi
 
@@ -616,7 +616,7 @@ install_zsh_you_should_use() {
 
 install_jetbrains_mono_nerd_font() {
     if [ "$IS_TTY_SESSION" = true ]; then
-        log_info "TTY session detected. Skipping Font installation."
+        log_info "🚫 TTY session detected. Skipping Font installation."
         return
     fi
 
@@ -792,7 +792,7 @@ setup_git() {
         return
     fi
 
-    log_info "🛠️ Configuring Git..."
+    log_info "🛠️  Configuring Git..."
     if git config --global user.name "$GIT_USER_NAME"; then
         log_info "✅ Git user.name set to $GIT_USER_NAME"
     else
@@ -838,28 +838,43 @@ verify_environment() {
 # ---------------------------
 
 set_terminal_font() {
+    set +e  # Disable exit on error
+
     if [ "$IS_TTY_SESSION" = true ]; then
-        log_info "TTY session detected. Skipping Font Setting."
+        log_info "🚫 TTY session detected. Skipping Font Setting."
+        set -e  # Re-enable exit on error
         return
     fi
 
-    log_info "🖥️ Setting JetBrains Mono Nerd Font as default terminal font..."
+    log_info "🖥️  Setting JetBrains Mono Nerd Font as default terminal font..."
 
     # For GNOME Terminal
     if command -v gsettings &> /dev/null; then
-        # Get the list of terminal profiles
-        local profile_list
-        profile_list=$(gsettings get org.gnome.Terminal.ProfilesList list | tr -d '[],' | tr "'" '\n' | grep '^:')
-        
         # Get the default profile ID
         local default_profile
         default_profile=$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d "'")
         
         if [ -n "$default_profile" ]; then
-            gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$default_profile/" font 'JetBrainsMono Nerd Font 14'
-            gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$default_profile/" use-system-font false
-            log_info "✅ Font set for GNOME Terminal"
+            profile_path="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$default_profile/"
+
+            # Set the font
+            if gsettings set "$profile_path" font 'JetBrainsMono Nerd Font 14'; then
+                log_info "✅ Font set for GNOME Terminal"
+            else
+                log_warning "⚠️ Failed to set font for GNOME Terminal."
+            fi
+
+            # Disable use-system-font
+            if gsettings set "$profile_path" use-system-font false; then
+                log_info "✅ Disabled system font for GNOME Terminal"
+            else
+                log_warning "⚠️ Failed to disable system font usage for GNOME Terminal."
+            fi
+        else
+            log_warning "⚠️ No default GNOME Terminal profile found."
         fi
+    else
+        log_warning "⚠️ 'gsettings' command not found. Skipping GNOME Terminal configuration."
     fi
 
     # For Konsole (KDE)
@@ -885,7 +900,7 @@ EOF
         if [ -f "$xfce_config_file" ]; then
             # Update existing config
             sed -i '/FontName=/d' "$xfce_config_file"
-            echo "FontName=JetBrains Mono Nerd Font 12" >> "$xfce_config_file"
+            echo "FontName=JetBrains Mono Nerd Font 14" >> "$xfce_config_file"
         else
             # Create new config
             cat > "$xfce_config_file" << EOF
@@ -903,9 +918,20 @@ EOF
         default_profile=$(gsettings get "$tilix_schema" default | tr -d "'")
         
         if [ -n "$default_profile" ]; then
-            gsettings set "com.gexperts.Tilix.Profile:/com/gexperts/Tilix/profiles/$default_profile/" font 'JetBrains Mono Nerd Font 14'
-            gsettings set "com.gexperts.Tilix.Profile:/com/gexperts/Tilix/profiles/$default_profile/" use-system-font false
-            log_info "✅ Font set for Tilix"
+            profile_path="com.gexperts.Tilix.Profile:/com/gexperts/Tilix/profiles/$default_profile/"
+            if gsettings set "$profile_path" font 'JetBrains Mono Nerd Font 14'; then
+                log_info "✅ Font set for Tilix"
+            else
+                log_warning "⚠️ Failed to set font for Tilix."
+            fi
+
+            if gsettings set "$profile_path" use-system-font false; then
+                log_info "✅ Disabled system font for Tilix"
+            else
+                log_warning "⚠️ Failed to disable system font usage for Tilix."
+            fi
+        else
+            log_warning "⚠️ No default Tilix profile found."
         fi
     fi
 
@@ -915,51 +941,32 @@ EOF
         mkdir -p "$alacritty_config_dir"
         local alacritty_config_file="$alacritty_config_dir/alacritty.yml"
         
-        # Create or update Alacritty config
+        # Backup existing config
         if [ -f "$alacritty_config_file" ]; then
-            # Backup existing config
             cp "$alacritty_config_file" "$alacritty_config_file.backup"
-            
-            # Update font configuration
-            if grep -q "^font:" "$alacritty_config_file"; then
-                sed -i '/^font:/,/^[^ ]/c\font:\n  normal:\n    family: JetBrainsMono Nerd Font\n    style: Regular\n  bold:\n    family: JetBrainsMono Nerd Font\n    style: Bold\n  italic:\n    family: JetBrainsMono Nerd Font\n    style: Italic\n  size: 14.0' "$alacritty_config_file"
-            else
-                cat >> "$alacritty_config_file" << EOF
-
-font:
-  normal:
-    family: JetBrainsMono Nerd Font
-    style: Regular
-  bold:
-    family: JetBrainsMono Nerd Font
-    style: Bold
-  italic:
-    family: JetBrainsMono Nerd Font
-    style: Italic
-  size: 14.0
-EOF
-            fi
-        else
-            # Create new config
-            cat > "$alacritty_config_file" << EOF
-font:
-  normal:
-    family: JetBrainsMono Nerd Font
-    style: Regular
-  bold:
-    family: JetBrainsMono Nerd Font
-    style: Bold
-  italic:
-    family: JetBrainsMono Nerd Font
-    style: Italic
-  size: 14.0
-EOF
         fi
+
+        # Create or update Alacritty config
+        cat > "$alacritty_config_file" << EOF
+font:
+  normal:
+    family: JetBrainsMono Nerd Font
+    style: Regular
+  bold:
+    family: JetBrainsMono Nerd Font
+    style: Bold
+  italic:
+    family: JetBrainsMono Nerd Font
+    style: Italic
+  size: 14.0
+EOF
         log_info "✅ Font set for Alacritty"
     fi
 
     log_info "✅ Terminal font configuration completed!"
     log_info "📝 Note: You may need to restart your terminal for changes to take effect"
+
+    set -e  # Re-enable exit on error
 }
 
 
