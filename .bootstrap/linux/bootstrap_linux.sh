@@ -108,6 +108,9 @@ sync_system_clock() {
         log_error "🚫 No suitable time synchronization tool found. Please install ntpdate, timedatectl, chrony, or openntpd."
         return 1
     fi
+
+    # Sleep for 60 seconds after syncing the clock
+    sleep 60
 }
 
 # ---------------------------
@@ -123,7 +126,6 @@ clear_cache() {
         temp_file=$(mktemp)
         grep -v "export PATH=" "$ZPROFILE" > "$temp_file" || true
         mv "$temp_file" "$ZPROFILE"
-        log_info "✅ Cleaned up PATH entries in $ZPROFILE"
     fi
 
     # Clear the package list cache
@@ -236,7 +238,7 @@ update_path() {
     # Ensure we start with a fresh ZPROFILE
     if [[ ! -f "$ZPROFILE" ]]; then
         touch "$ZPROFILE"
-        log_info "Created new profile at $ZPROFILE"
+        log_info "📝  Created new profile at $ZPROFILE"
     fi
 
     # Remove any existing PATH exports from .zprofile
@@ -298,7 +300,7 @@ install_packages() {
 
     log_info "📦 Installing packages..."
     for package in "${packages[@]}"; do
-        log_info "Installing $package..."
+        log_info "⬇️  Installing $package..."
         if sudo apt install -y "$package"; then
             log_info "✅ $package installed successfully."
         else
@@ -365,7 +367,7 @@ install_docker() {
 }
 
 install_kubectl() {
-    log_info "☸️ Installing kubectl..."
+    log_info "☸️  Installing kubectl..."
     if curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | \
        sudo tee /etc/apt/sources.list.d/kubernetes.list && \
@@ -401,7 +403,7 @@ install_kind() {
 }
 
 install_helm() {
-    log_info "⎈ Installing Helm..."
+    log_info "☸️  Installing Helm..."
     if curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null && \
        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | \
        sudo tee /etc/apt/sources.list.d/helm-stable-debian.list && \
@@ -414,7 +416,7 @@ install_helm() {
 }
 
 install_awscli() {
-    log_info "☁️ Installing AWS CLI..."
+    log_info "☁️  Installing AWS CLI..."
     local arch
     arch=$(uname -m)
     local url
@@ -469,7 +471,6 @@ install_fastfetch() {
     local ubuntu_version
     ubuntu_version=$(lsb_release -rs)
     if [[ $(echo "$ubuntu_version >= 22.04" | bc -l) -eq 1 ]]; then
-        log_info "Using PPA for Ubuntu $ubuntu_version."
         if sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch && sudo apt update && sudo apt install -y fastfetch; then
             log_info "✅ Fastfetch installed successfully!"
         else
@@ -652,7 +653,6 @@ setup_bat_symlink() {
     # Remove existing symlink if it exists
     if [[ -L "$HOME/.local/bin/bat" ]]; then
         rm "$HOME/.local/bin/bat"
-        log_info "Removed existing bat symlink"
     fi
 
     # Create new symlink if batcat exists
@@ -979,8 +979,8 @@ change_shell() {
 
     if chsh -s "$(which zsh)" "$USER"; then
         log_info "✅ Default shell changed to ZSH."
-        log_info "🔄 The system will reboot in 10 seconds to apply changes..."
-        sleep 10
+        log_info "🔄 The system will reboot in 5 seconds to apply changes..."
+        sleep 5
         sudo reboot
     else
         log_error "🚫 Failed to change the default shell to ZSH."
