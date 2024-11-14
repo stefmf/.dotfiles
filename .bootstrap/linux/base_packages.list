@@ -21,3 +21,6 @@ tmuxinator
 tty-clock
 zoxide
 zsh
+build-essential
+clang
+zig

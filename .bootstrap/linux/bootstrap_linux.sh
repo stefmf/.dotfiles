@@ -492,10 +492,10 @@ install_fastfetch() {
 }
 
 install_oh_my_posh() {
-    if [ "$IS_CONSOLE" = true ]; then
-        log_info "🚫 Console session detected. Skipping Oh My Posh installation."
-        return
-    fi
+    # if [ "$IS_CONSOLE" = true ]; then
+    #     log_info "🚫 Console session detected. Skipping Oh My Posh installation."
+    #     return
+    # fi
 
     log_info "🥳 Installing Oh My Posh..."
 
