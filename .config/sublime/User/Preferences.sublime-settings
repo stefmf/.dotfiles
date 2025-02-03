@@ -31,5 +31,6 @@
     "save_on_focus_lost": true,
     "show_encoding": true,
     "font_face": "JetBrainsMono Nerd Font Mono",
-    "font_size": 14,
+    "font_size": 15,
+    "index_files": true,
 }
