@@ -8,7 +8,7 @@ dockutil --add /System/Applications/Launchpad.app --no-restart
 dockutil --add /Applications/iTerm.app --no-restart
 dockutil --add /Applications/Sublime\ Text.app --no-restart
 dockutil --add /Applications/Visual\ Studio\ Code.app --no-restart
-dockutil --add /Applications/Claude.app --no-restart
+dockutil --add /Applications/ChatGPT.app --no-restart
 dockutil --add /Applications/Windows\ App.app --no-restart
 dockutil --add /Applications/Parallels\ Desktop.app --no-restart
 dockutil --add /Applications/Screens\ 5.app --no-restart
