@@ -25,9 +25,10 @@
 .zsh/.zsh_history
 .zsh/.zsh_sessions/
 .zsh/.zprofile
+.zsh/.zshplugins/
 
 # Zsh compiled files
 **/*.zwc
 **/*.zwc.old
 .zshrc.zwc
-.zsh/.zshrc.zwc.zsh/.zshplugins/
+.zsh/.zshrc.zwc
