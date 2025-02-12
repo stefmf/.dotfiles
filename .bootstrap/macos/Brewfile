@@ -28,7 +28,6 @@ brew "mas"
 brew "moreutils"
 brew "neovim"
 brew "nmap"
-brew "pkgconf"
 brew "pyenv"
 brew "screen"
 brew "shellcheck"
@@ -66,6 +65,7 @@ cask "tailscale"
 cask "visual-studio-code"
 cask "vlc"
 cask "windows-app"
+mas "Ethernet Menubar", id: 1549412235
 mas "Microsoft Excel", id: 462058435
 mas "Microsoft PowerPoint", id: 462062816
 mas "Microsoft Word", id: 462054704
