@@ -51,6 +51,7 @@ cask "app-cleaner"
 cask "boop"
 cask "chatgpt"
 cask "claude"
+cask "default-handler"
 cask "discord"
 cask "firefox"
 cask "font-jetbrains-mono-nerd-font"
@@ -60,7 +61,6 @@ cask "maccy"
 cask "microsoft-auto-update"
 cask "parallels"
 cask "raycast"
-cask "screens-connect"
 cask "spotify"
 cask "sublime-text"
 cask "tailscale"
@@ -70,3 +70,4 @@ cask "windows-app"
 mas "Microsoft Excel", id: 462058435
 mas "Microsoft PowerPoint", id: 462062816
 mas "Microsoft Word", id: 462054704
+mas "Screens 5", id: 1663047912
