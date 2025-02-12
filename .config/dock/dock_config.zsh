@@ -11,7 +11,7 @@ dockutil --add /Applications/Visual\ Studio\ Code.app --no-restart
 dockutil --add /Applications/Claude.app --no-restart
 dockutil --add /Applications/Windows\ App.app --no-restart
 dockutil --add /Applications/Parallels\ Desktop.app --no-restart
-dockutil --add /Applications/Screens\ Connect.app --no-restart
+dockutil --add /Applications/Screens\ 5.app --no-restart
 dockutil --add /System/Applications/Calendar.app --no-restart
 dockutil --add /System/Applications/Notes.app --no-restart
 dockutil --add /Applications/Firefox.app --no-restart
