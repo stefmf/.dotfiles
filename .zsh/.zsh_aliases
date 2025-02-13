@@ -29,8 +29,8 @@ alias vi='nvim'
 alias vim='nvim'
 
 # System Monitoring
-if command_exists htop; then
-    alias top='htop'
+if command_exists btop; then
+    alias top='btop'
 else
     alias top='/usr/bin/top'
 fi
