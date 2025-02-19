@@ -1,5 +1,13 @@
 #!/usr/bin/env zsh
 
+# TODO:
+# Add step to install system daemons to start tailscale, dnsmasq & other services as root for launch on boot
+## For tailscale: sudo tailscaled install-system-daemon
+## For dnsmasq: sudo brew services start dnsmasq
+# remove Git setup and use ghcli setup instead
+
+
+
 # Enable strict error handling
 setopt PIPE_FAIL  # Exit on pipe failure
 setopt UNSET      # Exit on undefined variable
