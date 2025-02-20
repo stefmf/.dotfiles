@@ -20,6 +20,9 @@ command_exists() {
 # TLDR
 alias man='tldr'
 
+# WGET
+alias wget='wget2'
+
 # Shell Management
 alias reload='source ~/.zshrc'
 alias c='clear'
@@ -101,7 +104,6 @@ alias ports='netstat -tulanp'        # Show active ports
 # Network Operations
 #------------------------------------------------------------------------------
 
-alias wget='wget -c'                 # Continue interrupted downloads
 alias ping='ping -c 5'               # Limit ping to 5 packets
 
 #------------------------------------------------------------------------------
