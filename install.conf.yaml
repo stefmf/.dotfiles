@@ -18,9 +18,10 @@
     ~/.zshenv: .zsh/.zshenv
     ~/.zprofile: .zsh/.zprofile
     ~/.zshrc: .zsh/.zshrc
-    "/opt/homebrew/etc/dnsmasq.conf": ".config/dnsmasq/dnsmasq.conf"
+    /opt/homebrew/etc/dnsmasq.conf: .config/dnsmasq/dnsmasq.conf
     "~/Library/Application Support/Sublime Text/Packages/User": .config/sublime/User
     "~/Library/Application Support/Sublime Text/Installed Packages": .config/sublime/Installed Packages
+    /etc/pam.d/sudo: .config/system/pam.d/sudo
 
 - shell:
     - [git submodule update --init --recursive, Installing submodules]
