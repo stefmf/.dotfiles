@@ -398,7 +398,16 @@ main() {
     defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
     mkdir -p "${HOME}/Library/Application Support/iTerm2/DynamicProfiles"
     cp "$DOTFILES_DIR/.config/iterm2/Stef_dynamic.json" "${HOME}/Library/Application Support/iTerm2/DynamicProfiles/Stef.json"
-    log_info "✅ iTerm2 preferences applied. Restart iTerm2 to see theme changes."
+    log_info "✅ iTerm2 dynamic profile applied. Restart iTerm2 to see theme changes."
+    # Backup iTerm2 main preferences plist into dotfiles config
+    IT2_PLIST_SOURCE="${HOME}/Library/Preferences/com.googlecode.iterm2.plist"
+    IT2_CONFIG_DIR="${HOME}/.config/iterm2"
+    if [[ -f "$IT2_PLIST_SOURCE" ]]; then
+        mkdir -p "$IT2_CONFIG_DIR"
+        cp "$IT2_PLIST_SOURCE" "$IT2_CONFIG_DIR/com.googlecode.iterm2.plist" && log_info "✅ iTerm2 plist backed up to $IT2_CONFIG_DIR/com.googlecode.iterm2.plist" || log_warning "⚠️ Failed to backup iTerm2 plist"
+    else
+        log_warning "⚠️ iTerm2 preferences file not found at $IT2_PLIST_SOURCE"
+    fi
 }
 
 # ---------------------------
