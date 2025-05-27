@@ -1,5 +1,3 @@
-tap "homebrew/bundle"
-tap "homebrew/services"
 tap "jandedobbeleer/oh-my-posh"
 tap "teamookla/speedtest"
 brew "python@3.13"
