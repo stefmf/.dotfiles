@@ -389,6 +389,16 @@ main() {
     log_info "⚙️ Configuring Dock..."
     source "$DOCK_CONFIG"
     log_info "✅ All major bootstrap steps completed. Review logs above for any warnings."
+
+    # ---------------------------
+    # iTerm2 Configuration
+    # ---------------------------
+    log_info "🔧 Configuring iTerm2 preferences and dynamic profiles..."
+    defaults write com.googlecode.iterm2 PrefsCustomFolder -string "${HOME}/.config/iterm2"
+    defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
+    mkdir -p "${HOME}/Library/Application Support/iTerm2/DynamicProfiles"
+    cp "$DOTFILES_DIR/.config/iterm2/Stef.json" "${HOME}/Library/Application Support/iTerm2/DynamicProfiles/Stef.json"
+    log_info "✅ iTerm2 preferences applied. Restart iTerm2 to see theme changes."
 }
 
 # ---------------------------
