@@ -394,11 +394,26 @@ main() {
     # iTerm2 Configuration
     # ---------------------------
     log_info "🔧 Configuring iTerm2 preferences and dynamic profiles..."
-    defaults write com.googlecode.iterm2 PrefsCustomFolder -string "${HOME}/.config/iterm2"
-    defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
-    mkdir -p "${HOME}/Library/Application Support/iTerm2/DynamicProfiles"
-    cp "$DOTFILES_DIR/.config/iterm2/Stef.json" "${HOME}/Library/Application Support/iTerm2/DynamicProfiles/Stef.json"
-    log_info "✅ iTerm2 preferences applied. Restart iTerm2 to see theme changes."
+    log_info "🔍 Validating iTerm2 dynamic profile JSON..."
+    source_profile="$DOTFILES_DIR/.config/iterm2/Stef.json"
+    dest_dir="${HOME}/Library/Application Support/iTerm2/DynamicProfiles"
+    dest_profile="$dest_dir/Stef.json"
+    mkdir -p "$dest_dir"
+    if command -v jq &>/dev/null; then
+        if jq -e 'has("Profiles")' "$source_profile" >/dev/null; then
+            log_info "✅ Stef.json already contains 'Profiles' key."
+            cp "$source_profile" "$dest_profile"
+        else
+            log_warning "⚠️ Stef.json missing 'Profiles' key—wrapping content."
+            tmpfile=$(mktemp)
+            jq '{Profiles:[.]}' "$source_profile" > "$tmpfile" && mv "$tmpfile" "$dest_profile"
+        fi
+    else
+        log_warning "⚠️ 'jq' not found; copying Stef.json without validation."
+        cp "$source_profile" "$dest_profile"
+    fi
+    log_info "✅ iTerm2 dynamic profile installed to $dest_profile."
+    log_info "ℹ️ Restart iTerm2 to apply new dynamic profile."
 }
 
 # ---------------------------
