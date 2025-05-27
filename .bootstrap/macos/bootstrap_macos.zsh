@@ -236,6 +236,9 @@ update_command_line_tools() {
 # ---------------------------
 
 install_homebrew() {
+    # Ensure the ZSH_PROFILE exists
+    mkdir -p "$(dirname \"$ZSH_PROFILE\")"
+    touch "$ZSH_PROFILE"
     if ! command -v brew > /dev/null; then
         log_info "🍺 Installing Homebrew..."
         if command -v curl > /dev/null; then
@@ -386,12 +389,12 @@ main() {
     install_packages
     setup_git
 
-    # Source zshrc to apply changes
+    # Source ZSH_PROFILE to apply changes
     if [[ -f "$ZSH_PROFILE" ]]; then
-        log_info "🎉 Bootstrap complete! Applying changes..."
+        log_info "🎉 Bootstrap complete! Applying $ZSH_PROFILE..."
         source "$ZSH_PROFILE"
     else
-        log_warning "⚠️ No .zshrc found after installation."
+        log_warning "⚠️ No $ZSH_PROFILE found after installation."
     fi
 
     # Run Dock configuration script
