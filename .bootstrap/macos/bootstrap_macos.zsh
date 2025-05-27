@@ -84,24 +84,17 @@ open_privacy_settings() {
 install_packages() {
     if [[ -f "$BREW_FILE" ]]; then
         log_info "📦 Starting package installation process..."
-        
-        # Define special casks that need special handling
         local special_casks=("parallels" "adobe-acrobat-pro" "microsoft-auto-update" "windows-app")
-        
-        # Step 1: Handle special casks that require elevated permissions
         log_info "🔧 Installing specific casks that require elevated permissions..."
-        
         for cask in "${special_casks[@]}"; do
             if ! brew search --casks "$cask" &> /dev/null; then
                 log_info "❌ Cask '$cask' does not exist in the Homebrew repository. Skipping..."
                 continue
             fi
-            
             if brew list --cask "$cask" &> /dev/null; then
                 log_info "✅ Cask '$cask' is already installed. Skipping..."
                 continue
             fi
-            
             if [[ "$cask" == "parallels" ]]; then
                 log_info "🚀 Preparing to install Parallels..."
                 open_privacy_settings
@@ -112,14 +105,23 @@ install_packages() {
                 brew install --cask "$cask" --verbose || log_warning "❌ $cask installation failed"
             fi
         done
-        
-        # Step 2: Install the rest of the packages from Brewfile
         log_info "📦 Installing remaining packages from Brewfile..."
-        
         brew bundle --file="$BREW_FILE" || {
             log_warning "⚠️ Some packages failed to install."
         }
-        
+        # Font check and reboot prompt
+        if brew list --cask | grep -q font-jetbrains-mono-nerd-font; then
+            if ls /Library/Fonts | grep -iq jetbrains; then
+                log_info "✅ JetBrains Mono Nerd Font is installed and present in system fonts."
+            elif ls ~/Library/Fonts | grep -iq jetbrains; then
+                log_info "✅ JetBrains Mono Nerd Font is installed in user fonts."
+            else
+                log_warning "⚠️ JetBrains Mono Nerd Font cask installed, but font files not found in system/user fonts."
+            fi
+            log_info "ℹ️ If you do not see glyphs, try rebooting or reselecting the font in your terminal/editor."
+        else
+            log_warning "⚠️ JetBrains Mono Nerd Font is not installed."
+        fi
         log_info "✅ Package installation process completed."
     else
         log_warning "⚠️ No Brewfile found at $BREW_FILE. Skipping package installation."
@@ -370,36 +372,23 @@ handle_existing_links() {
 
 main() {
     log_info "🚀 Starting machine bootstrap process..."
-    
-    # Gather user inputs
     get_user_inputs
-    
-    # Perform system check
     check_macos
-    
-    # Update Xcode Command Line Tools
     update_command_line_tools
-    
-    # Check for required dependencies
     check_dependencies
-    
-    # Execute installation steps
     install_homebrew
     run_dotbot
     install_packages
     setup_git
-
-    # Source ZSH_PROFILE to apply changes
     if [[ -f "$ZSH_PROFILE" ]]; then
         log_info "🎉 Bootstrap complete! Applying $ZSH_PROFILE..."
         source "$ZSH_PROFILE"
     else
         log_warning "⚠️ No $ZSH_PROFILE found after installation."
     fi
-
-    # Run Dock configuration script
     log_info "⚙️ Configuring Dock..."
     source "$DOCK_CONFIG"
+    log_info "✅ All major bootstrap steps completed. Review logs above for any warnings."
 }
 
 # ---------------------------
