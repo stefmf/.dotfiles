@@ -342,7 +342,16 @@ install_fonts() {
 # -------------------------------------------------------------------
 # GitHub authentication & git config
 github_auth_and_git_config() {
-    authenticate_github  # existing logic
+  # Prompt user to optionally login with GitHub via gh CLI
+  local ans
+  read -q "ans?🔑 Would you like to login with GitHub (gh CLI)? (y/n) "
+  echo
+  if [[ "$ans" =~ ^[Yy] ]]; then
+    log_info "🔑 Starting GitHub authentication..."
+    authenticate_github
+  else
+    log_info "ℹ️ Skipping GitHub authentication."
+  fi
 }
 
 # -------------------------------------------------------------------
