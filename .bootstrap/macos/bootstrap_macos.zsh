@@ -62,6 +62,9 @@ typeset -r DOTBOT_INSTALL="$DOTFILES_DIR/install"
 typeset -r ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zprofile"
 typeset -r DOCK_CONFIG="$DOTFILES_DIR/.config/dock/dock_config.zsh"
 
+# Initialize a flag to track if dotfiles setup failed
+typeset DOTBOT_FAILED=0
+
 # ---------------------------
 # Helper Functions
 # ---------------------------
@@ -433,9 +436,14 @@ PAM
 # -------------------------------------------------------------------
 # Symlink dotfiles via Dotbot
 setup_dotfiles() {
-    log_info "🔗 Setting up dotfiles with Dotbot..."
-    handle_existing_links
-    "$DOTBOT_INSTALL" -v || log_warning "⚠️ Dotbot failed."
+  log_info "🔗 Setting up dotfiles with Dotbot..."
+  handle_existing_links
+  if "$DOTBOT_INSTALL" -v; then
+    log_info "✅ Dotbot setup completed successfully."
+  else
+    log_error "❌ Dotbot failed to apply configurations."
+    DOTBOT_FAILED=1
+  fi
 }
 
 # -------------------------------------------------------------------
@@ -493,7 +501,12 @@ configure_dock() {
 # -------------------------------------------------------------------
 # Final message
 finalize_bootstrap() {
+  if [[ $DOTBOT_FAILED -ne 0 ]]; then
+    log_error "❌ Bootstrap completed with errors (dotfiles setup failed)."
+    exit 1
+  else
     log_info "🎉 macOS bootstrap complete!"
+  fi
 }
 
 # ---------------------------

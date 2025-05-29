@@ -9,9 +9,17 @@ readonly BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "${BASEDIR}"
 
+# Provide verbose logging and error checks for Dotbot installation
+echo "[INFO] Syncing Dotbot submodules..."
 git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
-git -C "${DOTBOT_DIR}" submodule update --init --recursive
+if git -C "${DOTBOT_DIR}" submodule update --init --recursive; then
+  echo "[INFO] Dotbot submodules updated successfully."
+else
+  echo "[ERROR] Failed to update Dotbot submodules. Please check your network and try again." >&2
+  exit 1
+fi
 "${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" \
   -d "${BASEDIR}" \
   -c "${CONFIG}" \
   "${@:-}"
+echo "[INFO] Dotbot apply step completed."
