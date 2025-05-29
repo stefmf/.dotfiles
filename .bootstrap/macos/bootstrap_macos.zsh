@@ -117,7 +117,7 @@ install_packages() {
                 log_info "✅ JetBrains Mono Nerd Font is installed and present in system fonts."
             elif ls ~/Library/Fonts | grep -iq jetbrains; then
                 log_info "✅ JetBrains Mono Nerd Font is installed in user fonts."
-            else {
+            else
                 log_warning "⚠️ JetBrains Mono Nerd Font cask installed, but font files not found in system/user fonts."
             fi
             log_info "ℹ️ If you do not see glyphs, try rebooting or reselecting the font in your terminal/editor."
