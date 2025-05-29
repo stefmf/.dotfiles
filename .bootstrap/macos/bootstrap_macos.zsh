@@ -16,9 +16,24 @@ fi
 # Prompt for sudo password upfront
 sudo -v
 
+# ---------------------------
+# Color Output Setup (define logging before error handler)
+autoload -U colors && colors
+typeset -A COLORS=(
+    [info]=$fg[green]
+    [warning]=$fg[yellow]
+    [error]=$fg[red]
+    [debug]=$fg[blue]
+)
+
+# Logging Functions
+log_info() { print -P "${COLORS[info]}[INFO] $1%f"; }
+log_warning() { print -P "${COLORS[warning]}[WARNING] $1%f"; }
+log_error() { print -P "${COLORS[error]}[ERROR] $1%f"; }
+
 # ─── Error Handler ────────────────────────────────────────────────────────────
 error_exit() {
-  log_error "❌ Bootstrap failed at line $LINENO: $*"
+  echo "[ERROR] Bootstrap failed at line $LINENO: $*" >&2
   exit 1
 }
 trap 'error_exit "Unexpected error"' ERR
@@ -31,9 +46,10 @@ function keep_sudo {
     kill -0 "$$" || exit
   done
 }
-keep_sudo & 
+keep_sudo &
 KEEPALIVE_PID=$!
-trap 'kill $KEEPALIVE_PID' EXIT
+# ensure kill trap ignores missing process
+trap 'kill $KEEPALIVE_PID 2>/dev/null || true' EXIT
 
 # ---------------------------
 # Constants and Configuration
@@ -47,25 +63,9 @@ typeset -r ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zprofile"
 typeset -r DOCK_CONFIG="$DOTFILES_DIR/.config/dock/dock_config.zsh"
 
 # ---------------------------
-# Color Output Setup
-# ---------------------------
-
-autoload -U colors && colors
-typeset -A COLORS=(
-    [info]=$fg[green]
-    [warning]=$fg[yellow]
-    [error]=$fg[red]
-    [debug]=$fg[blue]
-)
-
-# ---------------------------
 # Helper Functions
 # ---------------------------
 
-# Logging Functions
-log_info() { print -P "${COLORS[info]}[INFO] $1%f"; }
-log_warning() { print -P "${COLORS[warning]}[WARNING] $1%f"; }
-log_error() { print -P "${COLORS[error]}[ERROR] $1%f"; }
 # If running as root, warn only (Homebrew requires non-root for installation)
 if [[ $EUID -eq 0 ]]; then
     log_warning "⚠️ Running as root. Some operations may fail (e.g., Homebrew installation)."
@@ -86,7 +86,7 @@ open_privacy_settings() {
     log_info "📌 Important: Please enable App Management in the Privacy & Security settings."
     log_info "🔒 This is necessary for installing certain applications that require elevated permissions."
     log_info "✅ Once enabled, press Enter to continue with the installation."
-    read -r "?Press Enter after enabling App Management to continue..."
+    read "?Press Enter after enabling App Management to continue..." dummy
 }
 
 # ---------------------------
