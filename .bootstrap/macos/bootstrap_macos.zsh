@@ -96,8 +96,11 @@ open_privacy_settings() {
 install_packages() {
     if [[ -f "$BREW_FILE" ]]; then
         log_info "📦 Starting package installation process..."
-        local special_casks=("parallels" "adobe-acrobat-pro" "microsoft-auto-update" "windows-app")
+        # Prompt once for sudo to cover all special casks
+        log_info "🔒 Requesting sudo access for special casks installation (you may be prompted)"
+        sudo -v
         log_info "🔧 Installing specific casks that require elevated permissions..."
+        local special_casks=("parallels" "adobe-acrobat-pro" "microsoft-auto-update" "windows-app")
         for cask in "${special_casks[@]}"; do
             if ! brew search --casks "$cask" &> /dev/null; then
                 log_info "❌ Cask '$cask' does not exist in the Homebrew repository. Skipping..."
@@ -342,10 +345,9 @@ install_fonts() {
 # -------------------------------------------------------------------
 # GitHub authentication & git config
 github_auth_and_git_config() {
-  # Prompt user to optionally login with GitHub via gh CLI
+  # Ask user if they want to login with GitHub CLI
   local ans
-  read -q "ans?🔑 Would you like to login with GitHub (gh CLI)? (y/n) "
-  echo
+  read -r "?🔑 Would you like to login with GitHub CLI? (y/n) " ans
   if [[ "$ans" =~ ^[Yy] ]]; then
     log_info "🔑 Starting GitHub authentication..."
     authenticate_github
