@@ -248,8 +248,17 @@ update_command_line_tools() {
 # ---------------------------
 # Ensure dotfiles directory is writable
 ensure_dotfiles_writable() {
-  log_info "🔧 Ensuring ownership of $DOTFILES_DIR and subdirectories is correct"
-  sudo chown -R "$(id -un):$(id -gn)" "$DOTFILES_DIR"
+  log_info "🔧 Checking writability of $DOTFILES_DIR"
+  if [[ -w "$DOTFILES_DIR" ]]; then
+    log_info "✅ Dotfiles directory is already writable by $(id -un)"
+  else
+    log_warning "⚠️ Dotfiles directory not writable by $(id -un). Attempting to fix ownership."
+    if sudo chown -R "$(id -un):$(id -gn)" "$DOTFILES_DIR"; then
+      log_info "✅ Ownership of $DOTFILES_DIR fixed to $(id -un):$(id -gn)"
+    else
+      log_error "❌ Failed to fix ownership of $DOTFILES_DIR. Please adjust manually."
+    fi
+  fi
 }
 
 # -------------------------------------------------------------------
@@ -265,9 +274,19 @@ preflight_checks() {
 # -------------------------------------------------------------------
 # Homebrew installation
 install_homebrew() {
-    # Ensure the ZSH_PROFILE exists (ignore errors to avoid failing on permission issues)
-    mkdir -p "$(dirname "$ZSH_PROFILE")" || log_warning "⚠️ Could not create directory for $ZSH_PROFILE. Check permissions."
-    touch "$ZSH_PROFILE" || log_warning "⚠️ Could not create $ZSH_PROFILE. Check permissions."
+    # Ensure the ZSH_PROFILE exists
+    log_info "🔧 Creating directory for ZSH profile: $(dirname "$ZSH_PROFILE")"
+    if mkdir -p "$(dirname "$ZSH_PROFILE")"; then
+      log_info "✅ Directory ensured: $(dirname "$ZSH_PROFILE")"
+    else
+      log_warning "⚠️ Could not create directory $(dirname "$ZSH_PROFILE"). Check permissions."
+    fi
+    log_info "🔧 Ensuring profile file exists: $ZSH_PROFILE"
+    if touch "$ZSH_PROFILE"; then
+      log_info "✅ Profile file created/existed: $ZSH_PROFILE"
+    else
+      log_warning "⚠️ Could not create profile file $ZSH_PROFILE. Check permissions."
+    fi
     if ! command -v brew > /dev/null; then
         log_info "🍺 Installing Homebrew..."
         if command -v curl > /dev/null; then
