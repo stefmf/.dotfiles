@@ -248,10 +248,8 @@ update_command_line_tools() {
 # ---------------------------
 # Ensure dotfiles directory is writable
 ensure_dotfiles_writable() {
-  if [[ ! -w "$DOTFILES_DIR" ]]; then
-    log_info "🔧 Fixing ownership of $DOTFILES_DIR to $(id -un):$(id -gn)"
-    sudo chown -R "$(id -un):$(id -gn)" "$DOTFILES_DIR"
-  fi
+  log_info "🔧 Ensuring ownership of $DOTFILES_DIR and subdirectories is correct"
+  sudo chown -R "$(id -un):$(id -gn)" "$DOTFILES_DIR"
 }
 
 # -------------------------------------------------------------------
