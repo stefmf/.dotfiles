@@ -1,16 +1,7 @@
 #!/usr/bin/env zsh
 
-# TODO:
-# Add step to install system daemons to start tailscale, dnsmasq & other services as root for launch on boot
-## For tailscale: sudo tailscaled install-system-daemon
-## For dnsmasq: sudo brew services start dnsmasq
-# remove Git setup and use ghcli setup instead
-
-
-
-# Enable strict error handling
-setopt PIPE_FAIL  # Exit on pipe failure
-setopt UNSET      # Exit on undefined variable
+# ─── Strict mode ──────────────────────────────────────────────────────────────
+setopt errexit nounset pipefail
 
 # ---------------------------
 # Request Sudo Privileges
@@ -19,24 +10,35 @@ setopt UNSET      # Exit on undefined variable
 # Prompt for sudo password upfront
 sudo -v
 
-# Keep-alive: update existing `sudo` time stamp until script has finished
-while true; do
+# ─── Error Handler ────────────────────────────────────────────────────────────
+error_exit() {
+  log_error "❌ Bootstrap failed at line $LINENO: $*"
+  exit 1
+}
+trap 'error_exit "Unexpected error"' ERR
+
+# ─── Keep‐alive sudo ──────────────────────────────────────────────────────────
+function keep_sudo {
+  while true; do
     sudo -n true
     sleep 60
     kill -0 "$$" || exit
-done 2>/dev/null &
+  done
+}
+keep_sudo & 
+KEEPALIVE_PID=$!
+trap 'kill $KEEPALIVE_PID' EXIT
 
 # ---------------------------
 # Constants and Configuration
 # ---------------------------
 
 # Set Dotfiles directory
-DOTFILES_DIR="$HOME/.dotfiles"
-BREW_FILE="$DOTFILES_DIR/.bootstrap/macos/Brewfile"
-DOTBOT_INSTALL="$DOTFILES_DIR/install"
-ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zprofile"
-DOCK_CONFIG="$DOTFILES_DIR/.config/dock/dock_config.zsh"
-
+typeset -r DOTFILES_DIR="$HOME/.dotfiles"
+typeset -r BREW_FILE="$DOTFILES_DIR/.bootstrap/macos/Brewfile"
+typeset -r DOTBOT_INSTALL="$DOTFILES_DIR/install"
+typeset -r ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zprofile"
+typeset -r DOCK_CONFIG="$DOTFILES_DIR/.config/dock/dock_config.zsh"
 
 # ---------------------------
 # Color Output Setup
@@ -115,7 +117,7 @@ install_packages() {
                 log_info "✅ JetBrains Mono Nerd Font is installed and present in system fonts."
             elif ls ~/Library/Fonts | grep -iq jetbrains; then
                 log_info "✅ JetBrains Mono Nerd Font is installed in user fonts."
-            else
+            else {
                 log_warning "⚠️ JetBrains Mono Nerd Font cask installed, but font files not found in system/user fonts."
             fi
             log_info "ℹ️ If you do not see glyphs, try rebooting or reselecting the font in your terminal/editor."
@@ -233,10 +235,17 @@ update_command_line_tools() {
     fi
 }
 
-# ---------------------------
-# Homebrew Installation
-# ---------------------------
+# -------------------------------------------------------------------
+# Preflight checks: OS, Xcode CLI, dependencies
+preflight_checks() {
+    log_info "🔍 Running preflight checks..."
+    check_macos
+    update_command_line_tools
+    check_dependencies
+}
 
+# -------------------------------------------------------------------
+# Homebrew installation
 install_homebrew() {
     # Ensure the ZSH_PROFILE exists
     mkdir -p "$(dirname \"$ZSH_PROFILE\")"
@@ -277,66 +286,126 @@ install_homebrew() {
     fi
 }
 
-# ---------------------------
-# Dotbot Installation
-# ---------------------------
+# -------------------------------------------------------------------
+# Brew packages & casks
+install_brew_packages() {
+    install_packages  # existing logic
+}
 
-run_dotbot() {
-    if [[ -f "$DOTBOT_INSTALL" ]]; then
-        log_info "🔗 Running Dotbot to symlink configuration files..."
-        
-        # Handle existing files before running Dotbot
-        handle_existing_links
-        
-        # Run Dotbot with verbose output
-        "$DOTBOT_INSTALL" -v || log_warning "⚠️ Dotbot installation failed."
+# -------------------------------------------------------------------
+# Font verification (no reboot needed)
+install_fonts() {
+    if brew list --cask | grep -q font-jetbrains-mono-nerd-font; then
+        log_info "✅ JetBrains Mono Nerd Font installed. Restart apps to apply."
     else
-        log_error "🚫 Dotbot install script not found at $DOTBOT_INSTALL"
+        log_warning "⚠️ JetBrains Mono Nerd Font not found. Add to Brewfile if needed."
     fi
 }
 
-# ---------------------------
-# Git Configuration
-# ---------------------------
-
-setup_git() {
-    if [[ -z "$GIT_USER_NAME" || -z "$GIT_USER_EMAIL" ]]; then
-        log_warning "⚠️ Git user name or email not set. Skipping Git configuration."
-        return
-    fi
-    
-    log_info "🛠️ Configuring Git..."
-    git config --global user.name "$GIT_USER_NAME" || log_warning "⚠️ Failed to set Git user name."
-    git config --global user.email "$GIT_USER_EMAIL" || log_warning "⚠️ Failed to set Git user email."
-    log_info "✅ Git configured for user: $GIT_USER_NAME <$GIT_USER_EMAIL>"
+# -------------------------------------------------------------------
+# GitHub authentication & git config
+github_auth_and_git_config() {
+    authenticate_github  # existing logic
 }
 
-# ---------------------------
-# User Input Collection
-# ---------------------------
+# -------------------------------------------------------------------
+# Enable core services (Tailscale, dnsmasq)
+enable_services() {
+    log_info "🔧 Starting core services..."
+    if command -v tailscaled &>/dev/null; then
+        sudo tailscaled install-system-daemon && log_info "✅ Tailscale system daemon installed"
+    else
+        log_warning "tailscaled not found; skipping Tailscale service"
+    fi
 
-get_user_inputs() {
-    log_info "📝 Gathering user inputs for configuration..."
-    
-    # Collect Git User Name
-    while true; do
-        read -r "GIT_USER_NAME?🔍 Enter Git user name: "
-        if [[ -n "$GIT_USER_NAME" ]]; then
-            break
-        else
-            log_warning "⚠️ Git user name cannot be empty."
-        fi
+    if brew list dnsmasq &>/dev/null; then
+        sudo brew services start dnsmasq && log_info "✅ dnsmasq started via brew services"
+    else
+        log_warning "dnsmasq missing; skipping dnsmasq service"
+    fi
+}
+
+# -------------------------------------------------------------------
+# Configure DNS for dnsmasq/MagicDNS
+configure_dns() {
+    log_info "🌐 Configuring system DNS to 127.0.0.1 for dnsmasq..."
+    networksetup -listallnetworkservices 2>/dev/null | sed '1d' | while IFS= read -r svc; do
+        svc="${svc#\*}"; svc="$(echo "$svc" | xargs)"
+        [[ -z "$svc" || "$svc" == *"VPN"* || "$svc" == "Tailscale"* ]] && continue
+        sudo networksetup -setdnsservers "$svc" 127.0.0.1 \
+            && log_info "✅ DNS set for '$svc'" \
+            || log_warning "Failed to set DNS for '$svc'"
     done
-    
-    # Collect Git User Email with Validation
-    while true; do
-        read -r "GIT_USER_EMAIL?📧 Enter Git user email: "
-        if [[ "$GIT_USER_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
-            break
-        else
-            log_warning "⚠️ Please enter a valid email address."
+    log_info "📎 DNS setup complete."
+}
+
+# -------------------------------------------------------------------
+# Enable Touch ID for sudo (persistent)
+enable_touchid_for_sudo() {
+    log_info "🔐 Configuring Touch ID authentication for sudo..."
+    # Remove legacy symlink if present
+    if [[ -L "/etc/pam.d/sudo" ]]; then
+        log_warning "Removing existing /etc/pam.d/sudo symlink"
+        sudo rm "/etc/pam.d/sudo"
+    fi
+
+    if [[ -f "/etc/pam.d/sudo_local.template" ]]; then
+        # macOS 14+ (Sonoma)
+        if [[ ! -f "/etc/pam.d/sudo_local" ]]; then
+            sudo cp "/etc/pam.d/sudo_local.template" "/etc/pam.d/sudo_local"
+            log_info "Copied sudo_local template"
         fi
-    done
+        sudo sed -i '' 's/^#auth[[:space:]]\+sufficient[[:space:]]\+pam_tid.so/auth       sufficient     pam_tid.so/' "/etc/pam.d/sudo_local"
+        log_info "✅ Enabled Touch ID in /etc/pam.d/sudo_local"
+        # Ensure main sudo includes sudo_local
+        if [[ ! -f "/etc/pam.d/sudo" ]]; then
+            log_warning "/etc/pam.d/sudo missing; restoring default with sudo_local include"
+            sudo tee "/etc/pam.d/sudo" > /dev/null <<-'PAM'
+# sudo: auth account password session
+auth       include        sudo_local
+auth       sufficient     pam_smartcard.so
+auth       required       pam_opendirectory.so
+account    required       pam_permit.so
+password   required       pam_deny.so
+session    required       pam_permit.so
+PAM
+            log_info "✅ Restored /etc/pam.d/sudo"
+        fi
+    else
+        # Older macOS
+        if ! grep -q "pam_tid.so" "/etc/pam.d/sudo"; then
+            sudo sed -i.bak $'2i\\\nauth       sufficient     pam_tid.so\\\n' "/etc/pam.d/sudo"
+            log_info "✅ Added Touch ID to /etc/pam.d/sudo (backup in /etc/pam.d/sudo.bak)"
+        else
+            log_info "Touch ID already enabled in /etc/pam.d/sudo"
+        fi
+    fi
+}
+
+# -------------------------------------------------------------------
+# Symlink dotfiles via Dotbot
+setup_dotfiles() {
+    log_info "🔗 Setting up dotfiles with Dotbot..."
+    handle_existing_links
+    "$DOTBOT_INSTALL" -v || log_warning "⚠️ Dotbot failed."
+}
+
+# -------------------------------------------------------------------
+# Authenticate with GitHub via gh CLI
+authenticate_github() {
+    if command -v gh &>/dev/null; then
+        log_info "🔑 Logging in to GitHub with gh CLI..."
+        gh auth login --hostname github.com --git-protocol ssh
+        if name="$(gh api user --jq '.name')" && email="$(gh api user --jq '.email')" ; then
+            git config --global user.name "$name"
+            git config --global user.email "$email"
+            log_info "✅ Set Git author to: $name <$email>"
+        else
+            log_warning "Couldn’t fetch name/email from GitHub profile; please set manually with git config"
+        fi
+    else
+        log_warning "⚠️ gh CLI not installed; skipping GitHub login"
+    fi
 }
 
 # ---------------------------
@@ -366,52 +435,35 @@ handle_existing_links() {
     done
 }
 
-# ---------------------------
-# Main Installation Process
-# ---------------------------
-
-main() {
-    log_info "🚀 Starting machine bootstrap process..."
-    get_user_inputs
-    check_macos
-    update_command_line_tools
-    check_dependencies
-    install_homebrew
-    run_dotbot
-    install_packages
-    setup_git
-    if [[ -f "$ZSH_PROFILE" ]]; then
-        log_info "🎉 Bootstrap complete! Applying $ZSH_PROFILE..."
-        source "$ZSH_PROFILE"
-    else
-        log_warning "⚠️ No $ZSH_PROFILE found after installation."
-    fi
-    log_info "⚙️ Configuring Dock..."
+# -------------------------------------------------------------------
+# Configure macOS Dock
+configure_dock() {
+    log_info "⚙️ Configuring macOS Dock..."
     source "$DOCK_CONFIG"
-    log_info "✅ All major bootstrap steps completed. Review logs above for any warnings."
+}
 
-    # ---------------------------
-    # iTerm2 Configuration
-    # ---------------------------
-    log_info "🔧 Configuring iTerm2 preferences and dynamic profiles..."
-    defaults write com.googlecode.iterm2 PrefsCustomFolder -string "${HOME}/.config/iterm2"
-    defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
-    mkdir -p "${HOME}/Library/Application Support/iTerm2/DynamicProfiles"
-    cp "$DOTFILES_DIR/.config/iterm2/Stef_dynamic.json" "${HOME}/Library/Application Support/iTerm2/DynamicProfiles/Stef.json"
-    log_info "✅ iTerm2 dynamic profile applied. Restart iTerm2 to see theme changes."
-    # Backup iTerm2 main preferences plist into dotfiles config
-    IT2_PLIST_SOURCE="${HOME}/Library/Preferences/com.googlecode.iterm2.plist"
-    IT2_CONFIG_DIR="${HOME}/.config/iterm2"
-    if [[ -f "$IT2_PLIST_SOURCE" ]]; then
-        mkdir -p "$IT2_CONFIG_DIR"
-        cp "$IT2_PLIST_SOURCE" "$IT2_CONFIG_DIR/com.googlecode.iterm2.plist" && log_info "✅ iTerm2 plist backed up to $IT2_CONFIG_DIR/com.googlecode.iterm2.plist" || log_warning "⚠️ Failed to backup iTerm2 plist"
-    else
-        log_warning "⚠️ iTerm2 preferences file not found at $IT2_PLIST_SOURCE"
-    fi
+# -------------------------------------------------------------------
+# Final message
+finalize_bootstrap() {
+    log_info "🎉 macOS bootstrap complete!"
 }
 
 # ---------------------------
-# Execute Main Function
+# Main Installation Process
 # ---------------------------
+main() {
+    log_info "🚀 Starting macOS bootstrap..."
+    preflight_checks
+    install_homebrew
+    install_brew_packages
+    install_fonts
+    github_auth_and_git_config
+    enable_services
+    configure_dns
+    enable_touchid_for_sudo
+    setup_dotfiles
+    configure_dock
+    finalize_bootstrap
+}
 
 main "$@"
