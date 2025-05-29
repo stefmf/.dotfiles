@@ -3,6 +3,12 @@
 # ─── Strict mode ──────────────────────────────────────────────────────────────
 setopt errexit nounset pipefail
 
+# Prevent running the script as root
+if [[ $EUID -eq 0 ]]; then
+    echo "[ERROR] Do not run this script as root. Please run as your regular user without sudo." >&2
+    exit 1
+fi
+
 # ---------------------------
 # Request Sudo Privileges
 # ---------------------------
@@ -60,6 +66,10 @@ typeset -A COLORS=(
 log_info() { print -P "${COLORS[info]}[INFO] $1%f"; }
 log_warning() { print -P "${COLORS[warning]}[WARNING] $1%f"; }
 log_error() { print -P "${COLORS[error]}[ERROR] $1%f"; }
+# If running as root, warn only (Homebrew requires non-root for installation)
+if [[ $EUID -eq 0 ]]; then
+    log_warning "⚠️ Running as root. Some operations may fail (e.g., Homebrew installation)."
+fi
 
 # ---------------------------
 # Privacy & Security Settings Helper
@@ -247,9 +257,9 @@ preflight_checks() {
 # -------------------------------------------------------------------
 # Homebrew installation
 install_homebrew() {
-    # Ensure the ZSH_PROFILE exists
-    mkdir -p "$(dirname \"$ZSH_PROFILE\")"
-    touch "$ZSH_PROFILE"
+    # Ensure the ZSH_PROFILE exists (ignore errors to avoid failing on permission issues)
+    mkdir -p "$(dirname "$ZSH_PROFILE")" || log_warning "⚠️ Could not create directory for $ZSH_PROFILE. Check permissions."
+    touch "$ZSH_PROFILE" || log_warning "⚠️ Could not create $ZSH_PROFILE. Check permissions."
     if ! command -v brew > /dev/null; then
         log_info "🍺 Installing Homebrew..."
         if command -v curl > /dev/null; then
