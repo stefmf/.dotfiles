@@ -520,10 +520,11 @@ main() {
     install_fonts
     github_auth_and_git_config
     enable_services
-    configure_dns
-    enable_touchid_for_sudo
     setup_dotfiles
     configure_dock
+    # Configure DNS last, after services are running (dnsmasq & tailscale)
+    configure_dns
+    enable_touchid_for_sudo
     finalize_bootstrap
 }
 
