@@ -12,7 +12,6 @@
 .config/iterm2/*
 !.config/iterm2/Stef.json
 !.config/iterm2/themes/
-## Ignore
 .config/iterm2/AppSupport/
 .config/iterm2/sockets/
 
@@ -32,3 +31,6 @@
 **/*.zwc.old
 .zshrc.zwc
 .zsh/.zshrc.zwc
+
+# Ignore Sublime Text user settings
+.config/sublime/Packages/User/**

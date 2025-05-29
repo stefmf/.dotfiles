@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 
-# Exit immediately if a command exits with a non-zero status
-set -e
+# ─── Strict mode ──────────────────────────────────────────────────────────────
+set -euo pipefail
+
+# ─── Error Handler ────────────────────────────────────────────────────────────
+error_exit() {
+  echo -e "[ERROR] Bootstrap failed at line $LINENO"
+  exit 1
+}
+trap 'error_exit' ERR
 
 # ---------------------------
 # Request Sudo Privileges
@@ -10,22 +17,27 @@ set -e
 # Prompt for sudo password upfront
 sudo -v
 
-# Keep-alive: update existing `sudo` time stamp until script has finished
-while true; do
+# ─── Keep‐alive sudo ──────────────────────────────────────────────────────────
+keep_sudo() {
+  while true; do
     sudo -n true
     sleep 60
-    kill -0 "$$" || exit  # Fixed: Changed "$" to "$$" to reference the script's PID
-done 2>/dev/null &
+    kill -0 "$$" || exit
+  done
+}
+keep_sudo & 
+KEEPALIVE_PID=$!
+trap 'kill "$KEEPALIVE_PID"' EXIT
 
 # ---------------------------
 # Constants and Configuration
 # ---------------------------
 
 # Set Dotfiles directory
-DOTFILES_DIR="$HOME/.dotfiles"
-PACKAGES_FILE="$DOTFILES_DIR/.bootstrap/linux/base_packages.list"
-DOTBOT_INSTALL="$DOTFILES_DIR/install"
-ZPROFILE="$DOTFILES_DIR/.zsh/.zprofile"
+readonly DOTFILES_DIR="$HOME/.dotfiles"
+readonly PACKAGES_FILE="$DOTFILES_DIR/.bootstrap/linux/base_packages.list"
+readonly DOTBOT_INSTALL="$DOTFILES_DIR/install"
+readonly ZPROFILE="$DOTFILES_DIR/.zsh/.zprofile"
 
 # Set environment variable to indicate non-console session
 IS_CONSOLE=false
