@@ -245,11 +245,21 @@ update_command_line_tools() {
     fi
 }
 
+# ---------------------------
+# Ensure dotfiles directory is writable
+ensure_dotfiles_writable() {
+  if [[ ! -w "$DOTFILES_DIR" ]]; then
+    log_info "🔧 Fixing ownership of $DOTFILES_DIR to $(id -un):$(id -gn)"
+    sudo chown -R "$(id -un):$(id -gn)" "$DOTFILES_DIR"
+  fi
+}
+
 # -------------------------------------------------------------------
 # Preflight checks: OS, Xcode CLI, dependencies
 preflight_checks() {
     log_info "🔍 Running preflight checks..."
     check_macos
+    ensure_dotfiles_writable
     update_command_line_tools
     check_dependencies
 }
