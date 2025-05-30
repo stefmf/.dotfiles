@@ -323,31 +323,39 @@ install_brew_packages() {
 }
 
 # -------------------------------------------------------------------
-# Font verification (no reboot needed)
+# Font verification
 install_fonts() {
     log_info "🔧 Ensuring JetBrains Mono Nerd Font is installed…"
 
     # 1. Install via Homebrew if missing
     if ! brew list --cask font-jetbrains-mono-nerd-font &>/dev/null; then
-        log_info "📦 Installing JetBrains Mono Nerd Font via Homebrew…"
+        log_info "📦 Installing font-jetbrains-mono-nerd-font via Homebrew…"
         brew install --cask font-jetbrains-mono-nerd-font \
             || log_error "❌ Failed to install font-jetbrains-mono-nerd-font"
     else
         log_info "✅ font-jetbrains-mono-nerd-font already installed"
     fi
 
-    # 2. Refresh macOS font cache so apps pick it up immediately
-    log_info "🌐 Refreshing macOS font cache…"
-    sudo atsutil databases -remove
-    sudo atsutil server -shutdown
-    sudo atsutil server -ping
-
-    # 3. (Optional) Copy the font into user fonts so GUI apps see it
+    # 2. Copy font files into user's Fonts directory
+    log_info "📂 Copying font files to ~/Library/Fonts…"
     mkdir -p "$HOME/Library/Fonts"
-    cp -n /Library/Fonts/JetBrainsMonoNerdFontComplete.ttf \
-       "$HOME/Library/Fonts/" 2>/dev/null || true
+    caskroom_dir="$(brew --prefix)/Caskroom/font-jetbrains-mono-nerd-font"
+    if [[ -d "$caskroom_dir" ]]; then
+        for fontfile in "$caskroom_dir"/*/*.{ttf,otf}; do
+            if [[ -f "$fontfile" ]]; then
+                cp -n "$fontfile" "$HOME/Library/Fonts/" \
+                    && log_info "✅ Copied $(basename "$fontfile")"
+            fi
+        done
+    else
+        log_warning "⚠️ Caskroom directory not found at $caskroom_dir"
+    fi
 
-    log_info "✅ Font installation & cache refresh complete. Restart your terminal/editor to apply."
+    # 3. Restart font daemon so macOS detects new fonts immediately
+    log_info "🔄 Restarting macOS font service (fontd)…"
+    sudo killall fontd &>/dev/null || true
+
+    log_info "✅ Font installation & registration complete. Please restart your terminal/editor to apply changes."
 }
 
 # -------------------------------------------------------------------
