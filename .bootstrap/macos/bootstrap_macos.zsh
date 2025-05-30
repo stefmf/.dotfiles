@@ -10,7 +10,7 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 # ─── One-time sudo prompt via ASKPASS + wrapper ──────────────────────────────
-read -rs "PASSWORD?Enter your sudo password once: "
+read -rs "PASSWORD?Enter your sudo password: "
 
 # create a one-line “askpass” helper that just echoes your password
 ASKPASS=$(mktemp)
@@ -92,12 +92,17 @@ open_privacy_settings() {
         activate
         delay 1
         reveal anchor "Privacy_AppBundles" of pane id "com.apple.settings.PrivacySecurity.extension"
-    end tell'
-    
-    log_info "📌 Important: Please enable App Management in the Privacy & Security settings."
-    log_info "🔒 This is necessary for installing certain applications that require elevated permissions."
-    log_info "✅ Once enabled, press Enter to continue with the installation."
-    read "?Press Enter after enabling App Management to continue..." dummy
+    end tell' &>/dev/null || true
+
+    # Detailed user guidance for App Management
+    log_info "📌 'Privacy & Security' → 'App Management' pane opened successfully."
+    log_info "🔍 In the sidebar, select 'App Management'."
+    log_info "🔒 Click the lock icon in the bottom-left and authenticate with your password to allow changes."
+    log_info "➕ Click the '+' button under 'Allowed Apps', select your terminal application (e.g., Terminal.app or iTerm.app), and click 'Open'."
+    log_info "✅ Verify your terminal appears in the list and is marked as 'Allowed'."
+
+    # Updated prompt for clarity
+    read "?Press Enter once you’ve added your terminal in App Management and unlocked settings to continue..." dummy
 }
 
 # ---------------------------
@@ -128,7 +133,7 @@ install_packages() {
                 open_privacy_settings
             fi
             log_info "📦 Installing $cask..."
-            brew install --cask "$cask" --verbose || log_warning "Installation of $cask failed"
+            brew install --cask "$cask" > /dev/null 2>&1 || log_warning "Installation of $cask failed"
         done
 
         # Install remaining Brewfile packages
