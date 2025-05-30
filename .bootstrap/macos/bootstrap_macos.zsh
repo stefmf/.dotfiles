@@ -9,12 +9,33 @@ if [[ $EUID -eq 0 ]]; then
     exit 1
 fi
 
-# ---------------------------
-# Request Sudo Privileges
-# ---------------------------
+# ─── One-time sudo prompt via ASKPASS + wrapper ──────────────────────────────
+read -rs "PASSWORD?Enter your sudo password once: "
 
-# Prompt for sudo password upfront
+# create a one-line “askpass” helper that just echoes your password
+ASKPASS=$(mktemp)
+chmod 700 "$ASKPASS"
+cat >"$ASKPASS" <<-EOF
+#!/usr/bin/env zsh
+echo "$PASSWORD"
+EOF
+chmod +x "$ASKPASS"
+
+# point sudo at it, and wrap sudo so EVERY call uses -A (askpass)
+export SUDO_ASKPASS="$ASKPASS"
+sudo() { /usr/bin/sudo -A "$@"; }
+
+# prime the cache and start the keep-alive loop
 sudo -v
+trap 'rm -f "$ASKPASS"' EXIT
+
+keep_sudo() {
+  while kill -0 $$ 2>/dev/null; do
+    sudo -v       # refresh timestamp via askpass
+    sleep 60
+  done
+}
+keep_sudo &
 
 # ---------------------------
 # Color Output Setup (define logging before error handler)
@@ -37,19 +58,6 @@ error_exit() {
   exit 1
 }
 trap 'error_exit "Unexpected error"' ERR
-
-# ─── Keep‐alive sudo ──────────────────────────────────────────────────────────
-function keep_sudo {
-  while true; do
-    sudo -n true
-    sleep 60
-    kill -0 "$$" || exit
-  done
-}
-keep_sudo &
-KEEPALIVE_PID=$!
-# ensure kill trap ignores missing process
-trap 'kill $KEEPALIVE_PID 2>/dev/null || true' EXIT
 
 # ---------------------------
 # Constants and Configuration
