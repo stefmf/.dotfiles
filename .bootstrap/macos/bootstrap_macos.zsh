@@ -264,7 +264,7 @@ ensure_dotfiles_writable() {
     else
       log_error "❌ Failed to fix ownership of $DOTFILES_DIR. Please adjust manually."
     fi
-  }
+  fi
 }
 
 # -------------------------------------------------------------------
