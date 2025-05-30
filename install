@@ -1,15 +1,25 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-CONFIG="install.conf.yaml"
-DOTBOT_DIR="dotbot"
-
-DOTBOT_BIN="bin/dotbot"
-BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly CONFIG=".config/dotbot/install.conf.yaml"
+readonly DOTBOT_DIR="dotbot"
+readonly DOTBOT_BIN="bin/dotbot"
+readonly BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "${BASEDIR}"
-git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
-git submodule update --init --recursive "${DOTBOT_DIR}"
 
-"${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" -d "${BASEDIR}" -c "${CONFIG}" "${@}"
+# Provide verbose logging and error checks for Dotbot installation
+echo "[INFO] Syncing Dotbot submodules..."
+git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
+if git -C "${DOTBOT_DIR}" submodule update --init --recursive; then
+  echo "[INFO] Dotbot submodules updated successfully."
+else
+  echo "[ERROR] Failed to update Dotbot submodules. Please check your network and try again." >&2
+  exit 1
+fi
+"${BASEDIR}/${DOTBOT_DIR}/${DOTBOT_BIN}" \
+  -d "${BASEDIR}" \
+  -c "${CONFIG}" \
+  "${@:-}"
+echo "[INFO] Dotbot apply step completed."

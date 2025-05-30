@@ -126,7 +126,17 @@ case "$OSTYPE" in
     #--------------------------------------------------------------------------
 
     # System updates
-    alias update='brew update && brew upgrade'
+    update() {
+      # Update Homebrew and capture outdated list
+      brew update
+      local outdated_before=$(brew outdated)
+      brew upgrade
+      # Restart Tailscale service if it was upgraded
+      if echo "$outdated_before" | grep -q '^tailscale$'; then
+        echo "Restarting Tailscale brew service..."
+        brew services restart tailscale
+      fi
+    }
 
     # Brewfile management
     alias brewdump='brew bundle dump --force --no-vscode --file ~/.dotfiles/.bootstrap/macos/Brewfile'
