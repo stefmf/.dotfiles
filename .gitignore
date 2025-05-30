@@ -11,7 +11,7 @@
 # iTerm2
 .config/iterm2/*
 !.config/iterm2/com.googlecode.iterm2.plist
-!.config/iterm2/Stef.json
+!.config/iterm2/DynamicProfiles/
 !.config/iterm2/themes/
 .config/iterm2/AppSupport/
 .config/iterm2/sockets/

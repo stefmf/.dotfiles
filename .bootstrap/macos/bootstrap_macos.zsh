@@ -513,6 +513,26 @@ configure_dock() {
 }
 
 # -------------------------------------------------------------------
+# iTerm2 configuration: set prefs folder and deploy dynamic profile
+configure_iterm2() {
+    log_info "🔧 Configuring iTerm2 preferences folder and dynamic profiles"
+    # Set custom preferences folder
+    defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$HOME/.config/iterm2"
+    defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
+
+    # Ensure DynamicProfiles directory exists
+    mkdir -p "$HOME/.config/iterm2/DynamicProfiles"
+
+    # Copy dynamic profile from dotfiles repo if present
+    if [[ -f "$DOTFILES_DIR/.config/iterm2/DynamicProfiles/Stef.json" ]]; then
+        cp "$DOTFILES_DIR/.config/iterm2/DynamicProfiles/Stef.json" "$HOME/.config/iterm2/DynamicProfiles/Stef.json"
+        log_info "✅ Copied Stef dynamic profile"
+    else
+        log_warning "⚠️ Stef dynamic profile not found in repository"
+    fi
+}
+
+# -------------------------------------------------------------------
 # Final message
 finalize_bootstrap() {
   if [[ $DOTBOT_FAILED -ne 0 ]]; then
@@ -537,6 +557,7 @@ main() {
     configure_dock
     configure_dns
     enable_touchid_for_sudo
+    configure_iterm2
     finalize_bootstrap
 }
 
