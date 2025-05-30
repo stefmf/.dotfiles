@@ -362,22 +362,20 @@ github_auth_and_git_config() {
 # -------------------------------------------------------------------
 # Enable core services (Tailscale, dnsmasq)
 enable_services() {
-    log_info "🔧 Starting core services..."
-    if command -v tailscaled &>/dev/null; then
-        sudo tailscaled install-system-daemon && log_info "✅ Tailscale system daemon installed"
+    log_info "🔧 Starting core services via brew services..."
+    # Tailscale
+    if brew list tailscale &>/dev/null; then
+        log_info "🔧 Starting tailscale via brew services..."
+        brew services start tailscale && log_info "✅ tailscale service started" || log_warning "❌ Failed to start tailscale service"
     else
-        log_warning "tailscaled not found; skipping Tailscale service"
+        log_warning "🚫 tailscale formula not installed; skipping"
     fi
-
+    # dnsmasq
     if brew list dnsmasq &>/dev/null; then
-        log_info "🔧 Starting dnsmasq service via brew services (user-level)..."
-        if brew services start dnsmasq; then
-            log_info "✅ dnsmasq service started"
-        else
-            log_error "❌ Failed to start dnsmasq service"
-        fi
+        log_info "🔧 Starting dnsmasq via brew services..."
+        brew services start dnsmasq && log_info "✅ dnsmasq service started" || log_warning "❌ Failed to start dnsmasq service"
     else
-        log_warning "dnsmasq missing; skipping dnsmasq service"
+        log_warning "🚫 dnsmasq formula not installed; skipping"
     fi
 }
 
