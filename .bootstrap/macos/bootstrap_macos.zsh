@@ -264,7 +264,7 @@ ensure_dotfiles_writable() {
     else
       log_error "❌ Failed to fix ownership of $DOTFILES_DIR. Please adjust manually."
     fi
-  fi
+  }
 }
 
 # -------------------------------------------------------------------
@@ -370,7 +370,12 @@ enable_services() {
     fi
 
     if brew list dnsmasq &>/dev/null; then
-        sudo brew services start dnsmasq && log_info "✅ dnsmasq started via brew services"
+        log_info "🔧 Starting dnsmasq service via brew services (user-level)..."
+        if brew services start dnsmasq; then
+            log_info "✅ dnsmasq service started"
+        else
+            log_error "❌ Failed to start dnsmasq service"
+        fi
     else
         log_warning "dnsmasq missing; skipping dnsmasq service"
     fi
