@@ -362,34 +362,33 @@ github_auth_and_git_config() {
 # -------------------------------------------------------------------
 # Enable core services (Tailscale, dnsmasq)
 enable_services() {
-    log_info "🔧 Cleaning up existing Tailscale and dnsmasq services..."
+    log_info "🔧 Cleaning up and starting Tailscale & dnsmasq services..."
+
     local brew_cmd
     brew_cmd=$(command -v brew)
 
     for svc in tailscale dnsmasq; do
-        log_info "🔄 Stopping any existing $svc services (user & system)..."
-        # Stop in all contexts
-        "$brew_cmd" services stop --all "$svc" &>/dev/null || true
+        log_info "🔄 Stopping user-level $svc service..."
+        "$brew_cmd" services stop "$svc" &>/dev/null || true
+        log_info "🔄 Stopping system-level $svc service..."
+        sudo "$brew_cmd" services stop "$svc" &>/dev/null || true
 
         log_info "🔄 Removing leftover LaunchAgents & LaunchDaemons for $svc..."
         rm -f "$HOME/Library/LaunchAgents/homebrew.mxcl.$svc.plist" || true
         sudo rm -f "/Library/LaunchDaemons/homebrew.mxcl.$svc.plist" || true
 
-        log_info "🔄 Killing any running $svc processes..."
-        sudo pkill -f "${svc}d" || true
-        # For dnsmasq binary
-        if [[ "$svc" == "dnsmasq" ]]; then
-            sudo pkill -f dnsmasq || true
-        fi
+        log_info "🔄 Terminating any running $svc processes..."
+        sudo pkill -f "${svc}d" &>/dev/null || true
+        [[ "$svc" == "dnsmasq" ]] && sudo pkill -f "dnsmasq" &>/dev/null || true
     done
 
-    log_info "🔧 Starting core services as system daemons..."
+    log_info "🔧 Starting services as system daemons via brew..."
     for svc in tailscale dnsmasq; do
         if "$brew_cmd" list "$svc" &>/dev/null; then
-            log_info "🔧 Launching $svc with brew services --system..."
-            "$brew_cmd" services start --system "$svc" \
-                && log_info "✅ $svc started system-wide" \
-                || log_error "❌ Failed to start system $svc"
+            log_info "🔧 Starting $svc with root privileges..."
+            sudo "$brew_cmd" services start "$svc" \
+                && log_info "✅ $svc started successfully" \
+                || log_error "❌ Failed to start $svc"
         else
             log_warning "🚫 $svc not installed; skipping"
         fi
