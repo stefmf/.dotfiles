@@ -99,7 +99,7 @@ open_privacy_settings() {
 install_packages() {
     if [[ -f "$BREW_FILE" ]]; then
         log_info "📦 Starting package installation process..."
-        # Prompt once for sudo to cover all special casks
+        # Prompt once for sudo to cover special casks
         log_info "🔒 Requesting sudo access for special casks installation (you may be prompted)"
         sudo -v
 
@@ -123,13 +123,22 @@ install_packages() {
             brew install --cask "$cask" --verbose || log_warning "Installation of $cask failed"
         done
 
-        # Install all remaining Brewfile packages
+        # Install remaining Brewfile packages
         log_info "📦 Installing Brewfile packages..."
         brew bundle --file="$BREW_FILE" || log_warning "Some Brewfile packages failed to install."
 
+        # Install JetBrains Mono Nerd Font cask
+        log_info "📦 Installing JetBrains Mono Nerd Font cask..."
+        if ! brew list --cask font-jetbrains-mono-nerd-font &>/dev/null; then
+            brew install --cask font-jetbrains-mono-nerd-font \
+                || log_warning "❌ Failed to install font-jetbrains-mono-nerd-font"
+        else
+            log_info "✅ JetBrains Mono Nerd Font already installed"
+        fi
+
         log_info "✅ Package installation completed."
     else
-        log_warning "No Brewfile found at $BREW_FILE; skipping package installation."
+        log_warning "⚠️ No Brewfile found at $BREW_FILE; skipping package installation."
     fi
 }
 
@@ -320,45 +329,6 @@ install_homebrew() {
 # Brew packages & casks
 install_brew_packages() {
     install_packages  # existing logic
-}
-
-# -------------------------------------------------------------------
-# Font verification
-install_fonts() {
-    log_info "🔧 Ensuring JetBrains Mono Nerd Font is installed…"
-
-    # 1. Install via Homebrew if missing
-    if ! brew list --cask font-jetbrains-mono-nerd-font &>/dev/null; then
-        log_info "📦 Installing font-jetbrains-mono-nerd-font via Homebrew…"
-        brew install --cask font-jetbrains-mono-nerd-font \
-            || log_error "❌ Failed to install font-jetbrains-mono-nerd-font"
-    else
-        log_info "✅ font-jetbrains-mono-nerd-font already installed"
-    fi
-
-    # 2. Copy font files into user's Fonts directory
-    log_info "📂 Copying font files to ~/Library/Fonts…"
-    mkdir -p "$HOME/Library/Fonts"
-    caskroom_dir="$(brew --prefix)/Caskroom/font-jetbrains-mono-nerd-font"
-    if [[ -d "$caskroom_dir" ]]; then
-        # Enable NULL_GLOB to avoid no-match errors
-        setopt NULL_GLOB
-        for fontfile in "$caskroom_dir"/*/*.(ttf|otf); do
-            if [[ -f "$fontfile" ]]; then
-                cp -n "$fontfile" "$HOME/Library/Fonts/" \
-                    && log_info "✅ Copied $(basename "$fontfile")"
-            fi
-        done
-        unsetopt NULL_GLOB
-    else
-        log_warning "⚠️ Caskroom directory not found at $caskroom_dir"
-    fi
-
-    # 3. Restart font daemon so macOS detects new fonts immediately
-    log_info "🔄 Restarting macOS font service (fontd)…"
-    sudo killall fontd &>/dev/null || true
-
-    log_info "✅ Font installation & registration complete. Please restart your terminal/editor to apply changes."
 }
 
 # -------------------------------------------------------------------
@@ -553,12 +523,10 @@ main() {
     preflight_checks
     install_homebrew
     install_brew_packages
-    install_fonts
     github_auth_and_git_config
     enable_services
     setup_dotfiles
     configure_dock
-    # Configure DNS last, after services are running (dnsmasq & tailscale)
     configure_dns
     enable_touchid_for_sudo
     finalize_bootstrap
