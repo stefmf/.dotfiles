@@ -102,47 +102,34 @@ install_packages() {
         # Prompt once for sudo to cover all special casks
         log_info "🔒 Requesting sudo access for special casks installation (you may be prompted)"
         sudo -v
-        log_info "🔧 Installing specific casks that require elevated permissions..."
+
+        # Install special casks requiring elevated permissions
+        log_info "🔧 Installing special casks..."
         local special_casks=("parallels" "adobe-acrobat-pro" "microsoft-auto-update" "windows-app")
         for cask in "${special_casks[@]}"; do
-            if ! brew search --casks "$cask" &> /dev/null; then
-                log_info "❌ Cask '$cask' does not exist in the Homebrew repository. Skipping..."
+            if ! brew search --casks "$cask" &>/dev/null; then
+                log_warning "Cask '$cask' not found; skipping."
                 continue
             fi
-            if brew list --cask "$cask" &> /dev/null; then
-                log_info "✅ Cask '$cask' is already installed. Skipping..."
+            if brew list --cask "$cask" &>/dev/null; then
+                log_info "Cask '$cask' already installed."
                 continue
             fi
             if [[ "$cask" == "parallels" ]]; then
                 log_info "🚀 Preparing to install Parallels..."
                 open_privacy_settings
-                log_info "📦 Installing Parallels..."
-                brew install --cask parallels --verbose || log_warning "❌ Parallels installation failed"
-            else
-                log_info "📦 Installing $cask..."
-                brew install --cask "$cask" --verbose || log_warning "❌ $cask installation failed"
             fi
+            log_info "📦 Installing $cask..."
+            brew install --cask "$cask" --verbose || log_warning "Installation of $cask failed"
         done
-        log_info "📦 Installing remaining packages from Brewfile..."
-        brew bundle --file="$BREW_FILE" || {
-            log_warning "⚠️ Some packages failed to install."
-        }
-        # Font check and reboot prompt
-        if brew list --cask | grep -q font-jetbrains-mono-nerd-font; then
-            if ls /Library/Fonts | grep -iq jetbrains; then
-                log_info "✅ JetBrains Mono Nerd Font is installed and present in system fonts."
-            elif ls ~/Library/Fonts | grep -iq jetbrains; then
-                log_info "✅ JetBrains Mono Nerd Font is installed in user fonts."
-            else
-                log_warning "⚠️ JetBrains Mono Nerd Font cask installed, but font files not found in system/user fonts."
-            fi
-            log_info "ℹ️ If you do not see glyphs, try rebooting or reselecting the font in your terminal/editor."
-        else
-            log_warning "⚠️ JetBrains Mono Nerd Font is not installed."
-        fi
-        log_info "✅ Package installation process completed."
+
+        # Install all remaining Brewfile packages
+        log_info "📦 Installing Brewfile packages..."
+        brew bundle --file="$BREW_FILE" || log_warning "Some Brewfile packages failed to install."
+
+        log_info "✅ Package installation completed."
     else
-        log_warning "⚠️ No Brewfile found at $BREW_FILE. Skipping package installation."
+        log_warning "No Brewfile found at $BREW_FILE; skipping package installation."
     fi
 }
 
@@ -338,11 +325,29 @@ install_brew_packages() {
 # -------------------------------------------------------------------
 # Font verification (no reboot needed)
 install_fonts() {
-    if brew list --cask | grep -q font-jetbrains-mono-nerd-font; then
-        log_info "✅ JetBrains Mono Nerd Font installed. Restart apps to apply."
+    log_info "🔧 Ensuring JetBrains Mono Nerd Font is installed…"
+
+    # 1. Install via Homebrew if missing
+    if ! brew list --cask font-jetbrains-mono-nerd-font &>/dev/null; then
+        log_info "📦 Installing JetBrains Mono Nerd Font via Homebrew…"
+        brew install --cask font-jetbrains-mono-nerd-font \
+            || log_error "❌ Failed to install font-jetbrains-mono-nerd-font"
     else
-        log_warning "⚠️ JetBrains Mono Nerd Font not found. Add to Brewfile if needed."
+        log_info "✅ font-jetbrains-mono-nerd-font already installed"
     fi
+
+    # 2. Refresh macOS font cache so apps pick it up immediately
+    log_info "🌐 Refreshing macOS font cache…"
+    sudo atsutil databases -remove
+    sudo atsutil server -shutdown
+    sudo atsutil server -ping
+
+    # 3. (Optional) Copy the font into user fonts so GUI apps see it
+    mkdir -p "$HOME/Library/Fonts"
+    cp -n /Library/Fonts/JetBrainsMonoNerdFontComplete.ttf \
+       "$HOME/Library/Fonts/" 2>/dev/null || true
+
+    log_info "✅ Font installation & cache refresh complete. Restart your terminal/editor to apply."
 }
 
 # -------------------------------------------------------------------
