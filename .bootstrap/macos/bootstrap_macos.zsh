@@ -367,18 +367,37 @@ install_brew_packages() {
     install_packages  # existing logic
 }
 
-# -------------------------------------------------------------------
+# ---------------------------
 # GitHub authentication & git config
+# ---------------------------
 github_auth_and_git_config() {
-  # Ask user if they want to login with GitHub CLI
-  local ans
-  read -r "?🔑 Would you like to login with GitHub CLI? (y/n) " ans
-  if [[ "$ans" =~ ^[Yy] ]]; then
-    log_info "🔑 Starting GitHub authentication..."
-    authenticate_github
-  else
-    log_info "ℹ️ Skipping GitHub authentication."
-  fi
+    # Prompt for global Git config (user.name and user.email)
+    read -r "?✏️ Enter global Git user name for git config: " GIT_USER_NAME
+    read -r "?✏️ Enter global Git user email for git config: " GIT_USER_EMAIL
+    log_info "🛠️ Setting global git config: $GIT_USER_NAME <$GIT_USER_EMAIL>"
+    git config --global user.name "$GIT_USER_NAME" || log_warning "⚠️ Failed to set Git user name"
+    git config --global user.email "$GIT_USER_EMAIL" || log_warning "⚠️ Failed to set Git user email"
+
+    # Ask user if they want to login with GitHub CLI
+    local ans
+    read -r "?🔑 Would you like to login with GitHub CLI? (y/n) " ans
+    if [[ "$ans" =~ ^[Yy] ]]; then
+        log_info "🔑 Starting GitHub authentication..."
+        authenticate_github
+    else
+        log_info "ℹ️ Skipping GitHub authentication."
+    fi
+}
+
+# -------------------------------------------------------------------
+# Authenticate with GitHub via gh CLI
+authenticate_github() {
+    if command -v gh &>/dev/null; then
+        log_info "🔑 Logging in to GitHub with gh CLI..."
+        gh auth login --hostname github.com --git-protocol ssh
+    else
+        log_warning "⚠️ gh CLI not installed; skipping GitHub login"
+    fi
 }
 
 # -------------------------------------------------------------------
@@ -437,19 +456,23 @@ configure_dns() {
 enable_touchid_for_sudo() {
     log_info "🔐 Configuring Touch ID authentication for sudo…"
 
-    # 1) Bail out if there's no pam_tid module on this Mac
-    if [[ ! -f "/usr/lib/pam/pam_tid.so" ]]; then
+    # detect where pam_tid.so lives (lib or libexec)
+    if     [[ -f "/usr/lib/pam/pam_tid.so"     ]]; then PAM_TID="/usr/lib/pam/pam_tid.so"
+    elif   [[ -f "/usr/libexec/pam/pam_tid.so" ]]; then PAM_TID="/usr/libexec/pam/pam_tid.so"
+    else
         log_warning "pam_tid.so not found; skipping Touch ID setup"
         return
     fi
 
-    # 2) Remove any old sudo symlink
+    log_info "→ using Touch ID module at $PAM_TID"
+
+    # 1) Remove any old sudo symlink
     if [[ -L "/etc/pam.d/sudo" ]]; then
         log_warning "Removing legacy /etc/pam.d/sudo symlink"
         sudo rm "/etc/pam.d/sudo"
     fi
 
-    # 3) macOS 14+ branch: use sudo_local
+    # 2) macOS 14+ branch: use sudo_local
     if [[ -f "/etc/pam.d/sudo_local.template" ]]; then
         # Copy template on first run
         if [[ ! -f "/etc/pam.d/sudo_local" ]]; then
@@ -458,8 +481,7 @@ enable_touchid_for_sudo() {
         fi
 
         # Uncomment the Touch ID line
-        sudo sed -i '' -E \
-            's/^#(auth\s+sufficient\s+pam_tid\.so)/\1/' \
+        sudo sed -i '' -E "s:^#(auth\s+sufficient\s+$(basename $PAM_TID)):\1:" \
             "/etc/pam.d/sudo_local"
         log_info "✅ Enabled Touch ID in /etc/pam.d/sudo_local"
 
@@ -489,7 +511,7 @@ enable_touchid_for_sudo() {
             log_info "✅ /etc/pam.d/sudo already includes sudo_local"
         fi
 
-    # 4) Older macOS: patch /etc/pam.d/sudo directly
+    # 3) Older macOS: patch /etc/pam.d/sudo directly
     else
         if ! grep -q pam_tid.so "/etc/pam.d/sudo"; then
             sudo cp "/etc/pam.d/sudo" "/etc/pam.d/sudo.bak.touchid"
@@ -507,9 +529,8 @@ enable_touchid_for_sudo() {
             fi
 
             # Add the Touch ID line
-            sudo sed -i '' -E \
-              '2i auth   sufficient   pam_tid.so' \
-              "/etc/pam.d/sudo"
+            sudo sed -i '' -E "2i auth   sufficient   $(basename $PAM_TID)" \
+                 "/etc/pam.d/sudo"
             log_info "✅ Added Touch ID to /etc/pam.d/sudo"
         else
             log_info "✅ Touch ID already enabled in /etc/pam.d/sudo"
@@ -531,24 +552,6 @@ setup_dotfiles() {
   fi
 }
 
-# -------------------------------------------------------------------
-# Authenticate with GitHub via gh CLI
-authenticate_github() {
-    if command -v gh &>/dev/null; then
-        log_info "🔑 Logging in to GitHub with gh CLI..."
-        gh auth login --hostname github.com --git-protocol ssh
-        if name="$(gh api user --jq '.name')" && email="$(gh api user --jq '.email')" ; then
-            git config --global user.name "$name"
-            git config --global user.email "$email"
-            log_info "✅ Set Git author to: $name <$email>"
-        else
-            log_warning "Couldn’t fetch name/email from GitHub profile; please set manually with git config"
-        fi
-    else
-        log_warning "⚠️ gh CLI not installed; skipping GitHub login"
-    fi
-}
-
 # ---------------------------
 # Handle Existing Links or Files
 # ---------------------------
@@ -557,7 +560,6 @@ handle_existing_links() {
     local links=(
         "$HOME/.zshrc"
         "$HOME/.config"
-        "$HOME/.vscode"
         "$HOME/Library/Application Support/Sublime Text/Packages/User"
     )
 
