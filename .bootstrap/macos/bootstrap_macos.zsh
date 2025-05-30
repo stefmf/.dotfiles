@@ -456,17 +456,18 @@ configure_dns() {
 enable_touchid_for_sudo() {
     log_info "🔐 Configuring Touch ID authentication for sudo…"
 
-    # detect where pam_tid.so lives (lib or libexec)
-    if     [[ -f "/usr/lib/pam/pam_tid.so"     ]]; then PAM_TID="/usr/lib/pam/pam_tid.so"
-    elif   [[ -f "/usr/libexec/pam/pam_tid.so" ]]; then PAM_TID="/usr/libexec/pam/pam_tid.so"
+    # Detect pam_tid module in lib or libexec
+    if [[ -f "/usr/lib/pam/pam_tid.so" ]]; then
+        PAM_TID="/usr/lib/pam/pam_tid.so"
+    elif [[ -f "/usr/libexec/pam/pam_tid.so" ]]; then
+        PAM_TID="/usr/libexec/pam/pam_tid.so"
     else
         log_warning "pam_tid.so not found; skipping Touch ID setup"
         return
     fi
+    log_info "→ Using Touch ID module at $PAM_TID"
 
-    log_info "→ using Touch ID module at $PAM_TID"
-
-    # 1) Remove any old sudo symlink
+    # Remove legacy symlink if present
     if [[ -L "/etc/pam.d/sudo" ]]; then
         log_warning "Removing legacy /etc/pam.d/sudo symlink"
         sudo rm "/etc/pam.d/sudo"
@@ -481,8 +482,7 @@ enable_touchid_for_sudo() {
         fi
 
         # Uncomment the Touch ID line
-        sudo sed -i '' -E "s:^#(auth\s+sufficient\s+$(basename $PAM_TID)):\1:" \
-            "/etc/pam.d/sudo_local"
+        sudo sed -i '' -E "s/^#(auth[[:space:]]+sufficient[[:space:]]+$(basename $PAM_TID))/\1/" "/etc/pam.d/sudo_local"
         log_info "✅ Enabled Touch ID in /etc/pam.d/sudo_local"
 
         # Install pam_reattach snippet if brew-installed
