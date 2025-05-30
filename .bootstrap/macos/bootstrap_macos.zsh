@@ -362,22 +362,33 @@ github_auth_and_git_config() {
 # -------------------------------------------------------------------
 # Enable core services (Tailscale, dnsmasq)
 enable_services() {
-    log_info "🔧 Starting core services via brew services..."
-    # Tailscale
+    log_info "🔧 Starting core services via brew services as system daemons..."
+
+    # Tailscale (CLI-only) as system daemon
     if brew list tailscale &>/dev/null; then
-        log_info "🔧 Starting tailscale via brew services..."
-        brew services start tailscale && log_info "✅ tailscale service started" || log_warning "❌ Failed to start tailscale service"
+        log_info "🔧 Stopping any existing tailscale service..."
+        sudo brew services stop tailscale || true
+        log_info "🔧 Starting tailscale as system daemon..."
+        sudo brew services start tailscale \
+            && log_info "✅ tailscale service started (system)" \
+            || log_error "❌ Failed to start tailscale service"
     else
         log_warning "🚫 tailscale formula not installed; skipping"
     fi
-    # dnsmasq
+
+    # dnsmasq as system daemon
     if brew list dnsmasq &>/dev/null; then
-        log_info "🔧 Starting dnsmasq via brew services..."
-        brew services start dnsmasq && log_info "✅ dnsmasq service started" || log_warning "❌ Failed to start dnsmasq service"
+        log_info "🔧 Stopping any existing dnsmasq service..."
+        sudo brew services stop dnsmasq || true
+        log_info "🔧 Starting dnsmasq as system daemon..."
+        sudo brew services start dnsmasq \
+            && log_info "✅ dnsmasq service started (system)" \
+            || log_error "❌ Failed to start dnsmasq service"
     else
         log_warning "🚫 dnsmasq formula not installed; skipping"
     fi
 }
+
 
 # -------------------------------------------------------------------
 # Configure DNS for dnsmasq/MagicDNS
