@@ -1,7 +1,7 @@
 .PHONY: lint bootstrap-macos bootstrap-linux dotbot
 
 lint:
-	shellcheck .bootstrap/**/*.sh || true
+	shellcheck .bootstrap/**/*.sh
 
 bootstrap-macos:
 	./.bootstrap/macos/bootstrap_macos.zsh

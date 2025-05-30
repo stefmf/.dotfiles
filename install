@@ -12,7 +12,7 @@ cd "${BASEDIR}"
 # Provide verbose logging and error checks for Dotbot installation
 echo "[INFO] Syncing Dotbot submodules..."
 git -C "${DOTBOT_DIR}" submodule sync --quiet --recursive
-if git -C "${DOTBOT_DIR}" submodule update --init --recursive; then
+if git -C "${DOTBOT_DIR}" submodule update --init --recursive --quiet; then
   echo "[INFO] Dotbot submodules updated successfully."
 else
   echo "[ERROR] Failed to update Dotbot submodules. Please check your network and try again." >&2
