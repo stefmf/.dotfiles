@@ -10,32 +10,55 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 # ─── One-time sudo prompt via ASKPASS + wrapper ──────────────────────────────
-read -rs "PASSWORD?Enter your sudo password: "
 
-# create a one-line “askpass” helper that just echoes your password
-ASKPASS=$(mktemp)
-chmod 700 "$ASKPASS"
-cat >"$ASKPASS" <<-EOF
+# Maximum retries for wrong sudo password
+typeset -i MAX_RETRIES=3
+typeset -i attempt=0
+
+while (( attempt < MAX_RETRIES )); do
+  # prompt silently for password
+  read -rs "PASSWORD?Enter your sudo password: "
+  
+  # build a fresh ASKPASS helper
+  ASKPASS=$(mktemp)
+  chmod 700 "$ASKPASS"
+  cat >"$ASKPASS" <<-EOF
 #!/usr/bin/env zsh
 echo "$PASSWORD"
 EOF
-chmod +x "$ASKPASS"
+  chmod +x "$ASKPASS"
+  export SUDO_ASKPASS="$ASKPASS"
+  sudo() { /usr/bin/sudo -A "$@"; }
+  
+  # test it immediately
+  if sudo -v 2>/dev/null; then
+    # good to go!
+    break
+  else
+    # bad password
+    (( attempt++ ))
+    rm -f "$ASKPASS"
+    if (( attempt < MAX_RETRIES )); then
+      echo "[WARNING] Incorrect password; please try again." >&2
+    else
+      echo "[ERROR] Wrong password entered $MAX_RETRIES times. Aborting." >&2
+      exit 1
+    fi
+  fi
+done
 
-# point sudo at it, and wrap sudo so EVERY call uses -A (askpass)
-export SUDO_ASKPASS="$ASKPASS"
-sudo() { /usr/bin/sudo -A "$@"; }
-
-# prime the cache and start the keep-alive loop
-sudo -v
+# clean up when the script finally exits
 trap 'rm -f "$ASKPASS"' EXIT
 
+# background keep-alive loop
 keep_sudo() {
   while kill -0 $$ 2>/dev/null; do
-    sudo -v       # refresh timestamp via askpass
+    sudo -v
     sleep 60
   done
 }
 keep_sudo &
+
 
 # ---------------------------
 # Color Output Setup (define logging before error handler)
@@ -427,19 +450,14 @@ enable_touchid_for_sudo() {
         fi
         sudo sed -i '' 's/^#auth[[:space:]]\+sufficient[[:space:]]\+pam_tid.so/auth       sufficient     pam_tid.so/' "/etc/pam.d/sudo_local"
         log_info "✅ Enabled Touch ID in /etc/pam.d/sudo_local"
-        # Ensure main sudo includes sudo_local
-        if [[ ! -f "/etc/pam.d/sudo" ]]; then
-            log_warning "/etc/pam.d/sudo missing; restoring default with sudo_local include"
-            sudo tee "/etc/pam.d/sudo" > /dev/null <<-'PAM'
-# sudo: auth account password session
-auth       include        sudo_local
-auth       sufficient     pam_smartcard.so
-auth       required       pam_opendirectory.so
-account    required       pam_permit.so
-password   required       pam_deny.so
-session    required       pam_permit.so
-PAM
-            log_info "✅ Restored /etc/pam.d/sudo"
+        # Ensure main sudo includes sudo_local as first auth line
+        if ! grep -q '^auth[[:space:]]\+include[[:space:]]\+sudo_local' "/etc/pam.d/sudo"; then
+            log_warning "/etc/pam.d/sudo missing correct include; fixing..."
+            sudo cp "/etc/pam.d/sudo" "/etc/pam.d/sudo.bak.touchid"
+            sudo awk 'NR==2{print "auth       include        sudo_local"} 1' /etc/pam.d/sudo.bak.touchid | sudo tee /etc/pam.d/sudo > /dev/null
+            log_info "✅ Inserted sudo_local include into /etc/pam.d/sudo (backup in /etc/pam.d/sudo.bak.touchid)"
+        else
+            log_info "Touch ID include already present in /etc/pam.d/sudo"
         fi
     else
         # Older macOS
