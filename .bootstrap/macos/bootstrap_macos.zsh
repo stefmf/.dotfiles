@@ -341,12 +341,15 @@ install_fonts() {
     mkdir -p "$HOME/Library/Fonts"
     caskroom_dir="$(brew --prefix)/Caskroom/font-jetbrains-mono-nerd-font"
     if [[ -d "$caskroom_dir" ]]; then
-        for fontfile in "$caskroom_dir"/*/*.{ttf,otf}; do
+        # Enable NULL_GLOB to avoid no-match errors
+        setopt NULL_GLOB
+        for fontfile in "$caskroom_dir"/*/*.(ttf|otf); do
             if [[ -f "$fontfile" ]]; then
                 cp -n "$fontfile" "$HOME/Library/Fonts/" \
                     && log_info "✅ Copied $(basename "$fontfile")"
             fi
         done
+        unsetopt NULL_GLOB
     else
         log_warning "⚠️ Caskroom directory not found at $caskroom_dir"
     fi
