@@ -454,90 +454,19 @@ configure_dns() {
 # -------------------------------------------------------------------
 # Enable Touch ID for sudo (persistent)
 enable_touchid_for_sudo() {
-    log_info "🔐 Configuring Touch ID authentication for sudo…"
+  log_info "🔐 Enabling Touch ID for sudo via sudo_local…"
 
-    # Detect pam_tid module in lib or libexec
-    if [[ -f "/usr/lib/pam/pam_tid.so" ]]; then
-        PAM_TID="/usr/lib/pam/pam_tid.so"
-    elif [[ -f "/usr/libexec/pam/pam_tid.so" ]]; then
-        PAM_TID="/usr/libexec/pam/pam_tid.so"
-    else
-        log_warning "pam_tid.so not found; skipping Touch ID setup"
-        return
-    fi
-    log_info "→ Using Touch ID module at $PAM_TID"
+  # Ensure we have the template
+  if [[ ! -f /etc/pam.d/sudo_local ]]; then
+    sudo cp /etc/pam.d/sudo_local.template /etc/pam.d/sudo_local
+  fi
 
-    # Remove legacy symlink if present
-    if [[ -L "/etc/pam.d/sudo" ]]; then
-        log_warning "Removing legacy /etc/pam.d/sudo symlink"
-        sudo rm "/etc/pam.d/sudo"
-    fi
+  # Uncomment the Touch ID line
+  sudo sed -i '' -E 's/^#(auth[[:space:]]+sufficient[[:space:]]+pam_tid\.so)/\1/' \
+    /etc/pam.d/sudo_local
 
-    # 2) macOS 14+ branch: use sudo_local
-    if [[ -f "/etc/pam.d/sudo_local.template" ]]; then
-        # Copy template on first run
-        if [[ ! -f "/etc/pam.d/sudo_local" ]]; then
-            sudo cp "/etc/pam.d/sudo_local.template" "/etc/pam.d/sudo_local"
-            log_info "Copied sudo_local template → /etc/pam.d/sudo_local"
-        fi
-
-        # Uncomment the Touch ID line
-        sudo sed -i '' -E "s/^#(auth[[:space:]]+sufficient[[:space:]]+$(basename $PAM_TID))/\1/" "/etc/pam.d/sudo_local"
-        log_info "✅ Enabled Touch ID in /etc/pam.d/sudo_local"
-
-        # Install pam_reattach snippet if brew-installed
-        if command -v brew &>/dev/null; then
-            brew_prefix=$(brew --prefix)
-            pam_reattach="$brew_prefix/lib/pam/pam_reattach.so"
-            if [[ -f "$pam_reattach" ]] && \
-               ! grep -q pam_reattach.so "/etc/pam.d/sudo_local"; then
-                sudo sed -i '' -E \
-                  '/pam_tid\.so/i auth   optional   '"$pam_reattach"' ignore_ssh' \
-                  "/etc/pam.d/sudo_local"
-                log_info "✅ Added pam_reattach to /etc/pam.d/sudo_local"
-            fi
-        fi
-
-        # Ensure /etc/pam.d/sudo includes sudo_local at the top
-        if ! grep -q '^auth[[:space:]]\+include[[:space:]]\+sudo_local' \
-                    "/etc/pam.d/sudo"; then
-            log_warning "/etc/pam.d/sudo missing sudo_local include; fixing…"
-            sudo cp "/etc/pam.d/sudo" "/etc/pam.d/sudo.bak.touchid"
-            sudo awk 'NR==1{print "auth       include        sudo_local"}1' \
-                     "/etc/pam.d/sudo.bak.touchid" \
-              | sudo tee "/etc/pam.d/sudo" > /dev/null
-            log_info "✅ Inserted sudo_local include into /etc/pam.d/sudo"
-        else
-            log_info "✅ /etc/pam.d/sudo already includes sudo_local"
-        fi
-
-    # 3) Older macOS: patch /etc/pam.d/sudo directly
-    else
-        if ! grep -q pam_tid.so "/etc/pam.d/sudo"; then
-            sudo cp "/etc/pam.d/sudo" "/etc/pam.d/sudo.bak.touchid"
-
-            # Optionally add pam_reattach on older OSes too
-            if command -v brew &>/dev/null; then
-                brew_prefix=$(brew --prefix)
-                pam_reattach="$brew_prefix/lib/pam/pam_reattach.so"
-                if [[ -f "$pam_reattach" ]]; then
-                    sudo sed -i '' -E \
-                      '2i auth   optional   '"$pam_reattach"' ignore_ssh' \
-                      "/etc/pam.d/sudo"
-                    log_info "✅ Added pam_reattach to /etc/pam.d/sudo"
-                fi
-            fi
-
-            # Add the Touch ID line
-            sudo sed -i '' -E "2i auth   sufficient   $(basename $PAM_TID)" \
-                 "/etc/pam.d/sudo"
-            log_info "✅ Added Touch ID to /etc/pam.d/sudo"
-        else
-            log_info "✅ Touch ID already enabled in /etc/pam.d/sudo"
-        fi
-    fi
+  log_info "✅ Touch ID enabled in /etc/pam.d/sudo_local"
 }
-
 
 # -------------------------------------------------------------------
 # Symlink dotfiles via Dotbot
