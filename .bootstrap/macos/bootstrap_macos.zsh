@@ -362,31 +362,38 @@ github_auth_and_git_config() {
 # -------------------------------------------------------------------
 # Enable core services (Tailscale, dnsmasq)
 enable_services() {
-    log_info "🔧 Starting core services via brew services as system daemons..."
+    log_info "🔧 Cleaning up existing Tailscale and dnsmasq services..."
+    local brew_cmd
+    brew_cmd=$(command -v brew)
 
-    # Tailscale (CLI-only) as system daemon
-    if brew list tailscale &>/dev/null; then
-        log_info "🔧 Stopping any existing tailscale service..."
-        sudo brew services stop tailscale || true
-        log_info "🔧 Starting tailscale as system daemon..."
-        sudo brew services start tailscale \
-            && log_info "✅ tailscale service started (system)" \
-            || log_error "❌ Failed to start tailscale service"
-    else
-        log_warning "🚫 tailscale formula not installed; skipping"
-    fi
+    for svc in tailscale dnsmasq; do
+        log_info "🔄 Stopping any existing $svc services (user & system)..."
+        # Stop in all contexts
+        "$brew_cmd" services stop --all "$svc" &>/dev/null || true
 
-    # dnsmasq as system daemon
-    if brew list dnsmasq &>/dev/null; then
-        log_info "🔧 Stopping any existing dnsmasq service..."
-        sudo brew services stop dnsmasq || true
-        log_info "🔧 Starting dnsmasq as system daemon..."
-        sudo brew services start dnsmasq \
-            && log_info "✅ dnsmasq service started (system)" \
-            || log_error "❌ Failed to start dnsmasq service"
-    else
-        log_warning "🚫 dnsmasq formula not installed; skipping"
-    fi
+        log_info "🔄 Removing leftover LaunchAgents & LaunchDaemons for $svc..."
+        rm -f "$HOME/Library/LaunchAgents/homebrew.mxcl.$svc.plist" || true
+        sudo rm -f "/Library/LaunchDaemons/homebrew.mxcl.$svc.plist" || true
+
+        log_info "🔄 Killing any running $svc processes..."
+        sudo pkill -f "${svc}d" || true
+        # For dnsmasq binary
+        if [[ "$svc" == "dnsmasq" ]]; then
+            sudo pkill -f dnsmasq || true
+        fi
+    done
+
+    log_info "🔧 Starting core services as system daemons..."
+    for svc in tailscale dnsmasq; do
+        if "$brew_cmd" list "$svc" &>/dev/null; then
+            log_info "🔧 Launching $svc with brew services --system..."
+            "$brew_cmd" services start --system "$svc" \
+                && log_info "✅ $svc started system-wide" \
+                || log_error "❌ Failed to start system $svc"
+        else
+            log_warning "🚫 $svc not installed; skipping"
+        fi
+    done
 }
 
 
