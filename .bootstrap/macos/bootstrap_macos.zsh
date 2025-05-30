@@ -525,8 +525,13 @@ configure_iterm2() {
 
     # Copy dynamic profile from dotfiles repo if present
     if [[ -f "$DOTFILES_DIR/.config/iterm2/DynamicProfiles/Stef.json" ]]; then
-        cp "$DOTFILES_DIR/.config/iterm2/DynamicProfiles/Stef.json" "$HOME/.config/iterm2/DynamicProfiles/Stef.json"
-        log_info "✅ Copied Stef dynamic profile"
+        # Only copy if missing or different
+        if [[ -f "$HOME/.config/iterm2/DynamicProfiles/Stef.json" && cmp -s "$DOTFILES_DIR/.config/iterm2/DynamicProfiles/Stef.json" "$HOME/.config/iterm2/DynamicProfiles/Stef.json" ]]; then
+            log_info "✅ Stef dynamic profile already up to date"
+        else
+            cp "$DOTFILES_DIR/.config/iterm2/DynamicProfiles/Stef.json" "$HOME/.config/iterm2/DynamicProfiles/Stef.json"
+            log_info "✅ Copied Stef dynamic profile"
+        fi
     else
         log_warning "⚠️ Stef dynamic profile not found in repository"
     fi
