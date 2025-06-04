@@ -36,7 +36,7 @@ brew "pyenv"
 brew "ripgrep"
 brew "screen"
 brew "shellcheck"
-brew "tailscale", restart_service: :changed
+brew "tailscale"
 brew "terraform"
 brew "tldr"
 brew "tmux"
@@ -65,6 +65,7 @@ cask "google-chrome"
 cask "iterm2"
 cask "itsycal"
 cask "microsoft-auto-update"
+cask "monitorcontrol"
 cask "parallels"
 cask "spotify"
 cask "sublime-text"
@@ -72,7 +73,12 @@ cask "visual-studio-code"
 cask "vlc"
 cask "windows-app"
 mas "Ethernet Menubar", id: 1549412235
+mas "GarageBand", id: 682658836
+mas "iMovie", id: 408981434
+mas "Keynote", id: 409183694
 mas "Microsoft Excel", id: 462058435
 mas "Microsoft PowerPoint", id: 462062816
 mas "Microsoft Word", id: 462054704
+mas "Numbers", id: 409203825
+mas "Pages", id: 409201541
 mas "Screens 5", id: 1663047912
