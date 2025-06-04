@@ -52,8 +52,7 @@ If your email is private or the fetch fails, you may need to set them manually.
 
 ## 🔐 Touch ID for `sudo`
 
-- **macOS 14+ (Sonoma):** Uses `/etc/pam.d/sudo_local` (survives OS updates).  
-- **Older macOS:** Patches `/etc/pam.d/sudo` (may require reapplying after updates).
+- Uses `/etc/pam.d/sudo_local` (survives OS updates).
 
 Run any `sudo` command and tap your sensor instead of typing a password.  
 **Troubleshoot:** Ensure `/etc/pam.d/sudo_local` contains the `pam_tid.so` line and you’ve authenticated once since reboot.
