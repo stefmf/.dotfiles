@@ -29,6 +29,13 @@ final_space = true
 
   [[blocks.segments]]
     style = 'plain'
+    template = '{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }} 🛰️ {{ end }}'
+    foreground = 'white'
+    background = '#6a5acd'
+    type = 'text'
+
+  [[blocks.segments]]
+    style = 'plain'
     template = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <cyan>{{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}</>'
     foreground = 'p:grey'
     background = 'transparent'
