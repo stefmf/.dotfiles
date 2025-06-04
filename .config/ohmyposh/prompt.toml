@@ -29,9 +29,9 @@ final_space = true
 
   [[blocks.segments]]
     style = 'plain'
-    template = '{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }} 🛰️ {{ end }}'
+    template = '{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }} 🛰️  <green><b>SSH</b></> {{ end }}'
     foreground = 'white'
-    background = '#6a5acd'
+    background = 'transparent'
     type = 'text'
 
   [[blocks.segments]]
