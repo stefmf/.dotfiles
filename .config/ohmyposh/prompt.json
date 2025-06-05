@@ -2,15 +2,15 @@
   "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
   "secondary_prompt": {
     "template": "❯❯ ",
-    "foreground": "magenta",
+    "foreground": "#a78bfa",
     "background": "transparent"
   },
   "transient_prompt": {
     "template": "❯ ",
     "background": "transparent",
     "foreground_templates": [
-      "{{ if gt .Code 0 }}red{{ end }}",
-      "{{ if eq .Code 0 }}magenta{{ end }}"
+      "{{ if gt .Code 0 }}#ef4444{{ end }}",
+      "{{ if eq .Code 0 }}#a78bfa{{ end }}"
     ]
   },
   "upgrade": {
@@ -30,7 +30,7 @@
             "style": "full"
           },
           "template": "{{ .Path }}",
-          "foreground": "blue",
+          "foreground": "#60a5fa",
           "background": "transparent",
           "type": "path",
           "style": "plain"
@@ -41,8 +41,8 @@
             "commit_icon": "@",
             "fetch_status": true
           },
-          "template": " {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <cyan>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>",
-          "foreground": "p:grey",
+          "template": " {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <#6ee7b7>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>",
+          "foreground": "#9ca3af",
           "background": "transparent",
           "type": "git",
           "style": "plain"
@@ -59,32 +59,32 @@
           "type": "text",
           "style": "powerline",
           "powerline_symbol": "\uE0B0",
-          "foreground": "#eff6ff",
-          "background": "#4c7c9b",
+          "foreground": "#f8fafc",
+          "background": "#6366f1",
           "template": " "
         },
         {
           "type": "session",
           "style": "powerline",
           "template": "{{ if .Env.TMUX }} TMUX \uebc8 {{ end }}",
-          "foreground": "#eff6ff",
-          "background": "#4c7c9b",
+          "foreground": "#f8fafc",
+          "background": "#6366f1",
           "powerline_symbol": "\uE0B0"
         },
         {
           "type": "text",
           "style": "powerline",
           "powerline_symbol": "\uE0B0",
-          "foreground": "#12a036",
-          "background": "#000000",
+          "foreground": "#f8fafc",
+          "background": "#059669",
           "template": " "
         },
         {
           "type": "session",
           "style": "powerline",
-          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }} SSH \ueb3a {{ end }}",
-          "foreground": "#eff6ff",
-          "background": "#12a036",
+          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }} SSH \ueb3a @<#fbbf24>{{ .HostName }}</> {{ end }}",
+          "foreground": "#f8fafc",
+          "background": "#059669",
           "powerline_symbol": "\uE0B0"
         }
       ]
@@ -99,8 +99,8 @@
           "type": "text",
           "style": "plain",
           "foreground_templates": [
-            "{{ if gt .Code 0 }}red{{ end }}",
-            "{{ if eq .Code 0 }}magenta{{ end }}"
+            "{{ if gt .Code 0 }}#ef4444{{ end }}",
+            "{{ if eq .Code 0 }}#a78bfa{{ end }}"
           ]
         }
       ],
