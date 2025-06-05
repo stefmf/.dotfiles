@@ -8,7 +8,8 @@ foreground = 'magenta'
 background = 'transparent'
 
 [transient_prompt]
-template = '❯ '
+template = '{{ .Path }} {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }}{{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}{{ if env.SSH_TTY }} 🔒 SSH{{ end }}
+❯ '
 background = 'transparent'
 foreground_templates = [
   '{{if gt .Code 0}}red{{end}}',
