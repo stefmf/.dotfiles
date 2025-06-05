@@ -37,7 +37,7 @@
         },
         {
           "properties": {
-            "branch_icon": "\ue0a0 ",
+            "branch_icon": "\uf408 \ue0a0 ",
             "commit_icon": "@",
             "fetch_status": true
           },
@@ -57,12 +57,35 @@
       "segments": [
         {
           "type": "text",
-          "style": "diamond",
-          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}SSH 🔒{{ end }}",
+          "style": "powerline",
+          "powerline_symbol": "\uE0B0",
+          "foreground": "#eff6ff",
+          "background": "#4c7c9b",
+          "template": " "
+        },
+        {
+          "type": "session",
+          "style": "powerline",
+          "template": "{{ if .Env.TMUX }} TMUX \uebc8 {{ end }}",
+          "foreground": "#eff6ff",
+          "background": "#4c7c9b",
+          "powerline_symbol": "\uE0B0"
+        },
+        {
+          "type": "text",
+          "style": "powerline",
+          "powerline_symbol": "\uE0B0",
+          "foreground": "#12a036",
+          "background": "#000000",
+          "template": " "
+        },
+        {
+          "type": "session",
+          "style": "powerline",
+          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }} SSH \ueb3a {{ end }}",
           "foreground": "#eff6ff",
           "background": "#12a036",
-          "leading_diamond": "\uE0B6",
-          "trailing_diamond": "\uE0B4"
+          "powerline_symbol": "\uE0B0"
         }
       ]
     },
