@@ -1,3 +1,5 @@
+# ────────────────────────────────────────────────────────────────────────────────
+#  TOP‐LEVEL
 console_title_template = '{{ .Shell }} in {{ .Folder }}'
 version = 3
 final_space = true
@@ -15,66 +17,75 @@ foreground_templates = [
   '{{if eq .Code 0}}magenta{{end}}',
 ]
 
+# ────────────────────────────────────────────────────────────────────────────────
+#  FIRST BLOCK: path, git, and SSH on ONE LINE
 [[blocks]]
 type = 'prompt'
 alignment = 'left'
 
+# ─── 1. PATH SEGMENT ─────────────────────────────────────────────────────────
 [[blocks.segments]]
+type = 'path'
 style = 'plain'
 template = '{{ .Path }}'
 foreground = 'blue'
 background = 'transparent'
-type = 'path'
-
 [blocks.segments.properties]
 style = 'full'
 
-
+# ─── 2. GIT SEGMENT ──────────────────────────────────────────────────────────
 [[blocks.segments]]
+type = 'git'
 style = 'plain'
 template = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <cyan>{{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}</>'
 foreground = 'p:grey'
 background = 'transparent'
-type = 'git'
-
 [blocks.segments.properties]
 branch_icon = ' '
 commit_icon = '@'
 fetch_status = true
 
+# ─── 3. SSH INDICATOR ───────────────────────────────────────────────────────
+# This must remain in the *same* first [[blocks]]! If you move it below, OMP will
+# render it on the next newline/block.
 [[blocks.segments]]
+type = 'text'
 style = 'plain'
-when = "env.SSH_TTY != ''"
+when = 'env.SSH_TTY != ""' # only show when SSH_TTY is non‐empty
 template = ' 🔒 SSH'
 foreground = 'green'
 background = 'transparent'
-type = 'text'
 
+# ────────────────────────────────────────────────────────────────────────────────
+#  SECOND BLOCK: right‐hand (rprompt) execution time
 [[blocks]]
 type = 'rprompt'
 overflow = 'hidden'
 segment_spacing = 0
 
 [[blocks.segments]]
+type = 'executiontime'
 style = 'plain'
 template = '{{ .FormattedMs }}'
 foreground = 'yellow'
 background = 'transparent'
-type = 'executiontime'
-
 [blocks.segments.properties]
 threshold = 5000
 
+# ────────────────────────────────────────────────────────────────────────────────
+#  THIRD BLOCK: NEWLINE + MAGENTA ARROW
+# Because `newline = true` is only set here, your first line (path/git/SSH) stays
+# intact. The arrow is forced onto its own line, colored red if exit≠0, or magenta.
 [[blocks]]
 type = 'prompt'
 alignment = 'left'
 newline = true
 
 [[blocks.segments]]
+type = 'text'
 style = 'plain'
 template = '❯'
 background = 'transparent'
-type = 'text'
 foreground_templates = [
   '{{if gt .Code 0}}red{{end}}',
   '{{if eq .Code 0}}magenta{{end}}',
