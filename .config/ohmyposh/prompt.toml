@@ -9,68 +9,56 @@ final_space = true
 
 [transient_prompt]
   template = '❯ '
-  background = 'transparent'
   foreground_templates = ['{{if gt .Code 0}}red{{end}}', '{{if eq .Code 0}}magenta{{end}}']
+  background = 'transparent'
 
 [[blocks]]
-  type = 'prompt'
+  type      = 'prompt'
   alignment = 'left'
-  # keep the prompt and rprompt on the same line
-  newline = false
+  newline   = false    # keep the prompt and rprompt on the same line
 
   [[blocks.segments]]
-    style = 'plain'
-    template = '{{ .Path }}'
+    type       = 'path'
+    style      = 'plain'
+    template   = '{{ .Path }}'
     foreground = 'blue'
     background = 'transparent'
-    type = 'path'
 
     [blocks.segments.properties]
       style = 'full'
 
 
   [[blocks.segments]]
-    style = 'plain'
-    template = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <cyan>{{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}</>'
+    type       = 'git'
+    style      = 'plain'
+    template   = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }}<cyan>{{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}</>'
     foreground = 'p:grey'
     background = 'transparent'
-    type = 'git'
 
     [blocks.segments.properties]
-      branch_icon = ' '
-      commit_icon = '@'
+      branch_icon  = ' '
+      commit_icon  = '@'
       fetch_status = true
 
 [[blocks]]
-  type = 'rprompt'
-  overflow = 'hidden'
-  # keep the rprompt on the same line as the left prompt
-  newline = false
+  type      = 'rprompt'
+  alignment = 'right'
+  newline   = false   # attach to the same line as the path/git above
 
   [[blocks.segments]]
-    style = 'plain'
-    template = '{{ .FormattedMs }}'
-    foreground = 'yellow'
-    background = 'transparent'
-    type = 'executiontime'
-
-    [blocks.segments.properties]
-      threshold = 5000
-
-  [[blocks.segments]]
-    type = 'text'
-    style = 'plain'
-    alignment = 'right'
-    template = '{{ if or (ne .Env.SSH_CONNECTION "") (ne .Env.SSH_TTY "") }}🔒 SSH{{ end }}'
+    type       = 'text'
+    style      = 'plain'
+    template   = '{{ if or (ne .Env.SSH_CONNECTION "") (ne .Env.SSH_TTY "") }}🔒 SSH{{ end }}'
     foreground = 'green'
+    background = 'transparent'
 [[blocks]]
-  type = 'prompt'
+  type      = 'prompt'
   alignment = 'left'
-  newline = true
+  newline   = true    # force a newline so the arrow is below line 1
 
   [[blocks.segments]]
-    style = 'plain'
-    template = '❯'
-    background = 'transparent'
-    type = 'text'
+    type               = 'text'
+    style              = 'plain'
+    template           = '❯'
+    background         = 'transparent'
     foreground_templates = ['{{if gt .Code 0}}red{{end}}', '{{if eq .Code 0}}magenta{{end}}']
