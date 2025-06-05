@@ -20,29 +20,29 @@ foreground_templates = [
 # ────────────────────────────────────────────────────────────────────────────────
 #  FIRST BLOCK: path, git, and SSH on ONE LINE
 [[blocks]]
-type = 'prompt'
-alignment = 'left'
+type = "prompt"
+alignment = "left"
 
-# ─── 1. PATH SEGMENT ─────────────────────────────────────────────────────────
+# 1) Path segment
 [[blocks.segments]]
-type = 'path'
-style = 'plain'
-template = '{{ .Path }}'
-foreground = 'blue'
-background = 'transparent'
+type = "path"
+style = "plain"
+template = "{{ .Path }}"
+foreground = "blue"
+background = "transparent"
 [blocks.segments.properties]
-style = 'full'
+style = "full"
 
-# ─── 2. GIT SEGMENT ──────────────────────────────────────────────────────────
+# 2) Git segment (HEAD + ahead/behind)
 [[blocks.segments]]
-type = 'git'
-style = 'plain'
-template = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <cyan>{{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}</>'
-foreground = 'p:grey'
-background = 'transparent'
+type = "git"
+style = "plain"
+template = " {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <cyan>{{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}</>"
+foreground = "p:grey"
+background = "transparent"
 [blocks.segments.properties]
-branch_icon = ' '
-commit_icon = '@'
+branch_icon = " "
+commit_icon = "@"
 fetch_status = true
 
 # ─── 3. SSH INDICATOR ───────────────────────────────────────────────────────
@@ -82,11 +82,11 @@ alignment = 'left'
 newline = true
 
 [[blocks.segments]]
-type = 'text'
-style = 'plain'
-template = '❯'
-background = 'transparent'
+type = "text"
+style = "plain"
+template = "❯"
 foreground_templates = [
-  '{{if gt .Code 0}}red{{end}}',
-  '{{if eq .Code 0}}magenta{{end}}',
+  "{{ if gt .Code 0 }}red{{ end }}",
+  "{{ if eq .Code 0 }}magenta{{ end }}",
 ]
+background = "transparent"
