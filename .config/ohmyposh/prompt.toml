@@ -8,8 +8,7 @@ foreground = 'magenta'
 background = 'transparent'
 
 [transient_prompt]
-template = '{{ .Path }} {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }}{{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}{{ if env.SSH_TTY }} 🔒 SSH{{ end }}
-❯ '
+template = '❯ '
 background = 'transparent'
 foreground_templates = [
   '{{if gt .Code 0}}red{{end}}',
@@ -43,6 +42,14 @@ branch_icon = ' '
 commit_icon = '@'
 fetch_status = true
 
+[[blocks.segments]]
+style = 'plain'
+when = "env.SSH_TTY != ''"
+template = ' 🔒 SSH'
+foreground = 'green'
+background = 'transparent'
+type = 'text'
+
 [[blocks]]
 type = 'rprompt'
 overflow = 'hidden'
@@ -57,14 +64,6 @@ type = 'executiontime'
 
 [blocks.segments.properties]
 threshold = 5000
-
-[[blocks.segments]]
-style = 'plain'
-when = "env.SSH_TTY != ''"
-template = ' 🔒 SSH'
-foreground = 'green'
-background = 'transparent'
-type = 'text'
 
 [[blocks]]
 type = 'prompt'
