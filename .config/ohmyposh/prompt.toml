@@ -18,7 +18,6 @@ foreground_templates = [
 [[blocks]]
 type = 'prompt'
 alignment = 'left'
-newline = true
 
 [[blocks.segments]]
 style = 'plain'
