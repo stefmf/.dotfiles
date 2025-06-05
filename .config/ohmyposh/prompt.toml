@@ -44,6 +44,8 @@ final_space = true
 [[blocks]]
   type = 'rprompt'
   overflow = 'hidden'
+  # keep the rprompt on the same line as the left prompt
+  newline = false
 
   [[blocks.segments]]
     style = 'plain'
@@ -60,6 +62,7 @@ final_space = true
     style = 'plain'
     alignment = 'right'
     template = '{{ if or (ne .Env.SSH_CONNECTION "") (ne .Env.SSH_TTY "") }}🔒 SSH{{ end }}'
+    foreground = 'green'
 [[blocks]]
   type = 'prompt'
   alignment = 'left'
