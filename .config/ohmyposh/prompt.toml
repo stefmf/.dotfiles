@@ -68,6 +68,7 @@ threshold = 5000
 [[blocks]]
 type = 'prompt'
 alignment = 'left'
+newline = true
 
 [[blocks.segments]]
 style = 'plain'
