@@ -1,64 +1,68 @@
-console_title_template = '{{ .Shell }} in {{ .Folder }}'
-version = 3
-final_space = true
+# ─────────────────────────────────────────────
+# prompt.toml  (Oh My Posh v5+)
+# ─────────────────────────────────────────────
+name = "omp-custom-ssh-oneline"
 
-[secondary_prompt]
-  template = '❯❯ '
-  foreground = 'magenta'
-  background = 'transparent'
+[console_title]
+  # (optional—starship-style keys are ignored by OMP)
 
-[transient_prompt]
-  template = '❯ '
-  foreground_templates = ['{{if gt .Code 0}}red{{end}}', '{{if eq .Code 0}}magenta{{end}}']
-  background = 'transparent'
+[appearance]
+  # final_space / version / secondary_prompt / transient_prompt 
+  # are not needed in OMP. OMP uses blocks only.
 
+# ─────────────────────────────────────────────
+# 1) First block: Path + Git (left-aligned, no newline)
+# ─────────────────────────────────────────────
 [[blocks]]
-  type      = 'prompt'
-  alignment = 'left'
-  newline   = false    # keep the prompt and rprompt on the same line
+alignment = "left"
+newline   = false    # KEEP this false so we stay on one line
 
+  # ── Path Segment ──
   [[blocks.segments]]
-    type       = 'path'
-    style      = 'plain'
-    template   = '{{ .Path }}'
-    foreground = 'blue'
-    background = 'transparent'
-
+    type  = "path"
+    style = "folder"
     [blocks.segments.properties]
-      style = 'full'
+      theme            = "blue"     # folder color
+      home_icon        = "~"        # show “~” instead of full home‐dir
+      truncate_to_repo = true       # trim after repo root
 
-
+  # ── Git Segment ──
   [[blocks.segments]]
-    type       = 'git'
-    style      = 'plain'
-    template   = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }}<cyan>{{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}</>'
-    foreground = 'p:grey'
-    background = 'transparent'
-
+    type  = "git"
+    style = "powerline"
     [blocks.segments.properties]
-      branch_icon  = ' '
-      commit_icon  = '@'
-      fetch_status = true
+      branch_icon    = " "   # the git-branch icon
+      display_status = true   # show ●/✗ for unstaged/untracked files
+      display_fetch  = true   # show ⇣/⇡ if behind/ahead
+      theme          = "p:grey"
 
+# ─────────────────────────────────────────────
+# 2) Second block: SSH Indicator (right-aligned, no newline)
+# ─────────────────────────────────────────────
 [[blocks]]
-  type      = 'rprompt'
-  alignment = 'right'
-  newline   = false   # attach to the same line as the path/git above
+alignment = "right"
+newline   = false    # KEEP false so it tacks onto the same line as block #1
 
   [[blocks.segments]]
-    type       = 'text'
-    style      = 'plain'
-    template   = '{{ if or (ne .Env.SSH_CONNECTION "") (ne .Env.SSH_TTY "") }}🔒 SSH{{ end }}'
-    foreground = 'green'
-    background = 'transparent'
+    type  = "ssh"
+    style = "powerline"
+    [blocks.segments.properties]
+      icon             = "🔒"     # lock icon
+      display_hostname = false    # only show “🔒 SSH” (no host.name)
+      theme            = "green"
+
+# ─────────────────────────────────────────────
+# 3) Third block: Prompt Character (left-aligned, FORCE newline)
+# ─────────────────────────────────────────────
 [[blocks]]
-  type      = 'prompt'
-  alignment = 'left'
-  newline   = true    # force a newline so the arrow is below line 1
+alignment = "left"
+newline   = true     # FORCE a newline so “❯” sits on line 2
 
   [[blocks.segments]]
-    type               = 'text'
-    style              = 'plain'
-    template           = '❯'
-    background         = 'transparent'
-    foreground_templates = ['{{if gt .Code 0}}red{{end}}', '{{if eq .Code 0}}magenta{{end}}']
+    type  = "prompt"
+    style = "plain"
+    [blocks.segments.properties]
+      character     = "❯"        # your actual prompt arrow
+      color_success = "magenta"  # color when last exit code was 0
+      color_error   = "red"      # color when last exit code ≠ 0
+      add_newline   = false      # we already forced newline above
