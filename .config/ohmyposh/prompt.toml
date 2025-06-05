@@ -27,12 +27,6 @@ final_space = true
     [blocks.segments.properties]
       style = 'full'
 
-  [[blocks.segments]]
-    style = 'plain'
-    template = '{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }} 🛰️  <green><b>SSH</b></> {{ end }}'
-    foreground = 'white'
-    background = 'transparent'
-    type = 'text'
 
   [[blocks.segments]]
     style = 'plain'
@@ -60,6 +54,14 @@ final_space = true
     [blocks.segments.properties]
       threshold = 5000
 
+  [[blocks.segments]]
+    type = 'text'
+    style = 'plain'
+    alignment = 'right'
+    when = "env.SSH_TTY != ''"
+
+      [blocks.segments.properties]
+        text = '🔒 SSH'
 [[blocks]]
   type = 'prompt'
   alignment = 'left'
