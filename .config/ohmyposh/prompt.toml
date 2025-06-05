@@ -15,7 +15,8 @@ final_space = true
 [[blocks]]
   type = 'prompt'
   alignment = 'left'
-  newline = true
+  # keep the prompt and rprompt on the same line
+  newline = false
 
   [[blocks.segments]]
     style = 'plain'
