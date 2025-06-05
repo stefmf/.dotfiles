@@ -49,6 +49,7 @@ template = ' 🔒 SSH'
 foreground = 'green'
 background = 'transparent'
 type = 'text'
+alignment = 'right'
 
 [[blocks]]
 type = 'rprompt'
