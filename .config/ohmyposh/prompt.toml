@@ -42,6 +42,14 @@ branch_icon = ' '
 commit_icon = '@'
 fetch_status = true
 
+[[blocks.segments]]
+style = 'plain'
+when = "env.SSH_TTY != ''"
+template = ' 🔒 SSH'
+foreground = 'green'
+background = 'transparent'
+type = 'text'
+
 [[blocks]]
 type = 'rprompt'
 overflow = 'hidden'
@@ -56,14 +64,6 @@ type = 'executiontime'
 
 [blocks.segments.properties]
 threshold = 5000
-
-[[blocks.segments]]
-style = 'plain'
-when = "env.SSH_TTY != ''"
-template = ' 🔒 SSH'
-foreground = 'green'
-background = 'transparent'
-type = 'text'
 
 [[blocks]]
 type = 'prompt'
