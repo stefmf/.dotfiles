@@ -1,3 +1,5 @@
+#TODO: Righ align SSH indicator
+
 # ────────────────────────────────────────────────────────────────────────────────
 #  TOP‐LEVEL
 console_title_template = '{{ .Shell }} in {{ .Folder }}'
