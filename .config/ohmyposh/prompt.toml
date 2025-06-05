@@ -1,10 +1,6 @@
-#TODO: Righ align SSH indicator
-
-# ────────────────────────────────────────────────────────────────────────────────
-#  TOP‐LEVEL
-console_title_template = '{{ .Shell }} in {{ .Folder }}'
 version = 3
 final_space = true
+console_title_template = '{{ .Shell }} in {{ .Folder }}'
 
 [secondary_prompt]
 template = '❯❯ '
@@ -15,17 +11,20 @@ background = 'transparent'
 template = '❯ '
 background = 'transparent'
 foreground_templates = [
-  '{{if gt .Code 0}}red{{end}}',
-  '{{if eq .Code 0}}magenta{{end}}',
+  '{{ if gt .Code 0 }}red{{ end }}',
+  '{{ if eq .Code 0 }}magenta{{ end }}',
 ]
 
-# ────────────────────────────────────────────────────────────────────────────────
-#  FIRST BLOCK: path, git, and SSH on ONE LINE
+# ┌───────────────────────────────────────────────────────────────────┐
+# │                               MAIN PROMPT                        │
+# └───────────────────────────────────────────────────────────────────┘
+
+# 1) LEFT-aligned block: path + git (no newline after this)
 [[blocks]]
 type = "prompt"
 alignment = "left"
-
-# 1) Path segment
+newline = false
+filler = " "       # this filler is just a spacer; it won't be used here
 [[blocks.segments]]
 type = "path"
 style = "plain"
@@ -35,7 +34,6 @@ background = "transparent"
 [blocks.segments.properties]
 style = "full"
 
-# 2) Git segment (HEAD + ahead/behind)
 [[blocks.segments]]
 type = "git"
 style = "plain"
@@ -47,42 +45,25 @@ branch_icon = " "
 commit_icon = "@"
 fetch_status = true
 
-# ─── 3. SSH INDICATOR ───────────────────────────────────────────────────────
-# This must remain in the *same* first [[blocks]]! If you move it below, OMP will
-# render it on the next newline/block.
-[[blocks.segments]]
-type = 'text'
-style = 'plain'
-when = 'env.SSH_TTY != ""' # only show when SSH_TTY is non‐empty
-template = ' 🔒 SSH'
-foreground = 'green'
-background = 'transparent'
-
-# ────────────────────────────────────────────────────────────────────────────────
-#  SECOND BLOCK: right‐hand (rprompt) execution time
+# 2) RIGHT-aligned block: SSH icon (same line, pushed to far-right)
 [[blocks]]
-type = 'rprompt'
-overflow = 'hidden'
-segment_spacing = 0
-
+type = "prompt"
+alignment = "right"
+newline = false
+filler = " "        # this filler *is* used: pushes the SSH segment all the way right
 [[blocks.segments]]
-type = 'executiontime'
-style = 'plain'
-template = '{{ .FormattedMs }}'
-foreground = 'yellow'
-background = 'transparent'
-[blocks.segments.properties]
-threshold = 5000
+type = "text"
+style = "plain"
+# only render on SSH sessions:
+template = '{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}🔒 SSH{{ end }}'
+foreground = "green"
+background = "transparent"
 
-# ────────────────────────────────────────────────────────────────────────────────
-#  THIRD BLOCK: NEWLINE + MAGENTA ARROW
-# Because `newline = true` is only set here, your first line (path/git/SSH) stays
-# intact. The arrow is forced onto its own line, colored red if exit≠0, or magenta.
+# 3) SECOND LINE: the actual input prompt
 [[blocks]]
-type = 'prompt'
-alignment = 'left'
-newline = true
-
+type = "prompt"
+alignment = "left"
+newline = true     # force a linebreak before this block
 [[blocks.segments]]
 type = "text"
 style = "plain"
