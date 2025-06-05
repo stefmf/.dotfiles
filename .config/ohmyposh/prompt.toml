@@ -58,10 +58,7 @@ final_space = true
     type = 'text'
     style = 'plain'
     alignment = 'right'
-    when = "env.SSH_TTY != ''"
-
-      [blocks.segments.properties]
-        text = '🔒 SSH'
+    template = '{{ if or (ne .Env.SSH_CONNECTION "") (ne .Env.SSH_TTY "") }}🔒 SSH{{ end }}'
 [[blocks]]
   type = 'prompt'
   alignment = 'left'
