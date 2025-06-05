@@ -46,16 +46,15 @@ fetch_status = true
 [[blocks]]
 type = 'rprompt'
 overflow = 'hidden'
+segment_spacing = 0
 
 [[blocks.segments]]
-type = 'text'
 style = 'plain'
 when = "env.SSH_TTY != ''"
-background = 'transparent'
+template = '🔒 SSH '
 foreground = 'green'
-
-[blocks.segments.properties]
-text = ' 🔒 SSH'
+background = 'transparent'
+type = 'text'
 
 [[blocks.segments]]
 style = 'plain'
