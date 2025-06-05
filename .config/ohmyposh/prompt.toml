@@ -3,73 +3,81 @@ version = 3
 final_space = true
 
 [secondary_prompt]
-  template = '❯❯ '
-  foreground = 'magenta'
-  background = 'transparent'
+template = '❯❯ '
+foreground = 'magenta'
+background = 'transparent'
 
 [transient_prompt]
-  template = '❯ '
-  background = 'transparent'
-  foreground_templates = ['{{if gt .Code 0}}red{{end}}', '{{if eq .Code 0}}magenta{{end}}']
+template = '❯ '
+background = 'transparent'
+foreground_templates = [
+  '{{if gt .Code 0}}red{{end}}',
+  '{{if eq .Code 0}}magenta{{end}}',
+]
 
 [[blocks]]
-  type = 'prompt'
-  alignment = 'left'
-  newline = true
+type = 'prompt'
+alignment = 'left'
+newline = true
 
-  [[blocks.segments]]
-    style = 'plain'
-    template = '{{ .Path }}'
-    foreground = 'blue'
-    background = 'transparent'
-    type = 'path'
+[[blocks.segments]]
+style = 'plain'
+template = '{{ .Path }}'
+foreground = 'blue'
+background = 'transparent'
+type = 'path'
 
-    [blocks.segments.properties]
-      style = 'full'
+[blocks.segments.properties]
+style = 'full'
 
 
-  [[blocks.segments]]
-    style = 'plain'
-    template = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <cyan>{{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}</>'
-    foreground = 'p:grey'
-    background = 'transparent'
-    type = 'git'
+[[blocks.segments]]
+style = 'plain'
+template = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <cyan>{{ if gt .Behind 0 }}⇣{{ end }}{{ if gt .Ahead 0 }}⇡{{ end }}</>'
+foreground = 'p:grey'
+background = 'transparent'
+type = 'git'
 
-    [blocks.segments.properties]
-      branch_icon = ' '
-      commit_icon = '@'
-      fetch_status = true
+[blocks.segments.properties]
+branch_icon = ' '
+commit_icon = '@'
+fetch_status = true
 
 [[blocks]]
-  type = 'rprompt'
-  overflow = 'hidden'
+type = 'rprompt'
+overflow = 'hidden'
 
-  [[blocks.segments]]
-    style = 'plain'
-    template = '{{ .FormattedMs }}'
-    foreground = 'yellow'
-    background = 'transparent'
-    type = 'executiontime'
+[[blocks.segments]]
+type = 'text'
+style = 'plain'
+when = "env.SSH_TTY != ''"
+background = 'transparent'
+foreground = 'green'
 
-    [blocks.segments.properties]
-      threshold = 5000
+[blocks.segments.properties]
+text = ' 🔒 SSH'
 
-  [[blocks.segments]]
-    type = 'text'
-    style = 'plain'
-    alignment = 'right'
-    when = "env.SSH_TTY != ''"
+[[blocks.segments]]
+style = 'plain'
+template = '{{ .FormattedMs }}'
+foreground = 'yellow'
+background = 'transparent'
+type = 'executiontime'
 
-      [blocks.segments.properties]
-        text = '🔒 SSH'
+[blocks.segments.properties]
+threshold = 5000
+
 [[blocks]]
-  type = 'prompt'
-  alignment = 'left'
-  newline = true
+type = 'prompt'
+alignment = 'left'
+newline = true
 
-  [[blocks.segments]]
-    style = 'plain'
-    template = '❯'
-    background = 'transparent'
-    type = 'text'
-    foreground_templates = ['{{if gt .Code 0}}red{{end}}', '{{if eq .Code 0}}magenta{{end}}']
+[[blocks.segments]]
+style = 'plain'
+template = '❯'
+background = 'transparent'
+type = 'text'
+foreground_templates = [
+  '{{if gt .Code 0}}red{{end}}',
+  '{{if eq .Code 0}}magenta{{end}}',
+]
