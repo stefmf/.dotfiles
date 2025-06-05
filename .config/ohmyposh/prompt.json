@@ -1,0 +1,89 @@
+{
+  "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
+  "secondary_prompt": {
+    "template": "❯❯ ",
+    "foreground": "magenta",
+    "background": "transparent"
+  },
+  "transient_prompt": {
+    "template": "❯ ",
+    "background": "transparent",
+    "foreground_templates": [
+      "{{ if gt .Code 0 }}red{{ end }}",
+      "{{ if eq .Code 0 }}magenta{{ end }}"
+    ]
+  },
+  "upgrade": {
+    "source": "cdn",
+    "interval": "168h",
+    "auto": false,
+    "notice": false
+  },
+  "console_title_template": "{{ .Shell }} in {{ .Folder }}",
+  "blocks": [
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "properties": {
+            "style": "full"
+          },
+          "template": "{{ .Path }}",
+          "foreground": "blue",
+          "background": "transparent",
+          "type": "path",
+          "style": "plain"
+        },
+        {
+          "properties": {
+            "branch_icon": "\ue0a0 ",
+            "commit_icon": "@",
+            "fetch_status": true
+          },
+          "template": " {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <cyan>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>",
+          "foreground": "p:grey",
+          "background": "transparent",
+          "type": "git",
+          "style": "plain"
+        }
+      ]
+    },
+    {
+      "type": "prompt",
+      "alignment": "right",
+      "newline": false,
+      "filler": " ",
+      "segments": [
+        {
+          "type": "text",
+          "style": "diamond",
+          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}SSH 🔒{{ end }}",
+          "foreground": "#eff6ff",
+          "background": "#12a036",
+          "leading_diamond": "\uE0B6",
+          "trailing_diamond": "\uE0B4"
+        }
+      ]
+    },
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "template": "❯",
+          "background": "transparent",
+          "type": "text",
+          "style": "plain",
+          "foreground_templates": [
+            "{{ if gt .Code 0 }}red{{ end }}",
+            "{{ if eq .Code 0 }}magenta{{ end }}"
+          ]
+        }
+      ],
+      "newline": true
+    }
+  ],
+  "version": 4,
+  "final_space": true
+}

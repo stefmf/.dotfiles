@@ -161,7 +161,7 @@ fi
 # Oh My Posh Theme (skip for Apple Terminal and Console sessions)
 if [ "$TERM_PROGRAM" != "Apple_Terminal" ] && [ "$TERM" != "linux" ]; then
     if type oh-my-posh &>/dev/null; then
-        eval "$(oh-my-posh init zsh --config ~/.dotfiles/.config/ohmyposh/prompt.toml)"
+        eval "$(oh-my-posh init zsh --config ~/.dotfiles/.config/ohmyposh/prompt.json)"
     fi
 fi
 

@@ -16,15 +16,14 @@ foreground_templates = [
 ]
 
 # ┌───────────────────────────────────────────────────────────────────┐
-# │                               MAIN PROMPT                        │
+# │                               MAIN PROMPT                         │
 # └───────────────────────────────────────────────────────────────────┘
 
-# 1) LEFT-aligned block: path + git (no newline after this)
+# 1) LEFT PROMPT
 [[blocks]]
 type = "prompt"
 alignment = "left"
 newline = false
-filler = " "       # this filler is just a spacer; it won't be used here
 [[blocks.segments]]
 type = "path"
 style = "plain"
@@ -45,25 +44,29 @@ branch_icon = " "
 commit_icon = "@"
 fetch_status = true
 
-# 2) RIGHT-aligned block: SSH icon (same line, pushed to far-right)
+# 2) RIGHT PROMPT
 [[blocks]]
 type = "prompt"
 alignment = "right"
 newline = false
-filler = " "        # this filler *is* used: pushes the SSH segment all the way right
+filler = " "
 [[blocks.segments]]
 type = "text"
 style = "plain"
-# only render on SSH sessions:
-template = '{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}🔒 SSH{{ end }}'
-foreground = "green"
-background = "transparent"
+template = '{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}SSH 🔒{{ end }}'
+foreground = "white"
+background = "#0f5b47"
+[blocks.segments.properties]
+shape = "round"
+padding_left = 2
+padding_right = 2
 
-# 3) SECOND LINE: the actual input prompt
+
+# 3) INPUT PROMPT
 [[blocks]]
 type = "prompt"
 alignment = "left"
-newline = true     # force a linebreak before this block
+newline = true
 [[blocks.segments]]
 type = "text"
 style = "plain"
