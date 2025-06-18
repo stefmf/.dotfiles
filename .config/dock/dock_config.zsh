@@ -16,8 +16,8 @@ dockutil --add /System/Applications/Notes.app --no-restart
 dockutil --add /Applications/Safari.app --no-restart
 dockutil --add /Applications/Spotify.app --no-restart
 dockutil --add /System/Applications/Messages.app --no-restart
-dockutil --add /System/Applications/System\ Settings.app --no-restart
 dockutil --add /Applications/Home.app --no-restart
+dockutil --add /System/Applications/System\ Settings.app --no-restart
 
 # Add Downloads folder as a stack in list view
 dockutil --add "$HOME/Downloads" --view list --display folder --no-restart
