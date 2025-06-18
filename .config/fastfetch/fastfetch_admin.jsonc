@@ -103,6 +103,12 @@
             "timeout": 2000
         },
         {
+            "type": "command",
+            "shell": "/bin/bash",
+            "text": "tailscale ip -4",
+            "key": "Tailscale IP"
+        },
+        {
             "type": "netio",
             "key": "Network I/O"
         },
