@@ -39,6 +39,12 @@
         {
             "type": "command",
             "shell": "/bin/bash",
+            "text": "tailscale ip -4",
+            "key": "Tailscale IP"
+        },
+        {
+            "type": "command",
+            "shell": "/bin/bash",
             "text": "date '+%A, %B %d, %Y %I:%M:%S %p'",
             "key": "Date & Time"
         },
