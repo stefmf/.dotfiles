@@ -26,16 +26,34 @@
       "alignment": "left",
       "segments": [
         {
+          "type": "session",
+          "style": "plain",
+          "template": "{{ if .Root }}⚡ {{ end }} {{ .UserName }}",
+          "foreground_templates": [
+            "{{ if .Root }}#ff5555{{ else }}#61a5fa{{ end }}"
+          ],
+          "background": "transparent"
+        },
+        {
+          "type": "session",
+          "style": "plain",
+          "template": "<#9ca3af> ❘ </> 󰇄 {{ .HostName }} <#9ca3af> ❘ </>",
+          "foreground": "#61a5fa",
+          "background": "transparent"
+        },
+        {
+          "type": "path",
+          "style": "plain",
           "properties": {
             "style": "full"
           },
-          "template": "{{ .Path }}",
+          "template": "  {{ .Path }}",
           "foreground": "#60a5fa",
-          "background": "transparent",
-          "type": "path",
-          "style": "plain"
+          "background": "transparent"
         },
         {
+          "type": "git",
+          "style": "plain",
           "properties": {
             "branch_icon": "\uf408 \ue0a0 ",
             "commit_icon": "@",
@@ -43,9 +61,7 @@
           },
           "template": " {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <#6ee7b7>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>",
           "foreground": "#9ca3af",
-          "background": "transparent",
-          "type": "git",
-          "style": "plain"
+          "background": "transparent"
         }
       ]
     },
@@ -56,36 +72,18 @@
       "filler": " ",
       "segments": [
         {
-          "type": "text",
-          "style": "powerline",
-          "powerline_symbol": "\uE0B0",
-          "foreground": "#f8fafc",
-          "background": "#6366f1",
-          "template": " "
+          "type": "session",
+          "style": "plain",
+          "template": "{{ if .Env.TMUX }}\uebc8 TMUX{{ end }}",
+          "foreground": "#6366f1",
+          "background": "transparent"
         },
         {
           "type": "session",
-          "style": "powerline",
-          "template": "{{ if .Env.TMUX }} TMUX \uebc8 {{ end }}",
-          "foreground": "#f8fafc",
-          "background": "#6366f1",
-          "powerline_symbol": "\uE0B0"
-        },
-        {
-          "type": "text",
-          "style": "powerline",
-          "powerline_symbol": "\uE0B0",
-          "foreground": "#f8fafc",
-          "background": "#059669",
-          "template": " "
-        },
-        {
-          "type": "session",
-          "style": "powerline",
-          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }} SSH \ueb3a @<#fbbf24>{{ .HostName }}</> {{ end }}",
-          "foreground": "#f8fafc",
-          "background": "#059669",
-          "powerline_symbol": "\uE0B0"
+          "style": "plain",
+          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}\ueb3a SSH{{ end }}",
+          "foreground": "#059669",
+          "background": "transparent"
         }
       ]
     },
