@@ -33,6 +33,10 @@
             "key": "Host"
         },
         {
+            "type": "localip",
+            "key": "Local IP"
+        },
+        {
             "type": "command",
             "shell": "/bin/bash",
             "text": "date '+%A, %B %d, %Y %I:%M:%S %p'",

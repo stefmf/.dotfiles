@@ -8,6 +8,7 @@ brew "bat"
 brew "btop"
 brew "colima"
 brew "coreutils"
+brew "dark-mode"
 brew "diffutils"
 brew "dnsmasq"
 brew "docker"
@@ -53,7 +54,6 @@ brew "zsh-you-should-use"
 brew "jandedobbeleer/oh-my-posh/oh-my-posh"
 brew "teamookla/speedtest/speedtest"
 cask "adobe-acrobat-pro"
-cask "app-cleaner"
 cask "balenaetcher"
 cask "boop"
 cask "chatgpt"
@@ -73,12 +73,7 @@ cask "visual-studio-code"
 cask "vlc"
 cask "windows-app"
 mas "Ethernet Menubar", id: 1549412235
-mas "GarageBand", id: 682658836
-mas "iMovie", id: 408981434
-mas "Keynote", id: 409183694
 mas "Microsoft Excel", id: 462058435
 mas "Microsoft PowerPoint", id: 462062816
 mas "Microsoft Word", id: 462054704
-mas "Numbers", id: 409203825
-mas "Pages", id: 409201541
 mas "Screens 5", id: 1663047912
