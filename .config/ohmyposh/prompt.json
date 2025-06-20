@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
   "secondary_prompt": {
-    "template": "❯❯ ",
-    "foreground": "#a78bfa",
+    "template": "{{ if .Root }}❯❯{{ else }}❯❯{{ end }} ",
+    "foreground_templates": ["{{ if .Root }}#facc15{{ else }}#61a5fa{{ end }}"],
     "background": "transparent"
   },
   "transient_prompt": {
@@ -10,7 +10,8 @@
     "background": "transparent",
     "foreground_templates": [
       "{{ if gt .Code 0 }}#ef4444{{ end }}",
-      "{{ if eq .Code 0 }}#a78bfa{{ end }}"
+      "{{ if and (eq .Code 0) .Root }}#facc15{{ end }}",
+      "{{ if and (eq .Code 0) (not .Root) }}#61a5fa{{ end }}"
     ]
   },
   "upgrade": {
@@ -28,7 +29,7 @@
         {
           "type": "session",
           "style": "plain",
-          "template": "{{ if .Root }}⚡ {{ end }} {{ .UserName }}",
+          "template": " {{ .UserName }}",
           "foreground_templates": [
             "{{ if .Root }}#ff5555{{ else }}#61a5fa{{ end }}"
           ],
@@ -37,7 +38,7 @@
         {
           "type": "session",
           "style": "plain",
-          "template": "<#9ca3af> ❘ </> 󰇄 {{ .HostName }} <#9ca3af> ❘ </>",
+          "template": "<#9ca3af> ❘ </>󰇄 {{ .HostName }}<#9ca3af> ❘ </>",
           "foreground": "#61a5fa",
           "background": "transparent"
         },
@@ -47,7 +48,7 @@
           "properties": {
             "style": "full"
           },
-          "template": "  {{ .Path }}",
+          "template": " {{ .Path }}",
           "foreground": "#60a5fa",
           "background": "transparent"
         },
@@ -74,13 +75,6 @@
         {
           "type": "session",
           "style": "plain",
-          "template": "{{ if .Env.TMUX }}\uebc8 TMUX{{ end }}",
-          "foreground": "#6366f1",
-          "background": "transparent"
-        },
-        {
-          "type": "session",
-          "style": "plain",
           "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}\ueb3a SSH{{ end }}",
           "foreground": "#059669",
           "background": "transparent"
@@ -98,7 +92,8 @@
           "style": "plain",
           "foreground_templates": [
             "{{ if gt .Code 0 }}#ef4444{{ end }}",
-            "{{ if eq .Code 0 }}#a78bfa{{ end }}"
+            "{{ if and (eq .Code 0) .Root }}#facc15{{ end }}",
+            "{{ if and (eq .Code 0) (not .Root) }}#61a5fa{{ end }}"
           ]
         }
       ],
