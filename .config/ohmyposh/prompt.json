@@ -91,9 +91,7 @@
           "type": "text",
           "style": "plain",
           "foreground_templates": [
-            "{{ if gt .Code 0 }}#ef4444{{ end }}",
-            "{{ if and (eq .Code 0) .Root }}#facc15{{ end }}",
-            "{{ if and (eq .Code 0) (not .Root) }}#61a5fa{{ end }}"
+            "{{ if .Root }}#facc15{{ else }}#61a5fa{{ end }}"
           ]
         }
       ],
