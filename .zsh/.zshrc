@@ -10,6 +10,17 @@
 source ~/.dotfiles/.zsh/.zsh_aliases
 
 #------------------------------------------------------------------------------
+# SSH Detection for Root Sessions
+#------------------------------------------------------------------------------
+
+# Only for root without SSH_CONNECTION
+if [[ $EUID -eq 0 ]] && [[ -z "$SSH_CONNECTION" ]]; then
+    # Check if who am i shows an IP address (indicates SSH)
+    if who am i 2>/dev/null | grep -qE '\([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\)'; then
+        export SSH_CONNECTION="detected"
+    fi
+fi
+#------------------------------------------------------------------------------
 # Completion System Setup
 #------------------------------------------------------------------------------
 
