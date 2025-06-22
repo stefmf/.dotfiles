@@ -156,6 +156,20 @@ YSU_MESSAGE_POSITION="after"  # Show alias message after command
 YSU_MODE=ALL                  # Show all matching aliases
 
 #------------------------------------------------------------------------------
+# SSH Agent Configuration
+#------------------------------------------------------------------------------
+
+# Ensure ssh-agent is running
+if [ ! -S ~/.ssh/ssh_auth_sock ]; then
+  eval `ssh-agent -s`
+  ln -sf "$SSH_AUTH_SOCK" ~/.ssh/ssh_auth_sock
+fi
+export SSH_AUTH_SOCK=~/.ssh/ssh_auth_sock
+
+# Add SSH key if not already added
+ssh-add -l | grep "Tailnet SSH Key" > /dev/null || ssh-add ~/.ssh/id_personal
+
+#------------------------------------------------------------------------------
 # Terminal UI and Appearance
 #------------------------------------------------------------------------------
 
