@@ -678,6 +678,21 @@ setup_bat_symlink() {
     fi
 }
 
+# ---------------------------
+# Setup SSH socket directory
+# ---------------------------
+
+setup_ssh_socket_dir() {
+    log_info "🔐 Setting up SSH socket directory..."
+    
+    # Ensure socket directory exists with correct permissions
+    SOCKET_DIR=~/.ssh/sockets
+    
+    mkdir -p "$SOCKET_DIR"
+    chmod 700 "$SOCKET_DIR"
+    
+    log_info "✅ SSH socket directory created and secured"
+}
 
 # ---------------------------
 # Install Wrapper
@@ -1044,6 +1059,9 @@ main() {
 
     # Set terminal font
     set_terminal_font
+    
+    # Setup SSH socket directory
+    setup_ssh_socket_dir
 
     # Change default shell to ZSH at the end and trigger reboot
     change_shell

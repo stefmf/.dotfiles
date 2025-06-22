@@ -539,6 +539,20 @@ configure_iterm2() {
 }
 
 # -------------------------------------------------------------------
+# Setup SSH socket directory
+setup_ssh_socket_dir() {
+    log_info "🔐 Setting up SSH socket directory..."
+    
+    # Ensure socket directory exists with correct permissions
+    SOCKET_DIR=~/.ssh/sockets
+    
+    mkdir -p "$SOCKET_DIR"
+    chmod 700 "$SOCKET_DIR"
+    
+    log_info "✅ SSH socket directory created and secured"
+}
+
+# -------------------------------------------------------------------
 # Final message
 finalize_bootstrap() {
   if [[ $DOTBOT_FAILED -ne 0 ]]; then
@@ -564,6 +578,7 @@ main() {
     configure_dns
     enable_touchid_for_sudo
     configure_iterm2
+    setup_ssh_socket_dir
     finalize_bootstrap
 }
 
