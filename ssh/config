@@ -24,3 +24,7 @@ Host dreams
 
 Host draco
     HostName draco                         # MagicDNS hostname
+
+# Personal machines NOT on Tailscale
+Host mini-serv
+    HostName 192.168.0.19
