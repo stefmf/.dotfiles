@@ -42,6 +42,9 @@ readonly ZPROFILE="$DOTFILES_DIR/.zsh/.zprofile"
 # Set environment variable to indicate non-console session
 IS_CONSOLE=false
 
+# Auto-install missing packages if set to true
+AUTO_INSTALL=${AUTO_INSTALL:-false}
+
 # ---------------------------
 # Color Output Setup
 # ---------------------------
@@ -59,6 +62,21 @@ COLORS_RESET="\e[0m"
 log_info() { echo -e "${COLORS_INFO}[INFO] $1${COLORS_RESET}"; }
 log_warning() { echo -e "${COLORS_WARNING}[WARNING] $1${COLORS_RESET}"; }
 log_error() { echo -e "${COLORS_ERROR}[ERROR] $1${COLORS_RESET}"; }
+
+# Prompt user for yes/no input
+prompt_yes_no() {
+    local prompt="$1 [y/N] "
+    local response
+    read -r -p "$prompt" response
+    case "$response" in
+        [yY][eE][sS]|[yY]) 
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
 
 # ---------------------------
 # OS Check
@@ -637,7 +655,29 @@ install_jetbrains_mono_nerd_font() {
 
     if wget -O "$zip_file" "$url"; then
         unzip -o "$zip_file" -d "$font_dir"
-        fc-cache -fv "$font_dir"
+        # Check if fc-cache is available before using it
+        if command -v fc-cache &> /dev/null; then
+            fc-cache -fv "$font_dir"
+        else
+            log_warning "⚠️ fc-cache command not found. fontconfig package may be missing."
+            if [[ $AUTO_INSTALL == "true" ]] || prompt_yes_no "Would you like to install the fontconfig package?"; then
+                log_info "Installing fontconfig package..."
+                if command -v apt-get &> /dev/null; then
+                    sudo apt-get update && sudo apt-get install -y fontconfig
+                    fc-cache -fv "$font_dir"
+                elif command -v dnf &> /dev/null; then
+                    sudo dnf install -y fontconfig
+                    fc-cache -fv "$font_dir"
+                elif command -v yum &> /dev/null; then
+                    sudo yum install -y fontconfig
+                    fc-cache -fv "$font_dir"
+                else
+                    log_warning "⚠️ Could not detect package manager. Please install fontconfig manually."
+                fi
+            else
+                log_info "Skipping fontconfig installation. Font may not be immediately available."
+            fi
+        fi
         rm "$zip_file"
         log_info "✅ JetBrains Mono Nerd Font installed successfully!"
     else
