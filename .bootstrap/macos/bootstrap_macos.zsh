@@ -13,7 +13,7 @@ fi
 
 # Prompt user to decide whether to use non-interactive sudo via SUDO_ASKPASS
 USE_AUTO_SUDO=true
-read -r "?❓ Use automated sudo via SUDO_ASKPASS? (y/n) " ans
+read -r "?Enable automated sudo via SUDO_ASKPASS? (y/n): " ans
 [[ $ans =~ ^[Yy] ]] || USE_AUTO_SUDO=false
 
 if [[ "$USE_AUTO_SUDO" == true ]]; then
@@ -124,13 +124,13 @@ fi
 prompt_user_choices() {
     local ans
 
-    read -r "?❓ Install Homebrew cask applications? (y/n) " ans
+    read -r "?Install Homebrew cask applications? (y/n): " ans
     [[ $ans =~ ^[Yy] ]] && INSTALL_CASKS=true
 
-    read -r "?❓ Install Tailscale and dnsmasq? (y/n) " ans
+    read -r "?Install Tailscale and dnsmasq? (y/n): " ans
     if [[ $ans =~ ^[Yy] ]]; then
         INSTALL_SERVICES=true
-        read -r "?❓ Configure system DNS for Tailscale/dnsmasq? (y/n) " ans
+        read -r "?Configure system DNS for Tailscale/dnsmasq? (y/n): " ans
         [[ $ans =~ ^[Yy] ]] && CONFIGURE_DNS_CHOICE=true
     fi
 }
@@ -155,7 +155,7 @@ open_privacy_settings() {
     log_info "✅ Verify your terminal appears in the list and is marked as 'Allowed'."
 
     # Updated prompt for clarity
-    read "?Press Enter once you’ve added your terminal in App Management and unlocked settings to continue..." dummy
+    read -r "?Press Enter once you've added your terminal in App Management and unlocked settings to continue..." dummy
 }
 
 # ---------------------------
@@ -421,15 +421,15 @@ install_brew_packages() {
 # ---------------------------
 github_auth_and_git_config() {
     # Prompt for global Git config (user.name and user.email)
-    read -r "?✏️ Enter global Git user name for git config: " GIT_USER_NAME
-    read -r "?✏️ Enter global Git user email for git config: " GIT_USER_EMAIL
+    read -r "?✏️ Enter global Git user name: " GIT_USER_NAME
+    read -r "?✏️ Enter global Git user email: " GIT_USER_EMAIL
     log_info "🛠️ Setting global git config: $GIT_USER_NAME <$GIT_USER_EMAIL>"
     git config --global user.name "$GIT_USER_NAME" || log_warning "⚠️ Failed to set Git user name"
     git config --global user.email "$GIT_USER_EMAIL" || log_warning "⚠️ Failed to set Git user email"
 
     # Ask user if they want to login with GitHub CLI
     local ans
-    read -r "?🔑 Would you like to login with GitHub CLI? (y/n) " ans
+    read -r "?Login with GitHub CLI? (y/n): " ans
     if [[ "$ans" =~ ^[Yy] ]]; then
         log_info "🔑 Starting GitHub authentication..."
         authenticate_github
@@ -569,6 +569,10 @@ handle_existing_links() {
 # -------------------------------------------------------------------
 # Configure macOS Dock
 configure_dock() {
+    if [[ "$INSTALL_CASKS" != true ]]; then
+        log_info "⏭️ Skipping Dock configuration (cask apps not installed)"
+        return
+    fi
     log_info "⚙️ Configuring macOS Dock..."
     source "$DOCK_CONFIG"
 }
