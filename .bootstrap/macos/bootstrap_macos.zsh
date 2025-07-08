@@ -9,55 +9,63 @@ if [[ $EUID -eq 0 ]]; then
     exit 1
 fi
 
-# ─── One-time sudo prompt via ASKPASS + wrapper ──────────────────────────────
+# ─── Conditional sudo setup ─────────────────────────────────────────────────
 
-# Maximum retries for wrong sudo password
-typeset -i MAX_RETRIES=3
-typeset -i attempt=0
+# Prompt user to decide whether to use non-interactive sudo via SUDO_ASKPASS
+USE_AUTO_SUDO=true
+read -r "?❓ Use automated sudo via SUDO_ASKPASS? (y/n) " ans
+[[ $ans =~ ^[Yy] ]] || USE_AUTO_SUDO=false
 
-while (( attempt < MAX_RETRIES )); do
-  # prompt silently for password
-  read -rs "PASSWORD?Enter your sudo password: "
-  
-  # build a fresh ASKPASS helper
-  ASKPASS=$(mktemp)
-  chmod 700 "$ASKPASS"
-  cat >"$ASKPASS" <<-EOF
+if [[ "$USE_AUTO_SUDO" == true ]]; then
+  # Maximum retries for wrong sudo password
+  typeset -i MAX_RETRIES=3
+  typeset -i attempt=0
+
+  while (( attempt < MAX_RETRIES )); do
+    # prompt silently for password
+    read -rs "PASSWORD?Enter your sudo password: "
+
+    # build a fresh ASKPASS helper
+    ASKPASS=$(mktemp)
+    chmod 700 "$ASKPASS"
+    cat >"$ASKPASS" <<-EOF
 #!/usr/bin/env zsh
 echo "$PASSWORD"
 EOF
-  chmod +x "$ASKPASS"
-  export SUDO_ASKPASS="$ASKPASS"
-  sudo() { /usr/bin/sudo -A "$@"; }
-  
-  # test it immediately
-  if sudo -v 2>/dev/null; then
-    # good to go!
-    break
-  else
-    # bad password
-    (( attempt++ ))
-    rm -f "$ASKPASS"
-    if (( attempt < MAX_RETRIES )); then
-      echo "[WARNING] Incorrect password; please try again." >&2
+    chmod +x "$ASKPASS"
+    export SUDO_ASKPASS="$ASKPASS"
+    sudo() { /usr/bin/sudo -A "$@"; }
+
+    # test it immediately
+    if sudo -v 2>/dev/null; then
+      break
     else
-      echo "[ERROR] Wrong password entered $MAX_RETRIES times. Aborting." >&2
-      exit 1
+      (( attempt++ ))
+      rm -f "$ASKPASS"
+      if (( attempt < MAX_RETRIES )); then
+        echo "[WARNING] Incorrect password; please try again." >&2
+      else
+        echo "[ERROR] Wrong password entered $MAX_RETRIES times. Aborting." >&2
+        exit 1
+      fi
     fi
-  fi
-done
-
-# clean up when the script finally exits
-trap 'rm -f "$ASKPASS"' EXIT
-
-# background keep-alive loop
-keep_sudo() {
-  while kill -0 $$ 2>/dev/null; do
-    sudo -v
-    sleep 60
   done
-}
-keep_sudo &
+
+  # clean up when the script finally exits
+  trap 'rm -f "$ASKPASS"' EXIT
+
+  # background keep-alive loop
+  keep_sudo() {
+    while kill -0 $$ 2>/dev/null; do
+      sudo -v
+      sleep 60
+    done
+  }
+  keep_sudo &
+else
+  # Fallback: use interactive sudo for each command
+  sudo() { /usr/bin/sudo "$@"; }
+fi
 
 
 # ---------------------------
