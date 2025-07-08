@@ -19,10 +19,15 @@ cd ~/.dotfiles
 ```
 
 3. **Run the Bootstrap Script**  
-   ```bash
-   ./.bootstrap/macos/bootstrap_macos.zsh
-   ```
-   The script will install tools, symlink configs, configure Touch ID for `sudo`, set up DNS/MagicDNS, enable services, and apply your Dock layout.
+  ```bash
+  ./.bootstrap/macos/bootstrap_macos.zsh
+  ```
+  The script will install tools, symlink configs, configure Touch ID for `sudo`, set up DNS/MagicDNS, enable services, and apply your Dock layout.
+
+  You'll first be prompted to choose whether the script should use automated
+  `sudo` via `SUDO_ASKPASS` or request your password manually for each
+  privileged command. On managed Macs where non-interactive `sudo` is blocked,
+  answer **n** to use interactive prompts.
 
 ### Authenticate with GitHub
 
