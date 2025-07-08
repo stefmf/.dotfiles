@@ -93,6 +93,11 @@ typeset -r DOTBOT_INSTALL="$DOTFILES_DIR/install"
 typeset -r ZSH_PROFILE="$DOTFILES_DIR/.zsh/.zprofile"
 typeset -r DOCK_CONFIG="$DOTFILES_DIR/.config/dock/dock_config.zsh"
 
+# Flags controlled by user prompts
+typeset INSTALL_CASKS=false
+typeset INSTALL_SERVICES=false
+typeset CONFIGURE_DNS_CHOICE=false
+
 # Initialize a flag to track if dotfiles setup failed
 typeset DOTBOT_FAILED=0
 
@@ -104,6 +109,23 @@ typeset DOTBOT_FAILED=0
 if [[ $EUID -eq 0 ]]; then
     log_warning "⚠️ Running as root. Some operations may fail (e.g., Homebrew installation)."
 fi
+
+# ---------------------------
+# Prompt for optional components
+# ---------------------------
+prompt_user_choices() {
+    local ans
+
+    read -r "?❓ Install Homebrew cask applications? (y/n) " ans
+    [[ $ans =~ ^[Yy] ]] && INSTALL_CASKS=true
+
+    read -r "?❓ Install Tailscale and dnsmasq? (y/n) " ans
+    if [[ $ans =~ ^[Yy] ]]; then
+        INSTALL_SERVICES=true
+        read -r "?❓ Configure system DNS for Tailscale/dnsmasq? (y/n) " ans
+        [[ $ans =~ ^[Yy] ]] && CONFIGURE_DNS_CHOICE=true
+    fi
+}
 
 # ---------------------------
 # Privacy & Security Settings Helper
@@ -135,33 +157,52 @@ open_privacy_settings() {
 install_packages() {
     if [[ -f "$BREW_FILE" ]]; then
         log_info "📦 Starting package installation process..."
-        # Prompt once for sudo to cover special casks
-        log_info "🔒 Requesting sudo access for special casks installation (you may be prompted)"
-        sudo -v
 
-        # Install special casks requiring elevated permissions
-        log_info "🔧 Installing special casks..."
-        local special_casks=("parallels" "adobe-acrobat-pro" "microsoft-auto-update" "windows-app")
-        for cask in "${special_casks[@]}"; do
-            if ! brew search --casks "$cask" &>/dev/null; then
-                log_warning "Cask '$cask' not found; skipping."
-                continue
-            fi
-            if brew list --cask "$cask" &>/dev/null; then
-                log_info "Cask '$cask' already installed."
-                continue
-            fi
-            if [[ "$cask" == "parallels" ]]; then
-                log_info "🚀 Preparing to install Parallels..."
-                open_privacy_settings
-            fi
-            log_info "📦 Installing $cask..."
-            brew install --cask "$cask" > /dev/null 2>&1 || log_warning "Installation of $cask failed"
-        done
+        local brewfile_to_use="$BREW_FILE"
+        local cleanup=false
 
-        # Install remaining Brewfile packages
+        if [[ "$INSTALL_CASKS" != true || "$INSTALL_SERVICES" != true ]]; then
+            brewfile_to_use=$(mktemp)
+            cp "$BREW_FILE" "$brewfile_to_use"
+            cleanup=true
+        fi
+
+        if [[ "$INSTALL_CASKS" == true ]]; then
+            log_info "🔒 Requesting sudo access for special casks installation (you may be prompted)"
+            sudo -v
+            log_info "🔧 Installing special casks..."
+            local special_casks=("parallels" "adobe-acrobat-pro" "microsoft-auto-update" "windows-app")
+            for cask in "${special_casks[@]}"; do
+                if ! brew search --casks "$cask" &>/dev/null; then
+                    log_warning "Cask '$cask' not found; skipping."
+                    continue
+                fi
+                if brew list --cask "$cask" &>/dev/null; then
+                    log_info "Cask '$cask' already installed."
+                    continue
+                fi
+                if [[ "$cask" == "parallels" ]]; then
+                    log_info "🚀 Preparing to install Parallels..."
+                    open_privacy_settings
+                fi
+                log_info "📦 Installing $cask..."
+                brew install --cask "$cask" > /dev/null 2>&1 || log_warning "Installation of $cask failed"
+            done
+        else
+            log_info "⏭️ Skipping Homebrew cask and MAS app installation"
+            sed -i '' \
+                -e '/^cask "font-jetbrains-mono-nerd-font"/!{/^cask /d;}' \
+                -e '/^mas /d' "$brewfile_to_use"
+        fi
+
+        if [[ "$INSTALL_SERVICES" != true ]]; then
+            sed -i '' -e '/brew "tailscale"/d' -e '/brew "dnsmasq"/d' "$brewfile_to_use"
+        fi
+
         log_info "📦 Installing Brewfile packages..."
-        brew bundle --file="$BREW_FILE" || log_warning "Some Brewfile packages failed to install."
+        brew bundle --file="$brewfile_to_use" || log_warning "Some Brewfile packages failed to install."
+
+        [[ "$cleanup" == true ]] && rm -f "$brewfile_to_use"
 
         # Install JetBrains Mono Nerd Font cask
         log_info "📦 Installing JetBrains Mono Nerd Font cask..."
@@ -403,6 +444,11 @@ authenticate_github() {
 # -------------------------------------------------------------------
 # Enable core services (Tailscale, dnsmasq)
 enable_services() {
+    if [[ "$INSTALL_SERVICES" != true ]]; then
+        log_info "⏭️ Skipping Tailscale and dnsmasq service setup"
+        return
+    fi
+
     log_info "🔧 Cleaning up and starting Tailscale & dnsmasq services..."
 
     local brew_cmd
@@ -440,6 +486,11 @@ enable_services() {
 # -------------------------------------------------------------------
 # Configure DNS for dnsmasq/MagicDNS
 configure_dns() {
+    if [[ "$CONFIGURE_DNS_CHOICE" != true ]]; then
+        log_info "⏭️ Skipping DNS configuration"
+        return
+    fi
+
     log_info "🌐 Configuring system DNS to 127.0.0.1 for dnsmasq..."
     networksetup -listallnetworkservices 2>/dev/null | sed '1d' | while IFS= read -r svc; do
         svc="${svc#\*}"; svc="$(echo "$svc" | xargs)"
@@ -569,6 +620,7 @@ finalize_bootstrap() {
 main() {
     log_info "🚀 Starting macOS bootstrap..."
     preflight_checks
+    prompt_user_choices
     install_homebrew
     install_brew_packages
     github_auth_and_git_config
