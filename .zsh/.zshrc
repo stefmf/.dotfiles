@@ -158,6 +158,8 @@ YSU_MODE=ALL                  # Show all matching aliases
 #------------------------------------------------------------------------------
 # SSH Agent Configuration
 #------------------------------------------------------------------------------
+# Clear any existing SSH_AUTH_SOCK to avoid conflicts
+unset SSH_AUTH_SOCK  
 
 # Ensure ssh-agent is running
 SOCKET="$HOME/.ssh/sockets/ssh_auth_sock"
