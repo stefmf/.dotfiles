@@ -160,14 +160,16 @@ YSU_MODE=ALL                  # Show all matching aliases
 #------------------------------------------------------------------------------
 
 # Ensure ssh-agent is running
-if [ ! -S ~/.ssh/ssh_auth_sock ]; then
-  eval `ssh-agent -s`
-  ln -sf "$SSH_AUTH_SOCK" ~/.ssh/ssh_auth_sock
+SOCKET="$HOME/.ssh/sockets/ssh_auth_sock"
+
+if [ ! -S "$SOCKET" ]; then
+  eval "$(ssh-agent -a $SOCKET)"
 fi
-export SSH_AUTH_SOCK=~/.ssh/ssh_auth_sock
+
+export SSH_AUTH_SOCK="$SOCKET"
 
 # Add SSH key if not already added
-ssh-add -l | grep "Tailnet SSH Key" > /dev/null || ssh-add ~/.ssh/id_personal
+ssh-add -l | grep "id_personal" > /dev/null || ssh-add ~/.ssh/id_personal
 
 #------------------------------------------------------------------------------
 # Terminal UI and Appearance

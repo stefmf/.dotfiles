@@ -104,7 +104,7 @@ alias ports='netstat -tulanp'        # Show active ports
 # Network Operations
 #------------------------------------------------------------------------------
 
-alias ping='ping -c 5'               # Limit ping to 5 packets
+# alias ping='ping -c 5'               # Limit ping to 5 packets
 
 #------------------------------------------------------------------------------
 # System Administration
