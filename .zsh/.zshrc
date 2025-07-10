@@ -171,7 +171,13 @@ fi
 export SSH_AUTH_SOCK="$SOCKET"
 
 # Add SSH key if not already added
-ssh-add -l | grep "id_personal" > /dev/null || ssh-add ~/.ssh/id_personal
+for key in id_personal id_work; do
+  KEY_PATH="$HOME/.ssh/$key"
+  if [ -f "$KEY_PATH" ] && ! ssh-add -l | grep -q "$key"; then
+    ssh-add "$KEY_PATH" && echo "🔐 Loaded $key"
+  fi
+done
+
 
 #------------------------------------------------------------------------------
 # Terminal UI and Appearance
