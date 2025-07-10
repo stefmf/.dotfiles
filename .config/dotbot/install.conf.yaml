@@ -25,4 +25,5 @@
     "~/Library/Application Support/Sublime Text/Installed Packages": .config/sublime/Installed Packages
 
 - shell:
-    - [git submodule update --init --recursive, Installing submodules]    - [rm -f ~/.bashrc ~/.bash_profile, Removing Bash configuration files]
+    - [git submodule update --init --recursive, Installing submodules]
+    - [rm -f ~/.bashrc ~/.bash_profile, Removing Bash configuration files]
