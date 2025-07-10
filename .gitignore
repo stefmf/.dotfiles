@@ -35,3 +35,6 @@
 
 # Ignore Sublime Text user settings
 .config/sublime/Packages/User/**
+
+# Ignore SSH configuration files
+ssh/config
