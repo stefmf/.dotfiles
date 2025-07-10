@@ -1,7 +1,7 @@
 - defaults:
     link:
       relink: true
-      force: true  # Add force option to override existing files
+      force: true
 
 - clean: ['~']
 
@@ -19,10 +19,15 @@
     ~/.zshenv: .zsh/.zshenv
     ~/.zprofile: .zsh/.zprofile
     ~/.zshrc: .zsh/.zshrc
-    ~/.ssh/config: ssh/config
     /opt/homebrew/etc/dnsmasq.conf: .config/dnsmasq/dnsmasq.conf
     "~/Library/Application Support/Sublime Text/Packages/User": .config/sublime/User
     "~/Library/Application Support/Sublime Text/Installed Packages": .config/sublime/Installed Packages
+
+    # Special case: only link ~/.ssh/config if it doesn’t already exist
+    ~/.ssh/config:
+      path: ssh/config
+      relink: false
+      force: false
 
 - shell:
     - [git submodule update --init --recursive, Installing submodules]
