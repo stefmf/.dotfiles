@@ -97,14 +97,6 @@ if type fzf &>/dev/null; then
     bindkey '\ec' fzf-cd-widget
 fi
 
-# Atuin Shell History
-# Key Bindings:
-# - Ctrl+R: Search history with full UI
-# - Up Arrow: Search history for current line
-if [ "$TERM" != "linux" ] && type atuin &>/dev/null; then
-    eval "$(atuin init zsh)"
-fi
-
 # Auto-suggestions Configuration
 # Key Bindings:
 # - Right arrow: Accept suggestion
@@ -182,16 +174,6 @@ done
 #------------------------------------------------------------------------------
 # Terminal UI and Appearance
 #------------------------------------------------------------------------------
-
-# Zoxide Configuration
-# Key Bindings:
-# - z <dir>: Jump to directory
-# - z ..: Go up one directory
-# - z ...: Go up two directories
-# - zi: Interactive directory selection
-if type zoxide &>/dev/null; then
-    eval "$(zoxide init --cmd cd zsh)"
-fi
 
 # Initialize Oh My Posh in any terminal that supports it
 if [ "$TERM" != "linux" ]; then

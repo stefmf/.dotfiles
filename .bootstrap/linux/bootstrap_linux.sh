@@ -549,36 +549,6 @@ install_oh_my_posh() {
     fi
 }
 
-install_atuin() {
-    log_info "🔄 Installing Atuin..."
-
-    # Check if cargo is installed
-    if ! command -v cargo &> /dev/null; then
-        log_warning "⚠️  Cargo is not installed. Installing Rust toolchain..."
-        if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
-            source "$HOME/.cargo/env"
-        else
-            log_error "🚫 Failed to install Rust toolchain."
-            return
-        fi
-    fi
-
-    local temp_dir
-    temp_dir=$(mktemp -d)
-    pushd "$temp_dir" > /dev/null
-
-    if git clone https://github.com/atuinsh/atuin.git && \
-       cd atuin/crates/atuin && \
-       cargo install --path .; then
-        log_info "✅ Atuin installed successfully!"
-    else
-        log_warning "⚠️ Failed to install Atuin."
-    fi
-
-    popd > /dev/null
-    rm -rf "$temp_dir"
-}
-
 install_zsh_autosuggestions() {
     log_info "🔌 Installing zsh-autosuggestions plugin..."
 
@@ -750,7 +720,6 @@ install_manual_packages() {
     install_terraform
     install_fastfetch
     install_oh_my_posh
-    install_atuin
     install_zsh_autosuggestions
     install_zsh_syntax_highlighting
     install_zsh_you_should_use

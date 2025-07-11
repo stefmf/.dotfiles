@@ -18,9 +18,9 @@ if [ "$TERM_PROGRAM" = "vscode" ]; then
     export VISUAL=vscode
     export EDITOR=vscode
 else
-    # Default to neovim when not in VS Code
-    export VISUAL=nvim
-    export EDITOR=nvim
+    # Default to vim when not in VS Code
+    export VISUAL=vim
+    export EDITOR=vim
 fi
 
 # FZF Core Settings (these should be available to scripts)

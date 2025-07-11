@@ -28,8 +28,7 @@ alias reload='source ~/.zshrc'
 alias c='clear'
 
 # Editor
-alias vi='nvim'
-alias vim='nvim'
+alias vi='vim'
 
 # System Monitoring
 if command_exists btop; then
