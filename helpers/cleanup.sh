@@ -58,9 +58,13 @@ main() {
     
     log_success "Cleanup complete!"
     log_info "Next steps:"
-    echo "  1. Sync your dotfiles to remove config references"
-    echo "  2. Run 'exec zsh' or restart your terminal"
-    echo "  3. Verify with 'which vim' and 'which cd'"
+    echo "  1. ✅ Packages uninstalled and session cleaned"
+    echo "  2. ⚠️  DO NOT run 'reload' - it will re-source old completion files"
+    echo "  3. 🔄 Run 'exec zsh' to start completely fresh shell"
+    echo "  4. 🧪 Test with 'which vim' and 'which cd'"
+    echo ""
+    log_warning "Important: If you still see errors after 'exec zsh', some completion files may remain."
+    echo "          In that case, run this script with: ./cleanup_shell_tools.sh --deep-clean"
 }
 
 #------------------------------------------------------------------------------
@@ -90,8 +94,16 @@ uninstall_packages() {
 cleanup_zoxide() {
     log_info "Cleaning up zoxide artifacts..."
     
-    # Unset zoxide functions
-    local zoxide_functions=("__zoxide_hook" "_zoxide" "__zoxide_z" "__zoxide_zi")
+    # Unset zoxide functions (more comprehensive list)
+    local zoxide_functions=(
+        "__zoxide_hook" 
+        "_zoxide" 
+        "__zoxide_z" 
+        "__zoxide_zi"
+        "__zoxide_pwd"
+        "_zoxide_hook"
+        "zoxide"
+    )
     
     for func in "${zoxide_functions[@]}"; do
         if type "$func" &>/dev/null; then
@@ -110,6 +122,15 @@ cleanup_zoxide() {
         fi
     done
     
+    # Unset zoxide variables
+    local zoxide_vars=("_ZO_DATA_DIR" "_ZO_EXCLUDE_DIRS" "_ZO_FZF_OPTS" "_ZO_MAXAGE" "_ZO_RESOLVE_SYMLINKS")
+    for var in "${zoxide_vars[@]}"; do
+        if [[ -n "${!var:-}" ]]; then
+            log_info "Unsetting variable: $var"
+            unset "$var" 2>/dev/null || true
+        fi
+    done
+    
     log_success "Zoxide cleanup complete"
 }
 
@@ -120,7 +141,7 @@ cleanup_zoxide() {
 cleanup_atuin() {
     log_info "Cleaning up atuin artifacts..."
     
-    # Unset atuin functions
+    # Unset atuin functions (more comprehensive list)
     local atuin_functions=(
         "_atuin_preexec" 
         "_atuin_search" 
@@ -128,6 +149,9 @@ cleanup_atuin() {
         "__atuin_history"
         "_atuin_bind_ctrl_r"
         "_atuin_bind_up_arrow"
+        "__atuin_hook"
+        "_atuin_precmd"
+        "atuin"
     )
     
     for func in "${atuin_functions[@]}"; do
@@ -143,6 +167,9 @@ cleanup_atuin() {
         "ATUIN_SESSION"
         "ATUIN_HISTORY_ID" 
         "_ATUIN_SEARCH_STATE"
+        "ATUIN_CONFIG_DIR"
+        "ATUIN_DATA_DIR"
+        "_ATUIN_PRECMD_EXECUTED"
     )
     
     for var in "${atuin_vars[@]}"; do
@@ -151,6 +178,14 @@ cleanup_atuin() {
             unset "$var" 2>/dev/null || true
         fi
     done
+    
+    # Remove atuin from preexec/precmd arrays if they exist
+    if [[ -n "${preexec_functions:-}" ]]; then
+        preexec_functions=(${preexec_functions[@]/*atuin*/})
+    fi
+    if [[ -n "${precmd_functions:-}" ]]; then
+        precmd_functions=(${precmd_functions[@]/*atuin*/})
+    fi
     
     log_success "Atuin cleanup complete"
 }
@@ -180,11 +215,11 @@ cleanup_neovim_aliases() {
 }
 
 #------------------------------------------------------------------------------
-# Completion Cache Cleanup
+# Completion Cache and FPATH Cleanup
 #------------------------------------------------------------------------------
 
 cleanup_completion_cache() {
-    log_info "Clearing zsh completion cache..."
+    log_info "Clearing zsh completion cache and FPATH artifacts..."
     
     # Remove completion dump files
     local cache_files=(
@@ -199,7 +234,56 @@ cleanup_completion_cache() {
         fi
     done
     
-    log_success "Completion cache cleared"
+    # Clean up completion files from FPATH directories
+    cleanup_fpath_completions
+    
+    log_success "Completion cache and FPATH cleanup complete"
+}
+
+cleanup_fpath_completions() {
+    log_info "Cleaning completion files from FPATH directories..."
+    
+    # Common FPATH directories where Homebrew installs completions
+    local fpath_dirs=(
+        "/opt/homebrew/share/zsh/site-functions"
+        "/usr/local/share/zsh/site-functions" 
+        "/opt/homebrew/Cellar/zsh/*/share/zsh/functions"
+    )
+    
+    # Add current FPATH directories
+    if [[ -n "${FPATH:-}" ]]; then
+        while IFS=':' read -ra PATHS; do
+            for path in "${PATHS[@]}"; do
+                if [[ -d "$path" && "$path" == *"homebrew"* ]]; then
+                    fpath_dirs+=("$path")
+                fi
+            done
+        done <<< "$FPATH"
+    fi
+    
+    # Remove completion files for our target tools
+    local completion_patterns=("*atuin*" "*zoxide*" "_atuin" "_zoxide")
+    
+    for dir in "${fpath_dirs[@]}"; do
+        # Expand glob patterns
+        for expanded_dir in $dir; do
+            if [[ -d "$expanded_dir" ]]; then
+                log_info "Checking directory: $expanded_dir"
+                for pattern in "${completion_patterns[@]}"; do
+                    for file in "$expanded_dir"/$pattern; do
+                        if [[ -f "$file" ]]; then
+                            log_info "Removing completion file: $file"
+                            rm -f "$file" 2>/dev/null || {
+                                log_warning "Could not remove $file (may need sudo)"
+                                # Try with sudo if regular removal fails
+                                sudo rm -f "$file" 2>/dev/null || log_warning "Failed to remove $file even with sudo"
+                            }
+                        fi
+                    done
+                done
+            fi
+        done
+    done
 }
 
 #------------------------------------------------------------------------------
@@ -251,6 +335,72 @@ verify_cleanup() {
             log_success "Function $func removed"
         fi
     done
+    
+    # Check aliases
+    if alias vim 2>/dev/null | grep -q nvim; then
+        log_warning "vim still aliased to nvim"
+    else
+        log_success "vim alias cleaned up"
+    fi
+    
+    # Check for completion files
+    local found_completion=false
+    for dir in /opt/homebrew/share/zsh/site-functions /usr/local/share/zsh/site-functions; do
+        if [[ -d "$dir" ]]; then
+            if find "$dir" -name "*atuin*" -o -name "*zoxide*" | grep -q .; then
+                log_warning "Found completion files in $dir"
+                found_completion=true
+            fi
+        fi
+    done
+    
+    if ! $found_completion; then
+        log_success "No stray completion files found"
+    fi
+    
+    log_info "Verification complete"
+}
+
+#------------------------------------------------------------------------------
+# Deep Clean Function (for stubborn cases)
+#------------------------------------------------------------------------------
+
+deep_clean() {
+    log_info "Performing deep cleanup..."
+    
+    # More aggressive function cleanup
+    log_info "Performing aggressive function cleanup..."
+    for func in $(functions | grep -E "(atuin|zoxide)" | cut -d' ' -f1); do
+        log_info "Force removing function: $func"
+        unset -f "$func" 2>/dev/null || true
+        unfunction "$func" 2>/dev/null || true
+    done
+    
+    # Clean up all possible completion directories
+    log_info "Deep cleaning completion directories..."
+    local deep_dirs=(
+        "/opt/homebrew/share/zsh/site-functions"
+        "/usr/local/share/zsh/site-functions"
+        "/opt/homebrew/share/zsh-completions"
+        "$HOME/.zsh/completions"
+        "$HOME/.oh-my-zsh/completions"
+    )
+    
+    for dir in "${deep_dirs[@]}"; do
+        if [[ -d "$dir" ]]; then
+            log_info "Deep cleaning: $dir"
+            find "$dir" -name "*atuin*" -delete 2>/dev/null || true
+            find "$dir" -name "*zoxide*" -delete 2>/dev/null || true
+        fi
+    done
+    
+    # Force remove any compiled zsh files
+    find "$HOME" -name "*.zwc" -exec grep -l "atuin\|zoxide" {} \; 2>/dev/null | while read -r file; do
+        log_info "Removing compiled zsh file: $file"
+        rm -f "$file"
+    done
+    
+    log_success "Deep cleanup complete"
 }
 
 #------------------------------------------------------------------------------
@@ -263,12 +413,26 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     return 1
 fi
 
-# Run main function
-main "$@"
-
-# Optional verification
-if [[ "${1:-}" == "--verify" ]]; then
-    verify_cleanup
-fi
+# Handle command line arguments
+case "${1:-}" in
+    "--deep-clean")
+        log_info "Running deep cleanup mode..."
+        uninstall_packages
+        cleanup_zoxide
+        cleanup_atuin  
+        cleanup_neovim_aliases
+        cleanup_completion_cache
+        deep_clean
+        reset_key_bindings
+        log_success "Deep cleanup complete! Run 'exec zsh' now."
+        ;;
+    "--verify")
+        verify_cleanup
+        ;;
+    *)
+        # Run main function
+        main "$@"
+        ;;
+esac
 
 log_info "Run 'exec zsh' to start a fresh shell session"
