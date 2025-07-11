@@ -147,6 +147,25 @@ done
 YSU_MESSAGE_POSITION="after"  # Show alias message after command
 YSU_MODE=ALL                  # Show all matching aliases
 
+#------------------------------------------------------------------------------
+# Terminal UI and Appearance
+#------------------------------------------------------------------------------
+
+# Initialize Oh My Posh in any terminal that supports it
+if [ "$TERM" != "linux" ]; then
+  if type oh-my-posh &>/dev/null; then
+    eval "$(oh-my-posh init zsh --config ~/.dotfiles/.config/ohmyposh/prompt.json)"
+  fi
+fi
+
+# Terminal Screensaver Configuration
+TMOUT=600
+TRAPALRM() {
+    if type tty-clock &>/dev/null; then
+        tty-clock -S -c -B < /dev/tty > /dev/tty
+    fi
+    zle reset-prompt
+}
 
 # Syntax Highlighting (Must be last)
 ZSH_SYNTAX_HIGHLIGHT_LOCATIONS=(
