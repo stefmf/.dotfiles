@@ -6,7 +6,7 @@
 # Uninstalls neovim, atuin, and zoxide via Homebrew and cleans up 
 # persistent shell artifacts (functions, aliases, key bindings, cache)
 #
-# Usage: ./cleanup_shell_tools.sh
+# Usage: ./cleanup.sh
 #==============================================================================
 
 set -euo pipefail
@@ -64,7 +64,7 @@ main() {
     echo "  4. 🧪 Test with 'which vim' and 'which cd'"
     echo ""
     log_warning "Important: If you still see errors after 'exec zsh', some completion files may remain."
-    echo "          In that case, run this script with: ./cleanup_shell_tools.sh --deep-clean"
+    echo "          In that case, run this script with: ./cleanup.sh --deep-clean"
 }
 
 #------------------------------------------------------------------------------
@@ -368,13 +368,28 @@ verify_cleanup() {
 deep_clean() {
     log_info "Performing deep cleanup..."
     
-    # More aggressive function cleanup
+    # More aggressive function cleanup (zsh-compatible)
     log_info "Performing aggressive function cleanup..."
-    for func in $(functions | grep -E "(atuin|zoxide)" | cut -d' ' -f1); do
-        log_info "Force removing function: $func"
-        unset -f "$func" 2>/dev/null || true
-        unfunction "$func" 2>/dev/null || true
-    done
+    if command -v functions &>/dev/null; then
+        # In zsh, use functions builtin
+        for func in $(functions 2>/dev/null | grep -E "(atuin|zoxide)" | cut -d' ' -f1); do
+            log_info "Force removing function: $func"
+            unset -f "$func" 2>/dev/null || true
+            unfunction "$func" 2>/dev/null || true
+        done
+    else
+        # Fallback for bash/other shells - check common function names
+        local common_funcs=(
+            "_atuin_preexec" "_atuin_search" "_atuin_history_search" "__atuin_history"
+            "__zoxide_hook" "_zoxide" "__zoxide_z" "__zoxide_zi" "__zoxide_pwd"
+        )
+        for func in "${common_funcs[@]}"; do
+            if type "$func" &>/dev/null; then
+                log_info "Force removing function: $func"
+                unset -f "$func" 2>/dev/null || true
+            fi
+        done
+    fi
     
     # Clean up all possible completion directories
     log_info "Deep cleaning completion directories..."
@@ -409,7 +424,7 @@ deep_clean() {
 
 # Check if running with source/exec
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-    log_error "This script should not be sourced. Run it directly: ./cleanup_shell_tools.sh"
+    log_error "This script should not be sourced. Run it directly: ./cleanup.sh"
     return 1
 fi
 
