@@ -9,7 +9,6 @@ git
 git-delta
 glab
 htop
-neovim
 nmap
 python3
 screen
@@ -19,7 +18,6 @@ tldr
 tmux
 tmuxinator
 tty-clock
-zoxide
 zsh
 build-essential
 clang

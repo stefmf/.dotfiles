@@ -3,10 +3,16 @@
 #==============================================================================
 # Shell Tools Cleanup Script
 #==============================================================================
-# Uninstalls neovim, atuin, and zoxide via Homebrew and cleans up 
+# Uninstalls neovim, atuin, and zoxide via system package manager and cleans up 
 # persistent shell artifacts (functions, aliases, key bindings, cache)
+# 
+# Supports: 
+#   - macOS (Homebrew)
+#   - Linux (APT, DNF, YUM, Pacman)
+#   - Cargo installations
+#   - Manual binary installations
 #
-# Usage: ./cleanup.sh
+# Usage: ./cleanup.sh [--deep-clean|--verify]
 #==============================================================================
 
 set -euo pipefail
@@ -18,11 +24,47 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Global variables
+OS=""
+PACKAGE_MANAGER=""
+
 # Logging functions
 log_info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
 log_success() { echo -e "${GREEN}✅ $1${NC}"; }
 log_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 log_error() { echo -e "${RED}❌ $1${NC}"; }
+
+# OS Detection
+detect_os() {
+    case "$(uname -s)" in
+        Darwin*)
+            OS="macos"
+            PACKAGE_MANAGER="brew"
+            ;;
+        Linux*)
+            OS="linux"
+            # Detect package manager
+            if command -v apt &>/dev/null; then
+                PACKAGE_MANAGER="apt"
+            elif command -v dnf &>/dev/null; then
+                PACKAGE_MANAGER="dnf"
+            elif command -v yum &>/dev/null; then
+                PACKAGE_MANAGER="yum"
+            elif command -v pacman &>/dev/null; then
+                PACKAGE_MANAGER="pacman"
+            else
+                log_error "Unsupported package manager on Linux"
+                exit 1
+            fi
+            ;;
+        *)
+            log_error "Unsupported operating system: $(uname -s)"
+            exit 1
+            ;;
+    esac
+    
+    log_info "Detected OS: $OS with package manager: $PACKAGE_MANAGER"
+}
 
 #------------------------------------------------------------------------------
 # Main Cleanup Function
@@ -30,6 +72,9 @@ log_error() { echo -e "${RED}❌ $1${NC}"; }
 
 main() {
     log_info "Starting shell tools cleanup..."
+    
+    # Detect operating system and package manager
+    detect_os
     
     # Check if we're in a zsh shell
     if [[ ! "$SHELL" == *"zsh"* ]]; then
@@ -42,7 +87,7 @@ main() {
         fi
     fi
     
-    # Uninstall via Homebrew
+    # Uninstall via package manager
     uninstall_packages
     
     # Clean up shell artifacts
@@ -72,17 +117,171 @@ main() {
 #------------------------------------------------------------------------------
 
 uninstall_packages() {
-    log_info "Uninstalling packages via Homebrew..."
+    log_info "Uninstalling packages via $PACKAGE_MANAGER..."
     
     local packages=("neovim" "atuin" "zoxide")
     
     for package in "${packages[@]}"; do
-        if brew list "$package" &>/dev/null; then
-            log_info "Uninstalling $package..."
-            brew uninstall "$package" || log_warning "Failed to uninstall $package"
-            log_success "Uninstalled $package"
-        else
-            log_warning "$package not found or already uninstalled"
+        case "$PACKAGE_MANAGER" in
+            brew)
+                if brew list "$package" &>/dev/null; then
+                    log_info "Uninstalling $package..."
+                    brew uninstall "$package" || log_warning "Failed to uninstall $package"
+                    log_success "Uninstalled $package"
+                else
+                    log_warning "$package not found or already uninstalled"
+                fi
+                ;;
+            apt)
+                # Check if package is installed
+                if dpkg -l | grep -q "^ii.*$package"; then
+                    log_info "Uninstalling $package..."
+                    sudo apt remove -y "$package" || log_warning "Failed to uninstall $package"
+                    log_success "Uninstalled $package"
+                else
+                    log_warning "$package not found or already uninstalled"
+                fi
+                ;;
+            dnf)
+                if dnf list installed "$package" &>/dev/null; then
+                    log_info "Uninstalling $package..."
+                    sudo dnf remove -y "$package" || log_warning "Failed to uninstall $package"
+                    log_success "Uninstalled $package"
+                else
+                    log_warning "$package not found or already uninstalled"
+                fi
+                ;;
+            yum)
+                if yum list installed "$package" &>/dev/null; then
+                    log_info "Uninstalling $package..."
+                    sudo yum remove -y "$package" || log_warning "Failed to uninstall $package"
+                    log_success "Uninstalled $package"
+                else
+                    log_warning "$package not found or already uninstalled"
+                fi
+                ;;
+            pacman)
+                if pacman -Q "$package" &>/dev/null; then
+                    log_info "Uninstalling $package..."
+                    sudo pacman -R --noconfirm "$package" || log_warning "Failed to uninstall $package"
+                    log_success "Uninstalled $package"
+                else
+                    log_warning "$package not found or already uninstalled"
+                fi
+                ;;
+            *)
+                log_error "Unsupported package manager: $PACKAGE_MANAGER"
+                ;;
+        esac
+    done
+    
+    # Handle special cases for Linux where some packages might have different names
+    if [[ "$OS" == "linux" ]]; then
+        cleanup_linux_special_packages
+    fi
+    
+    # Clean up potential cargo installations (common on Linux)
+    cleanup_cargo_installs
+}
+
+cleanup_cargo_installs() {
+    log_info "Checking for Cargo/Rust installations..."
+    
+    local tools=("atuin" "zoxide")
+    
+    for tool in "${tools[@]}"; do
+        if command -v cargo &>/dev/null && cargo install --list 2>/dev/null | grep -q "^$tool "; then
+            log_info "Uninstalling $tool via cargo..."
+            cargo uninstall "$tool" || log_warning "Failed to uninstall $tool via cargo"
+        fi
+        
+        # Also check for manual cargo installations
+        if [[ -f "$HOME/.cargo/bin/$tool" ]]; then
+            log_info "Removing manually installed $tool from cargo bin"
+            rm -f "$HOME/.cargo/bin/$tool"
+        fi
+    done
+}
+
+cleanup_linux_special_packages() {
+    log_info "Checking for Linux-specific package variations..."
+    
+    # On some Linux distros, neovim might be installed as 'nvim'
+    case "$PACKAGE_MANAGER" in
+        apt)
+            if dpkg -l | grep -q "^ii.*nvim"; then
+                log_info "Found nvim package, uninstalling..."
+                sudo apt remove -y nvim || log_warning "Failed to uninstall nvim"
+            fi
+            ;;
+        *)
+            # For other package managers, just proceed with manual cleanup
+            ;;
+    esac
+    
+    # Check for snap packages (common on Ubuntu)
+    if command -v snap &>/dev/null; then
+        local snap_packages=("nvim" "neovim")
+        for package in "${snap_packages[@]}"; do
+            if snap list | grep -q "^$package "; then
+                log_info "Uninstalling snap package: $package"
+                sudo snap remove "$package" || log_warning "Failed to remove snap package $package"
+            fi
+        done
+    fi
+    
+    # Check for flatpak installations
+    if command -v flatpak &>/dev/null; then
+        # Check for common neovim flatpak IDs
+        local flatpak_ids=("io.neovim.nvim" "org.neovim.Neovim")
+        for app_id in "${flatpak_ids[@]}"; do
+            if flatpak list | grep -q "$app_id"; then
+                log_info "Uninstalling flatpak: $app_id"
+                flatpak uninstall -y "$app_id" || log_warning "Failed to uninstall flatpak $app_id"
+            fi
+        done
+    fi
+    
+    # Check for manually installed tools in common locations
+    cleanup_manual_installs
+}
+
+cleanup_manual_installs() {
+    log_info "Checking for manually installed binaries..."
+    
+    local manual_locations=(
+        "$HOME/.local/bin"
+        "$HOME/bin" 
+        "$HOME/.cargo/bin"
+        "/usr/local/bin"
+        "$HOME/Applications"  # AppImages on Linux
+        "$HOME/apps"          # Common custom app directory
+    )
+    
+    local tools=("nvim" "neovim" "atuin" "zoxide")
+    local appimage_patterns=("*nvim*.AppImage" "*neovim*.AppImage" "*atuin*.AppImage" "*zoxide*.AppImage")
+    
+    for location in "${manual_locations[@]}"; do
+        if [[ -d "$location" ]]; then
+            # Check for regular binaries
+            for tool in "${tools[@]}"; do
+                if [[ -f "$location/$tool" ]]; then
+                    log_info "Removing manually installed $tool from $location"
+                    rm -f "$location/$tool" || log_warning "Failed to remove $location/$tool"
+                fi
+            done
+            
+            # Check for AppImages (Linux)
+            if [[ "$OS" == "linux" ]]; then
+                for pattern in "${appimage_patterns[@]}"; do
+                    for file in "$location"/$pattern; do
+                        if [[ -f "$file" ]]; then
+                            log_info "Removing AppImage: $file"
+                            rm -f "$file" || log_warning "Failed to remove $file"
+                        fi
+                    done
+                done
+            fi
         fi
     done
 }
@@ -243,18 +442,37 @@ cleanup_completion_cache() {
 cleanup_fpath_completions() {
     log_info "Cleaning completion files from FPATH directories..."
     
-    # Common FPATH directories where Homebrew installs completions
-    local fpath_dirs=(
-        "/opt/homebrew/share/zsh/site-functions"
-        "/usr/local/share/zsh/site-functions" 
-        "/opt/homebrew/Cellar/zsh/*/share/zsh/functions"
-    )
+    # OS-specific FPATH directories
+    local fpath_dirs=()
+    
+    case "$OS" in
+        macos)
+            fpath_dirs=(
+                "/opt/homebrew/share/zsh/site-functions"
+                "/usr/local/share/zsh/site-functions" 
+                "/opt/homebrew/Cellar/zsh/*/share/zsh/functions"
+                "/opt/homebrew/share/zsh-completions"
+            )
+            ;;
+        linux)
+            fpath_dirs=(
+                "/usr/share/zsh/vendor-completions"
+                "/usr/share/zsh/site-functions"
+                "/usr/local/share/zsh/site-functions"
+                "/usr/share/zsh-completions"
+                "/etc/zsh_completion.d"
+                "$HOME/.zsh/completions"
+                "$HOME/.local/share/zsh/site-functions"
+            )
+            ;;
+    esac
     
     # Add current FPATH directories
     if [[ -n "${FPATH:-}" ]]; then
         while IFS=':' read -ra PATHS; do
             for path in "${PATHS[@]}"; do
-                if [[ -d "$path" && "$path" == *"homebrew"* ]]; then
+                # Only add system/package manager directories to be safe
+                if [[ "$path" == *"homebrew"* ]] || [[ "$path" == "/usr/share"* ]] || [[ "$path" == "/usr/local"* ]]; then
                     fpath_dirs+=("$path")
                 fi
             done
@@ -319,11 +537,36 @@ verify_cleanup() {
     # Check if packages are uninstalled
     local packages=("neovim" "atuin" "zoxide")
     for package in "${packages[@]}"; do
-        if brew list "$package" &>/dev/null; then
-            log_warning "$package still installed"
-        else
-            log_success "$package successfully removed"
-        fi
+        case "$PACKAGE_MANAGER" in
+            brew)
+                if brew list "$package" &>/dev/null; then
+                    log_warning "$package still installed"
+                else
+                    log_success "$package successfully removed"
+                fi
+                ;;
+            apt)
+                if dpkg -l | grep -q "^ii.*$package"; then
+                    log_warning "$package still installed"
+                else
+                    log_success "$package successfully removed"
+                fi
+                ;;
+            dnf|yum)
+                if $PACKAGE_MANAGER list installed "$package" &>/dev/null; then
+                    log_warning "$package still installed"
+                else
+                    log_success "$package successfully removed"
+                fi
+                ;;
+            pacman)
+                if pacman -Q "$package" &>/dev/null; then
+                    log_warning "$package still installed"
+                else
+                    log_success "$package successfully removed"
+                fi
+                ;;
+        esac
     done
     
     # Check if functions are gone
@@ -343,19 +586,50 @@ verify_cleanup() {
         log_success "vim alias cleaned up"
     fi
     
-    # Check for completion files
+    # Check for completion files based on OS
     local found_completion=false
-    for dir in /opt/homebrew/share/zsh/site-functions /usr/local/share/zsh/site-functions; do
-        if [[ -d "$dir" ]]; then
-            if find "$dir" -name "*atuin*" -o -name "*zoxide*" | grep -q .; then
-                log_warning "Found completion files in $dir"
-                found_completion=true
-            fi
-        fi
-    done
+    case "$OS" in
+        macos)
+            for dir in /opt/homebrew/share/zsh/site-functions /usr/local/share/zsh/site-functions; do
+                if [[ -d "$dir" ]]; then
+                    if find "$dir" -name "*atuin*" -o -name "*zoxide*" | grep -q .; then
+                        log_warning "Found completion files in $dir"
+                        found_completion=true
+                    fi
+                fi
+            done
+            ;;
+        linux)
+            for dir in /usr/share/zsh/vendor-completions /usr/share/zsh/site-functions /usr/local/share/zsh/site-functions; do
+                if [[ -d "$dir" ]]; then
+                    if find "$dir" -name "*atuin*" -o -name "*zoxide*" | grep -q .; then
+                        log_warning "Found completion files in $dir"
+                        found_completion=true
+                    fi
+                fi
+            done
+            ;;
+    esac
     
     if ! $found_completion; then
         log_success "No stray completion files found"
+    fi
+    
+    # Check for manual installations
+    local manual_found=false
+    for location in "$HOME/.local/bin" "$HOME/bin" "$HOME/.cargo/bin"; do
+        if [[ -d "$location" ]]; then
+            for tool in nvim atuin zoxide; do
+                if [[ -f "$location/$tool" ]]; then
+                    log_warning "Found manually installed $tool in $location"
+                    manual_found=true
+                fi
+            done
+        fi
+    done
+    
+    if ! $manual_found; then
+        log_success "No manual installations found"
     fi
     
     log_info "Verification complete"
@@ -391,15 +665,34 @@ deep_clean() {
         done
     fi
     
-    # Clean up all possible completion directories
+    # Clean up all possible completion directories based on OS
     log_info "Deep cleaning completion directories..."
-    local deep_dirs=(
-        "/opt/homebrew/share/zsh/site-functions"
-        "/usr/local/share/zsh/site-functions"
-        "/opt/homebrew/share/zsh-completions"
-        "$HOME/.zsh/completions"
-        "$HOME/.oh-my-zsh/completions"
-    )
+    local deep_dirs=()
+    
+    case "$OS" in
+        macos)
+            deep_dirs=(
+                "/opt/homebrew/share/zsh/site-functions"
+                "/usr/local/share/zsh/site-functions"
+                "/opt/homebrew/share/zsh-completions"
+                "$HOME/.zsh/completions"
+                "$HOME/.oh-my-zsh/completions"
+            )
+            ;;
+        linux)
+            deep_dirs=(
+                "/usr/share/zsh/vendor-completions"
+                "/usr/share/zsh/site-functions"
+                "/usr/local/share/zsh/site-functions"
+                "/usr/share/zsh-completions"
+                "/etc/zsh_completion.d"
+                "$HOME/.zsh/completions"
+                "$HOME/.local/share/zsh/site-functions"
+                "$HOME/.oh-my-zsh/completions"
+                "$HOME/.dotfiles/.zsh/.zsh_completions"
+            )
+            ;;
+    esac
     
     for dir in "${deep_dirs[@]}"; do
         if [[ -d "$dir" ]]; then
@@ -414,6 +707,17 @@ deep_clean() {
         log_info "Removing compiled zsh file: $file"
         rm -f "$file"
     done
+    
+    # Clean up cargo/rust installations if they exist
+    if [[ -d "$HOME/.cargo/bin" ]]; then
+        log_info "Checking cargo installations..."
+        for tool in atuin zoxide; do
+            if [[ -f "$HOME/.cargo/bin/$tool" ]]; then
+                log_info "Removing cargo-installed $tool"
+                rm -f "$HOME/.cargo/bin/$tool"
+            fi
+        done
+    fi
     
     log_success "Deep cleanup complete"
 }
