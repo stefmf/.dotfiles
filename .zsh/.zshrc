@@ -147,49 +147,6 @@ done
 YSU_MESSAGE_POSITION="after"  # Show alias message after command
 YSU_MODE=ALL                  # Show all matching aliases
 
-#------------------------------------------------------------------------------
-# SSH Agent Configuration
-#------------------------------------------------------------------------------
-# Clear any existing SSH_AUTH_SOCK to avoid conflicts
-unset SSH_AUTH_SOCK  
-
-# Ensure ssh-agent is running
-SOCKET="$HOME/.ssh/sockets/ssh_auth_sock"
-
-if [ ! -S "$SOCKET" ]; then
-  eval "$(ssh-agent -a $SOCKET)"
-fi
-
-export SSH_AUTH_SOCK="$SOCKET"
-
-# Add SSH key if not already added
-for key in id_personal id_work; do
-  KEY_PATH="$HOME/.ssh/$key"
-  if [ -f "$KEY_PATH" ] && ! ssh-add -l | grep -q "$key"; then
-    ssh-add "$KEY_PATH" && echo "🔐 Loaded $key"
-  fi
-done
-
-
-#------------------------------------------------------------------------------
-# Terminal UI and Appearance
-#------------------------------------------------------------------------------
-
-# Initialize Oh My Posh in any terminal that supports it
-if [ "$TERM" != "linux" ]; then
-  if type oh-my-posh &>/dev/null; then
-    eval "$(oh-my-posh init zsh --config ~/.dotfiles/.config/ohmyposh/prompt.json)"
-  fi
-fi
-
-# Terminal Screensaver Configuration
-TMOUT=600
-TRAPALRM() {
-    if type tty-clock &>/dev/null; then
-        tty-clock -S -c -B < /dev/tty > /dev/tty
-    fi
-    zle reset-prompt
-}
 
 # Syntax Highlighting (Must be last)
 ZSH_SYNTAX_HIGHLIGHT_LOCATIONS=(
