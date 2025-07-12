@@ -19,7 +19,7 @@ fi
 # Load SSH keys only if not already loaded
 for key in id_personal id_work; do
   KEY_PATH="$HOME/.ssh/$key"
-  COMMENT=$(ssh-keygen -l -f "$KEY_PATH.pub" 2>/dev/null | awk '{print $NF}')
+  COMMENT=$(awk '{print $3}' "$KEY_PATH.pub")
   if [ -f "$KEY_PATH" ] && ! ssh-add -l 2>/dev/null | grep -q "$COMMENT"; then
     ssh-add "$KEY_PATH" >/dev/null 2>&1 && echo "🔐 Loaded $COMMENT"
   fi
