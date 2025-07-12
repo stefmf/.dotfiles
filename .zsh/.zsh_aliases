@@ -153,7 +153,22 @@ case "$OSTYPE" in
             alias "$cmd"="g$cmd"
         fi
     done
+
+    # Nuke all user processes except your shell and SSH
+    nuke_user_procs() {
+      for pid in $(ps -u "$USER" -o pid= | grep -v $$); do
+        cmd=$(ps -p "$pid" -o comm=)
+        case "$cmd" in
+          sshd|zsh|bash|sh|tmux|screen) continue ;;
+        esac
+        echo "Killing PID $pid ($cmd)"
+        kill -9 "$pid"
+      done
+    }
+
+    alias nuke='nuke_user_procs'
     ;;
+
   linux-gnu*|linux-musl*)
     #--------------------------------------------------------------------------
     # Linux Configuration
