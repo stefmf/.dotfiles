@@ -23,7 +23,7 @@ for key in id_personal id_work; do
 
   if [ -f "$KEY_PATH" ]; then
     if [ -f "$PUB_PATH" ]; then
-      COMMENT=$(awk '{print $3}' "$PUB_PATH")
+      COMMENT=$(ssh-keygen -lf "$PUB_PATH" | sed 's/.* \(.*\) (.*/\1/')
       if ! ssh-add -l 2>/dev/null | grep -q "$COMMENT"; then
         ssh-add "$KEY_PATH" >/dev/null 2>&1 && echo "🔐 Loaded $COMMENT"
       fi
@@ -32,3 +32,4 @@ for key in id_personal id_work; do
     fi
   fi
 done
+
