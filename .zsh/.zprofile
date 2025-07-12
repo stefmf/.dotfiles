@@ -8,17 +8,22 @@ unset SSH_AUTH_SOCK
 
 # Ensure ssh-agent is running
 SOCKET="$HOME/.ssh/sockets/ssh_auth_sock"
+unset SSH_AUTH_SOCK
 
-if [ ! -S "$SOCKET" ]; then
-  eval "$(ssh-agent -a $SOCKET)"
+# Check if socket exists and agent is alive
+if [ -S "$SOCKET" ] && ssh-add -l >/dev/null 2>&1; then
+  export SSH_AUTH_SOCK="$SOCKET"
+else
+  echo "🔁 Restarting ssh-agent..."
+  rm -f "$SOCKET"
+  eval "$(ssh-agent -a "$SOCKET")"
+  export SSH_AUTH_SOCK="$SOCKET"
 fi
 
-export SSH_AUTH_SOCK="$SOCKET"
-
-# Add SSH key if not already added
+# Load keys if not already loaded
 for key in id_personal id_work; do
   KEY_PATH="$HOME/.ssh/$key"
-  if [ -f "$KEY_PATH" ] && ! ssh-add -l | grep -q "$key"; then
+  if [ -f "$KEY_PATH" ] && ! ssh-add -l 2>/dev/null | grep -q "$key"; then
     ssh-add "$KEY_PATH" && echo "🔐 Loaded $key"
   fi
 done

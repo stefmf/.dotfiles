@@ -154,25 +154,27 @@ case "$OSTYPE" in
         fi
     done
 
-    # Nuke all user processes except your shell and SSH
+    # Nuke user processes excluding shell, ssh, and ssh-agent
     nuke_user_procs() {
       local verbose=false
       [[ "$1" == "-v" ]] && verbose=true
 
       local self_shell_pid=$$
-      local ssh_pid=$(ps -o ppid= -p $$ | tr -d ' ')
+      local ssh_pid=$(ps -o ppid= -p "$$" | tr -d ' ')
 
       ps -u "$USER" -o pid= |
         while read -r pid; do
           [[ "$pid" == "$self_shell_pid" || "$pid" == "$ssh_pid" ]] && continue
+          local cmd=$(ps -p "$pid" -o comm= 2>/dev/null)
+          [[ "$cmd" == "ssh-agent" ]] && continue
           if $verbose; then
-            local cmd=$(ps -p "$pid" -o comm=)
             echo "Killing PID $pid ($cmd)"
           fi
           kill -9 "$pid" 2>/dev/null
         done
     }
     alias nuke='nuke_user_procs'
+
     ;;
 
   linux-gnu*|linux-musl*)
