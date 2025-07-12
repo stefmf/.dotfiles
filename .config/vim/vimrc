@@ -1,0 +1,31 @@
+" Basic editing
+set number 
+" set relativenumber
+" set hidden
+set nowrap
+set tabstop=4 shiftwidth=4 expandtab smartindent
+set backspace=indent,eol,start
+set clipboard=unnamedplus
+set scrolloff=5
+set mouse=a
+set undofile
+set nocompatible                         " ditch old-Vi quirks
+
+" Search
+set incsearch
+set ignorecase
+set smartcase
+
+" UI & colours
+set termguicolors                        " required for Catppuccin visuals
+set background=dark
+syntax on
+
+" Make sure Vim sees the XDG config tree
+set runtimepath^=~/.config/vim
+
+" Load the Catppuccin Frappe palette
+colorscheme catppuccin_frappe
+
+" Filetype helpers
+filetype plugin indent on
