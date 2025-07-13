@@ -158,19 +158,36 @@ case "$OSTYPE" in
 alias dotup="$HOME/.dotfiles/helpers/dotup"   # run wrapper
 
 # Hosts reachable via SSH *from any other host*
-typeset -a DOT_HOSTS=(lucky dreams draco)
 
+typeset -a DOT_HOSTS=(lucky dreams draco)
 dotall () {
   local self="$(hostname -s)"
+  local bg_pids=()
+
   for h in "${DOT_HOSTS[@]}"; do
-    [[ "$h" == "$self" ]] && continue         # skip current host
+    [[ "$h" == "$self" ]] && continue   # skip this host
     echo "[dotall] → $h"
-    ssh -o BatchMode=yes -o ConnectTimeout=5 "$h" \
-        '~/.dotfiles/helpers/dotup' \
-        && echo "[dotall] ← $h OK" \
-        || echo "[dotall] ← $h FAILED" &
+
+    # 1. Quick non-interactive probe
+    if ssh -o BatchMode=yes -o ConnectTimeout=5 "$h" 'true' 2>/dev/null; then
+      # Key-based auth works → fire & forget in background
+      ssh -o BatchMode=yes "$h" '~/.dotfiles/helpers/dotup' \
+         && echo "[dotall] ← $h OK" \
+         || echo "[dotall] ← $h FAILED" &
+      bg_pids+=($!)
+    else
+      # 2. Fallback to interactive (password / Touch ID / YubiKey)
+      echo "[dotall] no agent creds for $h — prompting…"
+      ssh "$h" '~/.dotfiles/helpers/dotup' \
+         && echo "[dotall] ← $h OK (interactive)" \
+         || echo "[dotall] ← $h FAILED (interactive)"
+    fi
   done
-  wait
+
+  # wait for any background jobs to finish
+  for pid in "${bg_pids[@]}"; do
+    wait "$pid"
+  done
   echo "[dotall] complete."
 }
 
