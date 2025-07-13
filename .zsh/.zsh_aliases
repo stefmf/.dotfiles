@@ -157,6 +157,9 @@ case "$OSTYPE" in
 # ── dotup / dotall config ────────────────────────────────
 alias dotup="$HOME/.dotfiles/helpers/dotup"   # wrapper
 
+# pull latest dot-files from brut and re-apply
+alias pullbrut='git -C ~/.dotfiles pull brut:~/.dotfiles main && ~/.dotfiles/helpers/dotup'
+
 # Normal LAN hosts (reachable from anywhere)
 typeset -a DOT_HOSTS_LAN=(lucky dreams draco)
 
