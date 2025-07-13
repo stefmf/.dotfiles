@@ -71,37 +71,10 @@ zstyle ':completion:*' group-name ''                      # Group matches
 # Plugin Configuration
 #------------------------------------------------------------------------------
 
-# FZF Configuration
-# Key Bindings:
-# - Ctrl+T: File search
-# - Alt+C: Directory search
-if type fzf &>/dev/null; then
-    # List of possible locations for fzf scripts
-    FZF_LOCATIONS=(
-        "/usr/share/doc/fzf/examples"
-        "/usr/local/opt/fzf/shell"
-        "$HOME/.fzf/shell"
-        "$(brew --prefix fzf 2>/dev/null)/shell"
-    )
+# Load FZF config
+FZF_CONFIG="$HOME/.config/fzf/config.fzf"
+[[ -f "$FZF_CONFIG" ]] && source "$FZF_CONFIG"
 
-    for fzf_dir in "${FZF_LOCATIONS[@]}"; do
-        if [ -f "$fzf_dir/key-bindings.zsh" ]; then
-            source "$fzf_dir/key-bindings.zsh"
-            source "$fzf_dir/completion.zsh"
-            break
-        fi
-    done
-
-    # Set key bindings
-    bindkey '^T' fzf-file-widget
-    bindkey '\ec' fzf-cd-widget
-fi
-
-# Auto-suggestions Configuration
-# Key Bindings:
-# - Right arrow: Accept suggestion
-# - Ctrl+→: Accept next word
-# - Alt+→: Accept next word
 
 # Paths where zsh-autosuggestions might be installed
 ZSH_AUTOSUGGEST_LOCATIONS=(

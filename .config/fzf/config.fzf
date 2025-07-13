@@ -1,0 +1,42 @@
+# Load Catppuccin Frappe theme (colors only)
+source "${HOME}/.config/fzf/themes/catppuccin-fzf-frappe.sh"
+
+# Use fd for file listings (including hidden, following symlinks, excluding .git)
+export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+
+# Core display options
+export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS \
+  --height=40% \
+  --layout=reverse \
+  --border=rounded \
+  --no-bold"
+
+# File search preview (Ctrl+T)
+export FZF_CTRL_T_OPTS="
+  --preview 'bat --style=numbers --color=always --theme=\"Catppuccin Frappe\" {} || cat {}'
+  --preview-window=right:60%:wrap"
+
+# Directory search preview (Alt+C)
+export FZF_ALT_C_OPTS="
+  --preview 'ls -la {}'
+  --preview-window=right:50%"
+
+# History search (Ctrl+R)
+export FZF_CTRL_R_OPTS="
+  --sort
+  --exact"
+
+# Load shell integration (BOTH completions AND key-bindings)
+for dir in \
+    "/usr/share/doc/fzf/examples" \
+    "/usr/local/opt/fzf/shell" \
+    "$HOME/.fzf/shell" \
+    "$(brew --prefix fzf 2>/dev/null)/shell"
+do
+  if [[ -f "$dir/completion.zsh" ]]; then
+    source "$dir/completion.zsh"
+  fi
+  if [[ -f "$dir/key-bindings.zsh" ]]; then
+    source "$dir/key-bindings.zsh"
+  fi
+done
