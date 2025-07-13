@@ -154,6 +154,25 @@ case "$OSTYPE" in
         fi
     done
 
+# ── dot-files updater aliases ─────────────────────────────
+alias dotup="$HOME/.dotfiles/helpers/dotup"   # run wrapper
+
+# Hosts reachable via SSH *from any other host*
+typeset -a DOT_HOSTS=(lucky dreams draco)
+
+dotall () {
+  local self="$(hostname -s)"
+  for h in "${DOT_HOSTS[@]}"; do
+    [[ "$h" == "$self" ]] && continue         # skip current host
+    echo "[dotall] → $h"
+    ssh -o BatchMode=yes -o ConnectTimeout=5 "$h" \
+        '~/.dotfiles/helpers/dotup' \
+        && echo "[dotall] ← $h OK" \
+        || echo "[dotall] ← $h FAILED" &
+  done
+  wait
+  echo "[dotall] complete."
+
     # Nuke user processes excluding shell, ssh, and ssh-agent
     nuke_user_procs() {
       local verbose=false
