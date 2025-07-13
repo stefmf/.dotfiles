@@ -172,29 +172,32 @@ dotall () {
   done
   wait
   echo "[dotall] complete."
+}
 
-    # Nuke user processes excluding shell, ssh, and ssh-agent
-    nuke_user_procs() {
-      local verbose=false
-      [[ "$1" == "-v" ]] && verbose=true
+# ── Misc helpers ──────────────────────────────────────────
+# Nuke user processes excluding shell, ssh, and ssh-agent
+nuke_user_procs() {
+  local verbose=false
+  [[ "$1" == "-v" ]] && verbose=true
 
-      local self_shell_pid=$$
-      local ssh_pid=$(ps -o ppid= -p "$$" | tr -d ' ')
+  local self_shell_pid=$$
+  local ssh_pid=$(ps -o ppid= -p "$$" | tr -d ' ')
 
-      ps -u "$USER" -o pid= |
-        while read -r pid; do
-          [[ "$pid" == "$self_shell_pid" || "$pid" == "$ssh_pid" ]] && continue
-          local cmd=$(ps -p "$pid" -o comm= 2>/dev/null)
-          [[ "$cmd" == "ssh-agent" ]] && continue
-          if $verbose; then
-            echo "Killing PID $pid ($cmd)"
-          fi
-          kill -9 "$pid" 2>/dev/null
-        done
-    }
-    alias nuke='nuke_user_procs'
+  ps -u "$USER" -o pid= |
+    while read -r pid; do
+      [[ "$pid" == "$self_shell_pid" || "$pid" == "$ssh_pid" ]] && continue
+      local cmd=$(ps -p "$pid" -o comm= 2>/dev/null)
+      [[ "$cmd" == "ssh-agent" ]] && continue
+      if $verbose; then
+        echo "Killing PID $pid ($cmd)"
+      fi
+      kill -9 "$pid" 2>/dev/null
+    done
+}
+alias nuke='nuke_user_procs'
 
-    ;;
+;;
+
 
   linux-gnu*|linux-musl*)
 
