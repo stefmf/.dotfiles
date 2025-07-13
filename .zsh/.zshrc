@@ -76,49 +76,6 @@ FZF_CONFIG="$HOME/.config/fzf/config.fzf"
 [[ -f "$FZF_CONFIG" ]] && source "$FZF_CONFIG"
 
 
-# Paths where zsh-autosuggestions might be installed
-ZSH_AUTOSUGGEST_LOCATIONS=(
-    "/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-    "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
-    "$(brew --prefix zsh-autosuggestions 2>/dev/null)/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-    "$HOME/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh"
-    "$HOME/.dotfiles/.zsh/.zshplugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
-)
-
-for plugin in "${ZSH_AUTOSUGGEST_LOCATIONS[@]}"; do
-    if [ -f "$plugin" ]; then
-        source "$plugin"
-        break
-    fi
-done
-
-# Auto-suggestion Settings
-ZSH_AUTOSUGGEST_STRATEGY=(history completion)
-ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
-ZSH_AUTOSUGGEST_USE_ASYNC=true
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#808080'
-
-# Additional key bindings for autosuggestions
-bindkey '^[[1;3C' forward-word      # Alt + →
-bindkey '^[[1;5C' forward-word      # Ctrl + →
-
-
-# You-Should-Use Configuration
-YSU_PLUGIN_PATHS=(
-    "$HOME/.dotfiles/.zsh/.zshplugins/zsh-you-should-use/you-should-use.plugin.zsh"
-    "/usr/share/zsh-you-should-use/zsh-you-should-use.plugin.zsh"
-    "$(brew --prefix 2>/dev/null)/share/zsh-you-should-use/you-should-use.plugin.zsh"
-)
-
-for ysu_plugin in "${YSU_PLUGIN_PATHS[@]}"; do
-    if [ -f "$ysu_plugin" ]; then
-        source "$ysu_plugin"
-        break
-    fi
-done
-
-YSU_MESSAGE_POSITION="after"  # Show alias message after command
-YSU_MODE=ALL                  # Show all matching aliases
 
 #------------------------------------------------------------------------------
 # Terminal UI and Appearance
@@ -140,16 +97,8 @@ TRAPALRM() {
     zle reset-prompt
 }
 
-# Syntax Highlighting (Must be last)
-ZSH_SYNTAX_HIGHLIGHT_LOCATIONS=(
-    "$HOME/.dotfiles/.zsh/.zshplugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-    "/usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-    "$(brew --prefix 2>/dev/null)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-)
-
-for syntax_plugin in "${ZSH_SYNTAX_HIGHLIGHT_LOCATIONS[@]}"; do
-    if [ -f "$syntax_plugin" ]; then
-        source "$syntax_plugin"
-        break
-    fi
+# Source every ZSH plugin config
+for cfg in "$HOME/.dotfiles/.zsh/config/"*.zsh; do
+  source "$cfg"
 done
+
