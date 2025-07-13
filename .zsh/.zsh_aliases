@@ -154,42 +154,46 @@ case "$OSTYPE" in
         fi
     done
 
-# ── dot-files updater aliases ─────────────────────────────
-alias dotup="$HOME/.dotfiles/helpers/dotup"   # run wrapper
+# ── dotup / dotall config ────────────────────────────────
+alias dotup="$HOME/.dotfiles/helpers/dotup"   # wrapper
 
-# Hosts reachable via SSH *from any other host*
+# Normal LAN hosts (reachable from anywhere)
+typeset -a DOT_HOSTS_LAN=(lucky dreams draco)
 
-typeset -a DOT_HOSTS=(lucky dreams draco)
+# Air-gapped network hosts; only brut can reach them
+typeset -a DOT_HOSTS_AIR=(bubbles)
+
 dotall () {
   local self="$(hostname -s)"
   local bg_pids=()
 
-  for h in "${DOT_HOSTS[@]}"; do
-    [[ "$h" == "$self" ]] && continue   # skip this host
+  # Decide final list at runtime
+  local targets=("${DOT_HOSTS_LAN[@]}")
+  [[ "$self" == "brut" ]] && targets+=("${DOT_HOSTS_AIR[@]}")
+
+  for h in "${targets[@]}"; do
+    [[ "$h" == "$self" ]] && continue         # skip current box
     echo "[dotall] → $h"
 
-    # 1. Quick non-interactive probe
+    # quick non-interactive probe
     if ssh -o BatchMode=yes -o ConnectTimeout=5 "$h" 'true' 2>/dev/null; then
-      # Key-based auth works → fire & forget in background
       ssh -o BatchMode=yes "$h" '~/.dotfiles/helpers/dotup' \
-         && echo "[dotall] ← $h OK" \
-         || echo "[dotall] ← $h FAILED" &
+        && echo "[dotall] ← $h OK" \
+        || echo "[dotall] ← $h FAILED" &
       bg_pids+=($!)
     else
-      # 2. Fallback to interactive (password / Touch ID / YubiKey)
-      echo "[dotall] no agent creds for $h — prompting…"
+      echo "[dotall] no key for $h — prompting..."
       ssh "$h" '~/.dotfiles/helpers/dotup' \
-         && echo "[dotall] ← $h OK (interactive)" \
-         || echo "[dotall] ← $h FAILED (interactive)"
+        && echo "[dotall] ← $h OK (interactive)" \
+        || echo "[dotall] ← $h FAILED (interactive)"
     fi
   done
 
-  # wait for any background jobs to finish
-  for pid in "${bg_pids[@]}"; do
-    wait "$pid"
-  done
+  for pid in "${bg_pids[@]}"; do wait "$pid"; done
   echo "[dotall] complete."
 }
+# ─────────────────────────────────────────────────────────
+
 
 # ── Misc helpers ──────────────────────────────────────────
 # Nuke user processes excluding shell, ssh, and ssh-agent
