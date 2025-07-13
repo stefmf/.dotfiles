@@ -167,31 +167,45 @@ dotall () {
   local self="$(hostname -s)"
   local bg_pids=()
 
-  # Decide final list at runtime
+  # Decide targets
   local targets=("${DOT_HOSTS_LAN[@]}")
   [[ "$self" == "brut" ]] && targets+=("${DOT_HOSTS_AIR[@]}")
 
   for h in "${targets[@]}"; do
-    [[ "$h" == "$self" ]] && continue         # skip current box
+    [[ "$h" == "$self" ]] && continue            # skip this host
     echo "[dotall] → $h"
 
-    # quick non-interactive probe
-    if ssh -o BatchMode=yes -o ConnectTimeout=5 "$h" 'true' 2>/dev/null; then
-      ssh -o BatchMode=yes "$h" '~/.dotfiles/helpers/dotup' \
-        && echo "[dotall] ← $h OK" \
-        || echo "[dotall] ← $h FAILED" &
+    # ── 1. Reachability probe (5-second hard limit) ────────────────────────
+    if ssh -o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 \
+           "$h" 'true' 2>/dev/null; then
+      # key auth works  → fire & forget in background
+      ssh -o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 \
+          "$h" '~/.dotfiles/helpers/dotup' \
+          && echo "[dotall] ← $h OK" \
+          || echo "[dotall] ← $h FAILED" &
       bg_pids+=($!)
+      continue
+    fi
+
+    # ── 2. Host reachable but needs password / touchID / yubikey ───────────
+    if nc -z -w3 "$h" 22 2>/dev/null; then     # TCP port 22 open?
+      echo "[dotall] no key for $h — prompting…"
+      ssh -o ConnectTimeout=10 -o ConnectionAttempts=1 "$h" \
+          '~/.dotfiles/helpers/dotup' \
+          && echo "[dotall] ← $h OK (interactive)" \
+          || echo "[dotall] ← $h FAILED (interactive)"
     else
-      echo "[dotall] no key for $h — prompting..."
-      ssh "$h" '~/.dotfiles/helpers/dotup' \
-        && echo "[dotall] ← $h OK (interactive)" \
-        || echo "[dotall] ← $h FAILED (interactive)"
+      echo "[dotall] skip $h (unreachable)"
     fi
   done
 
-  for pid in "${bg_pids[@]}"; do wait "$pid"; done
+  # wait for any background jobs
+  for pid in "${bg_pids[@]}"; do
+    wait "$pid"
+  done
   echo "[dotall] complete."
 }
+
 # ─────────────────────────────────────────────────────────
 
 
