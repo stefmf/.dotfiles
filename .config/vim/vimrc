@@ -8,7 +8,6 @@ set backspace=indent,eol,start
 set clipboard=unnamedplus
 set scrolloff=5
 set mouse=a
-set undofile
 set nocompatible                         " ditch old-Vi quirks
 
 " Search
