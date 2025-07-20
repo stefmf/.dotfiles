@@ -27,6 +27,9 @@ fi
 # Add custom completion paths
 FPATH="$HOME/.dotfiles/.zsh/.zsh_completions:$FPATH"
 
+# Make "/" a delimiter so forward-word stops on each directory
+WORDCHARS=${WORDCHARS//\//}
+
 # Initialize completion system
 autoload -Uz compinit
 
@@ -117,10 +120,14 @@ bindkey '\e[H'       beginning-of-line   # ESC [ H  (Home)
 bindkey '\e[F'       end-of-line         # ESC [ F  (End)
 
 
-# Additional key bindings for autosuggestions
-bindkey '^[[1;3C' forward-word      # Alt + →
-bindkey '^[[1;5C' forward-word      # Ctrl + →
+# ─── Autosuggestion navigation ──────────────────────────────
+# Use forward-word for “partial” accept
+ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS=(forward-word)  
 
+# Right‑arrow  → accept next token (/‑delimited path segment or word)
+bindkey '^[[C'     forward-word
+# Ctrl‑Right → accept the entire suggestion
+bindkey '\e[1;2C'  autosuggest-accept
 
 # You-Should-Use Configuration
 YSU_PLUGIN_PATHS=(
