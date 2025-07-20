@@ -20,7 +20,7 @@
     "auto": false,
     "notice": false
   },
-  "console_title_template": "{{ .Shell }} in {{ .Folder }}",
+  "console_title_template": "Terminal",
   "blocks": [
     {
       "type": "prompt",

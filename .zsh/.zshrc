@@ -98,6 +98,25 @@ ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
 ZSH_AUTOSUGGEST_USE_ASYNC=true
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#808080'
 
+
+# ─── Custom Keybindings ───────────────────────────
+
+# ------- Natural text editing like VS Code -------
+bindkey -e                       # emacs keymap (default on macOS)
+
+# ⌥ ← / ⌥ →  → word left/right
+bindkey '\eb'        backward-word   # ESC b (iTerm “Left Option = Esc+”)
+bindkey '\ef'        forward-word    # ESC f
+bindkey '\e[1;3D'    backward-word   # iTerm Alt‑Left when not Esc+
+bindkey '\e[1;3C'    forward-word    # iTerm Alt‑Right when not Esc+
+
+# ⌘ ← / ⌘ →  → line start/end
+bindkey '^A'         beginning-of-line   # sent if you chose Hex 01
+bindkey '^E'         end-of-line         # sent if you chose Hex 05
+bindkey '\e[H'       beginning-of-line   # ESC [ H  (Home)
+bindkey '\e[F'       end-of-line         # ESC [ F  (End)
+
+
 # Additional key bindings for autosuggestions
 bindkey '^[[1;3C' forward-word      # Alt + →
 bindkey '^[[1;5C' forward-word      # Ctrl + →
@@ -125,6 +144,7 @@ YSU_MODE=ALL                  # Show all matching aliases
 #------------------------------------------------------------------------------
 
 # Initialize Oh My Posh in any terminal that supports it
+
 if [ "$TERM" != "linux" ]; then
   if type oh-my-posh &>/dev/null; then
     eval "$(oh-my-posh init zsh --config ~/.dotfiles/.config/ohmyposh/prompt.json)"

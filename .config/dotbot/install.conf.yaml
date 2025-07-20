@@ -19,6 +19,7 @@
     ~/.zshenv: .zsh/.zshenv
     ~/.zprofile: .zsh/.zprofile
     ~/.zshrc: .zsh/.zshrc
+    ~/.hushlogin: .zsh/.hushlogin
     /opt/homebrew/etc/dnsmasq.conf: .config/dnsmasq/dnsmasq.conf
     "~/Library/Application Support/Sublime Text/Packages/User": .config/sublime/User
     "~/Library/Application Support/Sublime Text/Installed Packages": .config/sublime/Installed Packages
@@ -30,5 +31,4 @@
       force: false
 
 - shell:
-    - [git submodule update --init --recursive, Installing submodules]
     - [rm -f ~/.bashrc ~/.bash_profile, Removing Bash configuration files]

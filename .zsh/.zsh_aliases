@@ -23,6 +23,9 @@ alias man='tldr'
 # WGET
 alias wget='wget2'
 
+# GREP
+alias grep='grep --color=auto'  # Colorize grep output
+
 # Shell Management
 alias reload='source ~/.zshrc'
 alias c='clear'
@@ -264,19 +267,4 @@ esac
 # Entertainment and Visual
 #------------------------------------------------------------------------------
 
-alias pipes='pipes.sh'
 alias fastfetch='$HOME/.dotfiles/.config/fastfetch/fastfetch_wrapper.zsh'
-
-#------------------------------------------------------------------------------
-# Keyboard Shortcut Reference
-#------------------------------------------------------------------------------
-
-# Emacs-style keyboard shortcuts reference
-alias emacs='echo "\033[1;36m# CURSOR MOVEMENT\033[0m
-\033[1;35mopt+f/b\033[0m: move forward/back word | \033[1;35mctrl+a/e\033[0m: move to line start/end
-
-\033[1;33m# CASE OPERATIONS\033[0m
-\033[1;35mopt+l/u\033[0m: lowercase/uppercase word
-
-\033[1;31m# DELETION\033[0m
-\033[1;35mctrl+k\033[0m: delete to line end | \033[1;35mctrl+u\033[0m: delete entire line | \033[1;35mopt+d\033[0m: delete next word | \033[1;35mctrl+w\033[0m: delete prev word"'
