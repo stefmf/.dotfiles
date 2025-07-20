@@ -183,14 +183,13 @@ typeset -a DOT_HOSTS_AIR=(bubbles)
 
 dotall () {
   emulate -L zsh
-
   local self=$(hostname -s)
 
-  # ── build target list ───────────────────────────────────────────────────
+  # ── Build target list ────────────────────────────────────────────────
   local targets=("${DOT_HOSTS_LAN[@]}")
   [[ $self == brut ]] && targets+=("${DOT_HOSTS_AIR[@]}")
 
-  # option bundles
+  # ── SSH option bundles ───────────────────────────────────────────────
   local SSH_KEY_OPTS=(
     -o BatchMode=yes
     -o ConnectTimeout=15
@@ -199,14 +198,14 @@ dotall () {
   )
   local SSH_INT_OPTS=(
     -o ConnectTimeout=15
-    -o ConnectionAttempts=1  # allow prompting
+    -o ConnectionAttempts=1   # allow password/TouchID prompt
   )
 
   for h in "${targets[@]}"; do
     [[ $h == $self ]] && continue
     print -P "%F{cyan}[dotall]%f → $h"
 
-    # ── 1. key‑only probe ────────────────────────────────────────────────
+    # ── 1. Try key‑only (silent) ────────────────────────────────────
     if ssh "${SSH_KEY_OPTS[@]}" "$h" true 2>/dev/null; then
       ssh "${SSH_KEY_OPTS[@]}" "$h" '~/.dotfiles/helpers/dotup' \
         | sed -u "s/^/[$h] /"
@@ -214,10 +213,10 @@ dotall () {
       continue
     fi
 
-    # ── 2. interactive fallback (always via ProxyJump) ───────────────────
+    # ── 2. Key failed → always prompt (uses your ProxyJump) ────────
     print -P "%F{yellow}[dotall]%f no key for $h — prompting…"
     if ssh "${SSH_INT_OPTS[@]}" "$h" '~/.dotfiles/helpers/dotup' \
-          | sed -u "s/^/[$h] /"; then
+         | sed -u "s/^/[$h] /"; then
       print -P "%F{green}[dotall]%f ← $h OK (interactive)"
     else
       print -P "%F{red}[dotall]%f ← $h FAILED (interactive)"
