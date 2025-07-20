@@ -19,4 +19,4 @@ fi
 # ssh-add -D >/dev/null 2>&1 && echo "🔓 SSH keys unloaded"
 
 # Display logout message
-echo "Logged out at $(date '+%Y-%m-%d %H:%M:%S')"
+# echo "Logged out at $(date '+%Y-%m-%d %H:%M:%S')"
