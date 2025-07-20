@@ -182,46 +182,53 @@ typeset -a DOT_HOSTS_LAN=(lucky dreams draco)
 typeset -a DOT_HOSTS_AIR=(bubbles)
 
 dotall () {
-  local self="$(hostname -s)"
-  local bg_pids=()
+  emulate -L zsh
 
-  # Decide targets
+  local self=$(hostname -s)
+
+  # ── build target list ───────────────────────────────────────────────────
   local targets=("${DOT_HOSTS_LAN[@]}")
-  [[ "$self" == "brut" ]] && targets+=("${DOT_HOSTS_AIR[@]}")
+  [[ $self == brut ]] && targets+=("${DOT_HOSTS_AIR[@]}")
+
+  # option bundles
+  local SSH_KEY_OPTS=(
+    -o BatchMode=yes
+    -o ConnectTimeout=15
+    -o ConnectionAttempts=2
+    -o StrictHostKeyChecking=accept-new
+  )
+  local SSH_INT_OPTS=(
+    -o ConnectTimeout=15
+    -o ConnectionAttempts=1   # show prompt if key fails
+  )
 
   for h in "${targets[@]}"; do
-    [[ "$h" == "$self" ]] && continue            # skip this host
-    echo "[dotall] → $h"
+    [[ $h == $self ]] && continue
+    print -P "%F{cyan}[dotall]%f → $h"
 
-    # ── 1. Reachability probe (5-second hard limit) ────────────────────────
-    if ssh -o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 \
-           "$h" 'true' 2>/dev/null; then
-      # key auth works  → fire & forget in background
-      ssh -o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 \
-          "$h" '~/.dotfiles/helpers/dotup' \
-          && echo "[dotall] ← $h OK" \
-          || echo "[dotall] ← $h FAILED" &
-      bg_pids+=($!)
+    # ── 1. key‑only probe ────────────────────────────────────────────────
+    if ssh "${SSH_KEY_OPTS[@]}" "$h" 'true' 2>/dev/null; then
+      ssh "${SSH_KEY_OPTS[@]}" "$h" '~/.dotfiles/helpers/dotup' \
+        | sed -u "s/^/[$h] /"
+      print -P "%F{green}[dotall]%f ← $h OK"
       continue
     fi
 
-    # ── 2. Host reachable but needs password / touchID / yubikey ───────────
-    if nc -z -w3 "$h" 22 2>/dev/null; then     # TCP port 22 open?
-      echo "[dotall] no key for $h — prompting…"
-      ssh -o ConnectTimeout=10 -o ConnectionAttempts=1 "$h" \
-          '~/.dotfiles/helpers/dotup' \
-          && echo "[dotall] ← $h OK (interactive)" \
-          || echo "[dotall] ← $h FAILED (interactive)"
+    # ── 2. fall back to interactive auth if port 22 is open ──────────────
+    if nc -z -w3 "$h" 22 2>/dev/null; then
+      print -P "%F{yellow}[dotall]%f no key for $h — prompting…"
+      if ssh "${SSH_INT_OPTS[@]}" "$h" '~/.dotfiles/helpers/dotup' \
+            | sed -u "s/^/[$h] /"; then
+        print -P "%F{green}[dotall]%f ← $h OK (interactive)"
+      else
+        print -P "%F{red}[dotall]%f ← $h FAILED (interactive)"
+      fi
     else
-      echo "[dotall] skip $h (unreachable)"
+      print -P "%F{red}[dotall]%f skip $h (unreachable)"
     fi
   done
 
-  # wait for any background jobs
-  for pid in "${bg_pids[@]}"; do
-    wait "$pid"
-  done
-  echo "[dotall] complete."
+  print -P "%F{cyan}[dotall]%f complete."
 }
 
 # ─────────────────────────────────────────────────────────
