@@ -199,7 +199,7 @@ dotall () {
   )
   local SSH_INT_OPTS=(
     -o ConnectTimeout=15
-    -o ConnectionAttempts=1   # show prompt if key fails
+    -o ConnectionAttempts=1  # allow prompting
   )
 
   for h in "${targets[@]}"; do
@@ -207,24 +207,20 @@ dotall () {
     print -P "%F{cyan}[dotall]%f → $h"
 
     # ── 1. key‑only probe ────────────────────────────────────────────────
-    if ssh "${SSH_KEY_OPTS[@]}" "$h" 'true' 2>/dev/null; then
+    if ssh "${SSH_KEY_OPTS[@]}" "$h" true 2>/dev/null; then
       ssh "${SSH_KEY_OPTS[@]}" "$h" '~/.dotfiles/helpers/dotup' \
         | sed -u "s/^/[$h] /"
       print -P "%F{green}[dotall]%f ← $h OK"
       continue
     fi
 
-    # ── 2. fall back to interactive auth if port 22 is open ──────────────
-    if nc -z -w3 "$h" 22 2>/dev/null; then
-      print -P "%F{yellow}[dotall]%f no key for $h — prompting…"
-      if ssh "${SSH_INT_OPTS[@]}" "$h" '~/.dotfiles/helpers/dotup' \
-            | sed -u "s/^/[$h] /"; then
-        print -P "%F{green}[dotall]%f ← $h OK (interactive)"
-      else
-        print -P "%F{red}[dotall]%f ← $h FAILED (interactive)"
-      fi
+    # ── 2. interactive fallback (always via ProxyJump) ───────────────────
+    print -P "%F{yellow}[dotall]%f no key for $h — prompting…"
+    if ssh "${SSH_INT_OPTS[@]}" "$h" '~/.dotfiles/helpers/dotup' \
+          | sed -u "s/^/[$h] /"; then
+      print -P "%F{green}[dotall]%f ← $h OK (interactive)"
     else
-      print -P "%F{red}[dotall]%f skip $h (unreachable)"
+      print -P "%F{red}[dotall]%f ← $h FAILED (interactive)"
     fi
   done
 
