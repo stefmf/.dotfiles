@@ -4,20 +4,12 @@
 dockutil --remove all --no-restart
 
 # Add items in specified order
+dockutil --add /Applications/Launchpad.app --no-restart
 dockutil --add /Applications/Utilities/Terminal.app --no-restart
 dockutil --add /Applications/Sublime\ Text.app --no-restart
 dockutil --add /Applications/Visual\ Studio\ Code.app --no-restart
-dockutil --add /Applications/ChatGPT.app --no-restart
-dockutil --add /Applications/Windows\ App.app --no-restart
-dockutil --add /Applications/Parallels\ Desktop.app --no-restart
-dockutil --add /Applications/Screens\ 5.app --no-restart
-dockutil --add /System/Applications/Calendar.app --no-restart
-dockutil --add /System/Applications/Notes.app --no-restart
+dockutil --add /Applications/Utilities/Screen\ Sharing.app --no-restart
 dockutil --add /Applications/Safari.app --no-restart
-dockutil --add /Applications/Spotify.app --no-restart
-dockutil --add /System/Applications/Messages.app --no-restart
-dockutil --add /Applications/Home.app --no-restart
-dockutil --add /System/Applications/System\ Settings.app --no-restart
 
 # Add Downloads folder as a stack in list view
 dockutil --add "$HOME/Downloads" --view list --display folder --no-restart
