@@ -29,3 +29,21 @@ export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
 
 # Optional: Set to any value to clear screen on logout
 export CLEAR_ON_LOGOUT=1
+
+
+# AWS Profile Setup
+
+SWA_HOSTS=(
+    Mac-WD77LWRW
+)
+
+PERSONAL_HOSTS=(
+)
+
+HOST_SHORTNAME="$(hostname -s)"
+
+if [[ " ${SWA_HOSTS[*]} " == *" $HOST_SHORTNAME "* ]]; then
+    export AWS_PROFILE=swa
+elif [[ " ${PERSONAL_HOSTS[*]} " == *" $HOST_SHORTNAME "* ]]; then
+    export AWS_PROFILE=personal
+fi
