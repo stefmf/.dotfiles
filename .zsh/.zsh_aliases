@@ -176,7 +176,7 @@ alias dotup="$HOME/.dotfiles/helpers/dotup"   # wrapper
 alias pullbrut='git -C ~/.dotfiles pull brut:~/.dotfiles main && ~/.dotfiles/helpers/dotup'
 
 # Normal LAN hosts (reachable from anywhere)
-typeset -a DOT_HOSTS_LAN=(lucky dreams draco)
+typeset -a DOT_HOSTS=(lucky dreams draco swavesec)
 
 # Air-gapped network hosts; only brut can reach them
 typeset -a DOT_HOSTS_AIR=(bubbles)
@@ -186,7 +186,7 @@ dotall () {
   local self=$(hostname -s)
 
   # ── Build target list ────────────────────────────────────────────────
-  local targets=("${DOT_HOSTS_LAN[@]}")
+  local targets=("${DOT_HOSTS[@]}")
   [[ $self == brut ]] && targets+=("${DOT_HOSTS_AIR[@]}")
 
   # ── SSH option bundles ───────────────────────────────────────────────
