@@ -1,30 +1,34 @@
-# Default SSH settings for all connections
-Host *
-    User stef                              # Default SSH user
-    Port 22                                # Default SSH port
-    IdentityFile ~/.ssh/id_personal        # Shared private key used across your devices
-    AddKeysToAgent yes                     # Add keys to ssh-agent automatically
-    UseKeychain yes                        # macOS keychain support (ignored elsewhere)
-    ServerAliveInterval 60                 # Send keepalive every 60s
-    ServerAliveCountMax 10                 # Allow 10 missed keepalives before dropping
-    TCPKeepAlive yes                       # OS-level keepalive (helps with NAT routers)
-    Compression yes                        # Compress traffic (good for slow/remote links)
-    
-    # Multiplexing settings (speeds up repeated SSH connections)
-    ControlMaster auto                     # Automatically reuse SSH connection
-    ControlPersist 10m                     # Keep master connection open for 10 minutes
-    ControlPath ~/.ssh/sockets/%r@%h:%p    # Path for storing shared socket
-
 # Personal machines on Tailscale
 Host lucky
-    HostName lucky                         # MagicDNS hostname
+    HostName lucky
 
 Host dreams
-    HostName dreams                        # MagicDNS hostname
+    HostName dreams
 
 Host draco
-    HostName draco                         # MagicDNS hostname
+    HostName draco
 
 # Personal machines NOT on Tailscale
 Host mini-serv
     HostName 192.168.0.19
+
+# Work machine
+Host swavesec
+    HostName 192.168.0.156
+    User e195761
+    IdentityFile ~/.ssh/id_work
+
+# Default SSH settings for all connections
+Host *
+    User stef
+    Port 22
+    IdentityFile ~/.ssh/id_personal
+    AddKeysToAgent yes
+    UseKeychain yes
+    ServerAliveInterval 60
+    ServerAliveCountMax 10
+    TCPKeepAlive yes
+    Compression yes
+    ControlMaster auto
+    ControlPersist 10m
+    ControlPath ~/.ssh/sockets/%r@%h:%p
