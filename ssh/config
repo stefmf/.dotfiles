@@ -1,3 +1,6 @@
+# Include local SSH configuration
+Include ~/.ssh/config.local
+
 # Personal machines on Tailscale
 Host lucky
     HostName lucky
