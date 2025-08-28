@@ -58,4 +58,4 @@ else
 fi
 
 # Generate starry field and pipe it to fastfetch with the appropriate config
-generate_starry_field "$CONFIG_FILE" | fastfetch --load-config "$CONFIG_FILE" --logo-type file-raw --logo -
+generate_starry_field "$CONFIG_FILE" | fastfetch -c "$CONFIG_FILE" --logo-type file-raw --logo -
