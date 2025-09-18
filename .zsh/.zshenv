@@ -47,3 +47,7 @@ if [[ " ${SWA_HOSTS[*]} " == *" $HOST_SHORTNAME "* ]]; then
 elif [[ " ${PERSONAL_HOSTS[*]} " == *" $HOST_SHORTNAME "* ]]; then
     export AWS_PROFILE=personal
 fi
+
+# Java Setup
+export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
