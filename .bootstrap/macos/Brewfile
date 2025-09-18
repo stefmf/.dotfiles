@@ -46,7 +46,7 @@ brew "pylint"
 brew "ripgrep"
 brew "screen"
 brew "shellcheck"
-brew "tailscale"
+brew "tailscale", restart_service: :changed
 brew "terraform"
 brew "tldr"
 brew "tmux"
@@ -77,6 +77,7 @@ cask "google-chrome"
 cask "iterm2"
 cask "itsycal"
 cask "microsoft-auto-update"
+cask "microsoft-teams"
 cask "monitorcontrol"
 cask "parallels"
 cask "spotify"
@@ -89,3 +90,4 @@ mas "Microsoft Excel", id: 462058435
 mas "Microsoft PowerPoint", id: 462062816
 mas "Microsoft Word", id: 462054704
 mas "Xcode", id: 497799835
+mas "Slack", id: 803453959
