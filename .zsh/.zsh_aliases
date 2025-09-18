@@ -28,7 +28,7 @@ alias grep='grep --color=auto'  # Colorize grep output
 
 # Shell Management
 alias reload='source ~/.zshrc'
-alias c='clear'
+alias c="clear && printf '\e[3J'"  # Clear terminal and scrollback
 
 # Editor
 alias vi='vim'
