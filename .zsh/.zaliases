@@ -117,6 +117,16 @@ alias shutdown='sudo shutdown -h now'
 
 # Note: Git aliases are provided by Oh My Zsh git plugin
 # Available: gst, ga, gcm, gco, gbr, gpsh, gpl, glg, etc.
+# Custom overrides below:
+
+# Git Aliases (Override Oh My Zsh defaults)
+alias gcm='git commit -m'                      # Override: was 'git checkout $(git_main_branch)'
+alias gpl='git pull'                           # Override: was 'git pull' (same but explicit)
+alias gpsh='git push'                          # Override: was 'git push' (same but explicit)
+alias gbr='git branch'                         # Override: was 'git branch --remote'
+alias gca='git commit --amend -m'             # New: git commit amend with message
+alias grs='git restore --staged'               # Override: was 'git restore' - unstage files
+alias grsa='git restore --staged .'            # New: unstage all files
 
 # AWS Profile Management
 alias awswork='export AWS_PROFILE=swa'
