@@ -1,0 +1,34 @@
+#!/usr/bin/env zsh
+
+# Selective process killer - excludes shell, ssh, and ssh-agent
+# Usage: nuke_user_procs [-v]
+#   -v: verbose mode, shows what's being killed
+
+nuke_user_procs() {
+    local verbose=false
+    [[ "$1" == "-v" ]] && verbose=true
+
+    local self_shell_pid=$$
+    local ssh_pid=$(ps -o ppid= -p "$$" | tr -d ' ')
+
+    ps -u "$USER" -o pid= |
+        while read -r pid; do
+            [[ "$pid" == "$self_shell_pid" || "$pid" == "$ssh_pid" ]] && continue
+            local cmd=$(ps -p "$pid" -o comm= 2>/dev/null)
+            [[ "$cmd" == "ssh-agent" ]] && continue
+            if $verbose; then
+                echo "Killing PID $pid ($cmd)"
+            fi
+            kill -9 "$pid" 2>/dev/null
+        done
+}
+
+# Convenient alias function
+nuke() {
+    nuke_user_procs "$@"
+}
+
+# If called directly (not sourced), execute the function
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    nuke_user_procs "$@"
+fi

@@ -2,6 +2,12 @@
 # Environment Variables and Core Settings
 #------------------------------------------------------------------------------
 
+# XDG Base Directory Specification
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share" 
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_STATE_HOME="$HOME/.local/state"
+
 # Dotfile Management
 export DOTFILES="$HOME/.dotfiles"                           # Central location for dotfiles
 export ZSH_COMPDUMP="$DOTFILES/.zsh/.zcompdump"            # Completion cache
@@ -9,45 +15,134 @@ export ZSH_CUSTOM="$DOTFILES/.zsh/plugins"                 # Custom plugin direc
 export HISTFILE="$DOTFILES/.zsh/.zsh_history"              # History file location
 export ZSH_SESSION_DIR="$DOTFILES/.zsh/zsh_sessions"       # Session management
 
-# Default Applications
-if [ "$TERM_PROGRAM" = "vscode" ]; then
-    # Running within VS Code, use 'code -w' as editor
-    function vscode() {
-        code -w "$@"
-    }
-    export VISUAL=vscode
-    export EDITOR=vscode
+# Default Applications & Editor Setup
+# Check for VS Code in common locations (using full paths to avoid alias conflicts)
+if /usr/bin/which code >/dev/null 2>&1; then
+    export VISUAL=code
+    export EDITOR=code
+elif [[ -f "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" ]]; then
+    export PATH="/Applications/Visual Studio Code.app/Contents/Resources/app/bin:$PATH"
+    export VISUAL=code
+    export EDITOR=code
+elif [[ -f "/usr/local/bin/code" ]]; then
+    export VISUAL=code
+    export EDITOR=code
 else
-    # Default to vim when not in VS Code
     export VISUAL=vim
     export EDITOR=vim
+fi
+
+# Development Tools Configuration  
+# Note: GNU tools are added AFTER system tools to maintain compatibility
+if [[ "$OSTYPE" == darwin* ]]; then
+    # Check for Homebrew and add GNU tools (but don't prepend PATH to avoid conflicts)
+    local brew_prefix=""
+    if [[ -x "/opt/homebrew/bin/brew" ]]; then
+        brew_prefix="/opt/homebrew"
+    elif [[ -x "/usr/local/bin/brew" ]]; then
+        brew_prefix="/usr/local"
+    fi
+    
+    if [[ -n "$brew_prefix" ]]; then
+        # Add GNU tools to end of PATH to maintain system command priority
+        gnu_tools=(
+            "$brew_prefix/opt/coreutils/libexec/gnubin"
+            "$brew_prefix/opt/findutils/libexec/gnubin" 
+            "$brew_prefix/opt/gnu-sed/libexec/gnubin"
+            "$brew_prefix/opt/grep/libexec/gnubin"
+        )
+        
+        for gnu_path in "${gnu_tools[@]}"; do
+            [[ -d "$gnu_path" ]] && export PATH="$PATH:$gnu_path"
+        done
+        unset gnu_tools gnu_path brew_prefix
+    fi
 fi
 
 # FZF Core Settings (these should be available to scripts)
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
 export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
 
+# Lazy-load version managers (performance optimization)
+__pyenv_lazy_load() {
+    if command -v pyenv >/dev/null 2>&1; then
+        eval "$(pyenv init -)"
+        export PYENV_ROOT="$HOME/.pyenv"
+        [[ -d "$PYENV_ROOT/bin" ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+    fi
+}
+
+__nvm_lazy_load() {
+    if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+    fi
+}
+
+__cargo_lazy_load() {
+    if [[ -s "$HOME/.cargo/env" ]]; then
+        . "$HOME/.cargo/env"
+    fi
+}
+
+# Only load version managers on first use to improve shell startup
+node() {
+    unfunction node 2>/dev/null || true
+    __nvm_lazy_load
+    command node "$@"
+}
+
+python() {
+    unfunction python 2>/dev/null || true
+    __pyenv_lazy_load
+    command python "$@"
+}
+
+cargo() {
+    unfunction cargo 2>/dev/null || true
+    __cargo_lazy_load
+    command cargo "$@"
+}
+
+# Go environment (always available since it's lightweight)
+if command -v go >/dev/null 2>&1; then
+    export GOPATH="$HOME/go"
+    export GOBIN="$GOPATH/bin"
+    [[ -d "$GOBIN" ]] && export PATH="$GOBIN:$PATH"
+fi
+
 # Optional: Set to any value to clear screen on logout
 export CLEAR_ON_LOGOUT=1
 
+# Note: PATH deduplication happens at the end of this file to clean up any duplicates
 
-# AWS Profile Setup
-
-SWA_HOSTS=(
-    Mac-WD77LWRW
-)
-
-PERSONAL_HOSTS=(
-)
-
-HOST_SHORTNAME="$(hostname -s)"
-
-if [[ " ${SWA_HOSTS[*]} " == *" $HOST_SHORTNAME "* ]]; then
-    export AWS_PROFILE=swa
-elif [[ " ${PERSONAL_HOSTS[*]} " == *" $HOST_SHORTNAME "* ]]; then
-    export AWS_PROFILE=personal
+# Java Setup (conditional - only if directory exists)
+if [[ -d "/opt/homebrew/opt/openjdk@17" ]]; then
+    export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+    export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
 fi
 
-# Java Setup
-export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
+# Cleanup temporary functions and variables
+unset -f __pyenv_lazy_load __nvm_lazy_load __cargo_lazy_load
+unset HOST_SHORTNAME
+
+# PATH deduplication (run at the very end to clean up any duplicates)
+__dedupe_path() {
+    local new_path=""
+    local dir
+    local -a dirs
+    dirs=(${(s[:])PATH})
+    for dir in "${dirs[@]}"; do
+        if [[ -n "$dir" && ":$new_path:" != *":$dir:"* ]]; then
+            new_path="${new_path:+$new_path:}$dir"
+        fi
+    done
+    export PATH="$new_path"
+}
+
+# Only deduplicate if we have duplicates (to avoid unnecessary work)
+if [[ "$PATH" == *"::"* ]] || [[ $(echo "$PATH" | tr ':' '\n' | sort | uniq -d | wc -l) -gt 0 ]]; then
+    __dedupe_path
+fi
+unset -f __dedupe_path

@@ -1,0 +1,34 @@
+#!/usr/bin/env zsh
+
+# Platform-aware GNU utilities preference
+# Sets up aliases for GNU versions when available on macOS
+
+setup_gnu_aliases() {
+    # Only set up GNU aliases on macOS (they're default on Linux)
+    case "$OSTYPE" in
+        darwin*)
+            # GNU command alternatives that we prefer
+            local gnu_commands=(
+                cp mv rm mkdir rmdir ln du df
+                head tail sort wc cut grep xargs find
+                chmod chown date stat touch sed awk
+                readlink realpath
+            )
+
+            # Only alias GNU commands if they are installed
+            for cmd in "${gnu_commands[@]}"; do
+                if command -v "g$cmd" >/dev/null 2>&1; then
+                    alias "$cmd"="g$cmd"
+                fi
+            done
+            ;;
+        *)
+            # On Linux, GNU utils are already default, nothing to do
+            ;;
+    esac
+}
+
+# If called directly (not sourced), execute the function
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    setup_gnu_aliases "$@"
+fi

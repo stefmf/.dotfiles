@@ -1,0 +1,24 @@
+#!/usr/bin/env zsh
+
+# Source all helper functions for interactive shell use
+# This script loads helper functions into the current shell environment
+
+HELPERS_DIR="$HOME/.dotfiles/helpers"
+
+# List of helper scripts that provide functions for interactive use
+HELPER_FUNCTIONS=(
+    "update"
+    "dotall" 
+    "nuke"
+    "setup_gnu_aliases"
+)
+
+# Source each helper script to make functions available
+for helper in "${HELPER_FUNCTIONS[@]}"; do
+    if [[ -f "$HELPERS_DIR/$helper" ]]; then
+        source "$HELPERS_DIR/$helper"
+    fi
+done
+
+# Clean up
+unset HELPERS_DIR HELPER_FUNCTIONS helper

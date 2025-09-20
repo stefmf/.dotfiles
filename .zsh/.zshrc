@@ -17,11 +17,11 @@ setopt hist_ignore_space       # Don't record commands that start with space
 setopt extended_history        # Record timestamp of command
 
 # Completion and correction
-setopt correct_all             # Correct all words in command line
+setopt correct                 # Correct mistyped commands
 setopt auto_param_slash        # Add trailing slash to directory completions
 setopt always_to_end           # Move cursor to end of word after completion
 setopt complete_in_word        # Allow completion from within a word
-setopt flow_control off        # Disable flow control (Ctrl-S/Ctrl-Q)
+unsetopt flow_control          # Disable flow control (Ctrl-S/Ctrl-Q)
 
 # Globbing
 setopt no_case_glob            # Case insensitive globbing
@@ -35,6 +35,18 @@ setopt numeric_glob_sort       # Sort filenames numerically when possible
 setopt interactive_comments    # Allow comments in interactive shell
 setopt pushd_ignore_dups       # Don't push duplicates onto directory stack
 setopt pushd_silent            # Don't print directory stack after pushd/popd
+
+#------------------------------------------------------------------------------
+# SSH Detection for Root Sessions
+#------------------------------------------------------------------------------
+
+# Only for root without SSH_CONNECTION
+if [[ $EUID -eq 0 ]] && [[ -z "$SSH_CONNECTION" ]]; then
+    # Check if who am i shows an IP address (indicates SSH)
+    if who am i 2>/dev/null | grep -qE '\([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\)'; then
+        export SSH_CONNECTION="detected"
+    fi
+fi
 
 #------------------------------------------------------------------------------
 # History Configuration
@@ -60,6 +72,10 @@ fi
 # Source Zinit
 source "${ZINIT_HOME}/zinit.zsh"
 
+# Skip expensive security checks on trusted system
+autoload -Uz compinit
+compinit -C
+
 #------------------------------------------------------------------------------
 # Zinit Plugin Loading
 #------------------------------------------------------------------------------
@@ -67,27 +83,39 @@ source "${ZINIT_HOME}/zinit.zsh"
 # Load Oh My Zsh framework
 zinit load ohmyzsh/ohmyzsh
 
-# Load essential plugins with async loading where possible
-zinit wait lucid for \
-    atinit"zicompinit; zicdreplay" \
+# Configure autosuggestions BEFORE loading
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
+ZSH_AUTOSUGGEST_USE_ASYNC=true
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#808080'
+# Only accept full suggestion on End; Right‑arrow should be partial (word/segment)
+ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(end-of-line)
+ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS=(forward-word vi-forward-word)
+
+# Load autosuggestions via zinit
+zinit load zsh-users/zsh-autosuggestions
+
+# Load other essential plugins with async loading
+zinit lucid for \
+    atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" \
         zdharma-continuum/fast-syntax-highlighting \
-    atload"_zsh_autosuggest_start" \
-        zsh-users/zsh-autosuggestions \
     blockf atpull'zinit creinstall -q .' \
         zsh-users/zsh-completions
+
+# Load fzf-tab for fuzzy completion menu
+# zinit light Aloxaf/fzf-tab
 
 # Load utility plugins
 zinit wait lucid for \
     MichaelAquilina/zsh-you-should-use \
-    wfxr/forgit \
-    Aloxaf/fzf-tab
+    wfxr/forgit
 
 # Load OMZ libraries and plugins we need
 zinit wait lucid for \
     OMZL::git.zsh \
     OMZP::git \
-    OMZP::sudo \
-    OMZP::command-not-found
+    OMZP::command-not-found \
+    OMZP::sudo               # Press ESC twice to add sudo to current command
 
 # Load FZF if available
 zinit ice as"command" from"gh-r" \
@@ -103,37 +131,24 @@ zinit light junegunn/fzf
 fpath=("$HOME/.dotfiles/.zsh/.zsh_completions" $fpath)
 
 # Make "/" a delimiter so forward-word stops on each directory
+# Start with default WORDCHARS and remove "/"
 WORDCHARS=${WORDCHARS//\//}
 
-# Enhanced completion styling
+# Simple completion styling
 zstyle ':completion:*' menu select                        # Enable menu selection
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}     # Colored menu
-zstyle ':completion:*' verbose yes                        # Verbose information
-zstyle ':completion:*' group-name ''                      # Group matches
 zstyle ':completion:*' squeeze-slashes true               # Remove extra slashes
 zstyle ':completion:*' special-dirs true                  # Complete . and ..
 
-# Enhanced description formatting
-zstyle ':completion:*:descriptions' format '%F{yellow}-- %d --%f'
-
-# Enhanced case-insensitive matching
-zstyle ':completion:*' matcher-list \
-    'm:{a-z}={A-Z}' \
-    'r:|[._-]=* r:|=*' \
-    'l:|=*'
+# Case-insensitive matching with fuzzy matching
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
 
 # Speed up completions
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "$HOME/.dotfiles/.zsh/.zcompcache"
 
-# Process completion
-zstyle ':completion:*:*:*:*:processes' command "ps -u $USER -o pid,user,comm -w -w"
-zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#) ([0-9a-z-]#)*=01;34=0=01'
-
-# Directory completion
-zstyle ':completion:*:cd:*' tag-order local-directories directory-stack path-directories
-zstyle ':completion:*:cd:*:directory-stack' menu yes select
-zstyle ':completion:*:-tilde-:*' group-order 'named-directories' 'path-directories' 'users' 'expand'
+# Enable incremental completion search
+zstyle ':completion:*:*:*:*:*' menu select search
 
 #------------------------------------------------------------------------------
 # Key Bindings
@@ -142,18 +157,36 @@ zstyle ':completion:*:-tilde-:*' group-order 'named-directories' 'path-directori
 # Use emacs key bindings
 bindkey -e
 
-# Natural text editing like VS Code
-# ⌥ ← / ⌥ → for word left/right
-bindkey '\eb'        backward-word     # ESC b (iTerm "Left Option = Esc+")
-bindkey '\ef'        forward-word      # ESC f
-bindkey '\e[1;3D'    backward-word     # iTerm Alt‑Left when not Esc+
-bindkey '\e[1;3C'    forward-word      # iTerm Alt‑Right when not Esc+
+# ─── Custom Keybindings ───────────────────────────
 
-# ⌘ ← / ⌘ → for line start/end
-bindkey '^A'         beginning-of-line # Ctrl-A
-bindkey '^E'         end-of-line       # Ctrl-E
-bindkey '\e[H'       beginning-of-line # Home
-bindkey '\e[F'       end-of-line       # End
+# ------- Natural text editing like VS Code -------
+bindkey -e                       # emacs keymap (default on macOS)
+
+# ⌥ ← / ⌥ →  → word left/right
+bindkey '\eb'        backward-word   # ESC b (iTerm "Left Option = Esc+")
+bindkey '\ef'        forward-word    # ESC f
+bindkey '\e[1;3D'    backward-word   # iTerm Alt‑Left when not Esc+
+bindkey '\e[1;3C'    forward-word    # iTerm Alt‑Right when not Esc+
+
+# ⌘ ← / ⌘ →  → line start/end
+bindkey '^A'         beginning-of-line   # sent if you chose Hex 01
+bindkey '^E'         end-of-line         # sent if you chose Hex 05
+bindkey '\e[H'       beginning-of-line   # ESC [ H  (Home)
+bindkey '\e[F'       end-of-line         # ESC [ F  (End)
+
+
+# ─── Autosuggestion navigation ──────────────────────────────
+
+# Right‑arrow → accept next token (/‑delimited path segment or word)
+# Cover common escape sequences and terminfo so we don’t fall back to forward-char
+bindkey '^[[C'    forward-word   # CSI C
+bindkey '\e[C'   forward-word   # xterm normal mode
+bindkey '\eOC'   forward-word   # application cursor mode
+if [[ -n ${terminfo[kRIT]} ]]; then
+  bindkey "${terminfo[kRIT]}" forward-word
+fi
+# Ctrl‑Right → accept the entire suggestion
+bindkey '\e[1;2C'  autosuggest-accept
 
 # History search
 bindkey '^R'         history-incremental-search-backward
@@ -163,24 +196,38 @@ bindkey '^S'         history-incremental-search-forward
 bindkey '^[[3~'      delete-char       # Delete
 bindkey '^?'         backward-delete-char # Backspace
 
-#------------------------------------------------------------------------------
-# Plugin Configuration
-#------------------------------------------------------------------------------
+# ─── Completion menu navigation and search ──────────────────
 
-# Autosuggestions configuration
-ZSH_AUTOSUGGEST_STRATEGY=(history completion)
-ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
-ZSH_AUTOSUGGEST_USE_ASYNC=true
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#808080'
-ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS=(forward-word)
+# Load menuselect for advanced menu features
+zmodload zsh/complist
 
-# Right arrow accepts next token, Ctrl-Right accepts entire suggestion
-bindkey '^[[C'       forward-word
-bindkey '\e[1;2C'    autosuggest-accept
+# Enable incremental search in menu with '/'
+bindkey -M menuselect '/' history-incremental-search-forward
+bindkey -M menuselect '?' history-incremental-search-backward
 
-# You-Should-Use configuration
-YSU_MESSAGE_POSITION="after"
-YSU_MODE=ALL
+# Accept completion with Enter and stay in menu for more completions
+bindkey -M menuselect '^M' .accept-line
+
+# Cancel completion with Escape
+bindkey -M menuselect '^[' send-break
+
+# You-Should-Use Configuration
+YSU_PLUGIN_PATHS=(
+    "${ZINIT_HOME}/plugins/MichaelAquilina---zsh-you-should-use/you-should-use.plugin.zsh"
+    "$HOME/.dotfiles/.zsh/.zshplugins/zsh-you-should-use/you-should-use.plugin.zsh"
+    "/usr/share/zsh-you-should-use/zsh-you-should-use.plugin.zsh"
+    "$(brew --prefix 2>/dev/null)/share/zsh-you-should-use/you-should-use.plugin.zsh"
+)
+
+for ysu_plugin in "${YSU_PLUGIN_PATHS[@]}"; do
+    if [ -f "$ysu_plugin" ]; then
+        source "$ysu_plugin"
+        break
+    fi
+done
+
+YSU_MESSAGE_POSITION="after"  # Show alias message after command
+YSU_MODE=ALL                  # Show all matching aliases
 
 # FZF configuration (if not set in environment)
 if [[ -z "$FZF_DEFAULT_COMMAND" ]]; then
@@ -189,6 +236,17 @@ fi
 if [[ -z "$FZF_DEFAULT_OPTS" ]]; then
     export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
 fi
+
+# Enhanced FZF-Tab configuration
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
+zstyle ':fzf-tab:complete:ls:*' fzf-preview 'eza -1 --color=always $realpath'
+zstyle ':fzf-tab:complete:cat:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath'
+zstyle ':fzf-tab:complete:less:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath'
+zstyle ':fzf-tab:complete:vim:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath'
+zstyle ':fzf-tab:complete:nvim:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath'
+zstyle ':fzf-tab:complete:*:*' fzf-preview 'echo $realpath'
+zstyle ':fzf-tab:*' fzf-flags --height=60% --layout=reverse
+zstyle ':fzf-tab:*' fzf-command ftb-tmux-popup
 
 # Load external FZF config if available
 [[ -f "$HOME/.config/fzf/config.fzf" ]] && source "$HOME/.config/fzf/config.fzf"
@@ -212,20 +270,8 @@ TRAPALRM() {
 }
 
 #------------------------------------------------------------------------------
-# SSH Detection for Root Sessions
-#------------------------------------------------------------------------------
-
-# Only for root without SSH_CONNECTION
-if [[ $EUID -eq 0 ]] && [[ -z "$SSH_CONNECTION" ]]; then
-    # Check if who am i shows an IP address (indicates SSH)
-    if who am i 2>/dev/null | grep -qE '\([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\)'; then
-        export SSH_CONNECTION="detected"
-    fi
-fi
-
-#------------------------------------------------------------------------------
 # Source Additional Configuration
 #------------------------------------------------------------------------------
 
 # Load custom aliases
-[[ -f "$HOME/.dotfiles/.zsh/.zsh_aliases" ]] && source "$HOME/.dotfiles/.zsh/.zsh_aliases"
+[[ -f "$HOME/.dotfiles/.zsh/.zaliases" ]] && source "$HOME/.dotfiles/.zsh/.zaliases"
