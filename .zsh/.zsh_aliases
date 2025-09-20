@@ -93,14 +93,16 @@ ff() {
 # Git Version Control
 #------------------------------------------------------------------------------
 
-alias gst='git status'
-alias ga='git add'
-alias gcm='git commit -m'
-alias gco='git checkout'
-alias gbr='git branch'
-alias gpsh='git push'
-alias gpl='git pull'
-alias glg='git log --oneline --graph --decorate'
+#TODO: REMOVE THESE AND USE OMZ GIT PLUGIN INSTEAD
+
+# alias gst='git status'
+# alias ga='git add'
+# alias gcm='git commit -m'
+# alias gco='git checkout'
+# alias gbr='git branch'
+# alias gpsh='git push'
+# alias gpl='git pull'
+# alias glg='git log --oneline --graph --decorate'
 
 #------------------------------------------------------------------------------
 # System Information and Monitoring

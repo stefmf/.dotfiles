@@ -3,11 +3,213 @@
 #==============================================================================
 
 #------------------------------------------------------------------------------
-# Core Initialization
+# Core Shell Options
 #------------------------------------------------------------------------------
 
-# Source custom aliases early to ensure they're available
-source ~/.dotfiles/.zsh/.zsh_aliases
+# History configuration
+setopt append_history          # Append to history file
+setopt hist_ignore_dups        # Don't record duplicates
+setopt hist_reduce_blanks      # Remove superfluous blanks
+setopt share_history           # Share history between sessions
+setopt hist_verify             # Show command with history expansion to user before running it
+setopt hist_expire_dups_first  # Delete duplicates first when HISTFILE size exceeds HISTSIZE
+setopt hist_ignore_space       # Don't record commands that start with space
+setopt extended_history        # Record timestamp of command
+
+# Completion and correction
+setopt correct_all             # Correct all words in command line
+setopt auto_param_slash        # Add trailing slash to directory completions
+setopt always_to_end           # Move cursor to end of word after completion
+setopt complete_in_word        # Allow completion from within a word
+setopt flow_control off        # Disable flow control (Ctrl-S/Ctrl-Q)
+
+# Globbing
+setopt no_case_glob            # Case insensitive globbing
+setopt no_case_match           # Case insensitive pattern matching
+setopt extended_glob           # Extended globbing features
+setopt dot_glob                # Include dotfiles in glob patterns
+setopt glob_dots               # Include dotfiles in filename generation
+setopt numeric_glob_sort       # Sort filenames numerically when possible
+
+# Interactive and general options
+setopt interactive_comments    # Allow comments in interactive shell
+setopt pushd_ignore_dups       # Don't push duplicates onto directory stack
+setopt pushd_silent            # Don't print directory stack after pushd/popd
+
+#------------------------------------------------------------------------------
+# History Configuration
+#------------------------------------------------------------------------------
+
+HISTFILE="$HOME/.dotfiles/.zsh/.zsh_history"
+HISTSIZE=50000                 # Increased history size
+SAVEHIST=50000                 # Increased save history size
+
+#------------------------------------------------------------------------------
+# Zinit Plugin Manager Setup
+#------------------------------------------------------------------------------
+
+# Set Zinit directory
+ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+
+# Download Zinit if not installed
+if [[ ! -d "$ZINIT_HOME" ]]; then
+    mkdir -p "$(dirname $ZINIT_HOME)"
+    git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+fi
+
+# Source Zinit
+source "${ZINIT_HOME}/zinit.zsh"
+
+#------------------------------------------------------------------------------
+# Zinit Plugin Loading
+#------------------------------------------------------------------------------
+
+# Load Oh My Zsh framework
+zinit load ohmyzsh/ohmyzsh
+
+# Load essential plugins with async loading where possible
+zinit wait lucid for \
+    atinit"zicompinit; zicdreplay" \
+        zdharma-continuum/fast-syntax-highlighting \
+    atload"_zsh_autosuggest_start" \
+        zsh-users/zsh-autosuggestions \
+    blockf atpull'zinit creinstall -q .' \
+        zsh-users/zsh-completions
+
+# Load utility plugins
+zinit wait lucid for \
+    MichaelAquilina/zsh-you-should-use \
+    wfxr/forgit \
+    Aloxaf/fzf-tab
+
+# Load OMZ libraries and plugins we need
+zinit wait lucid for \
+    OMZL::git.zsh \
+    OMZP::git \
+    OMZP::sudo \
+    OMZP::command-not-found
+
+# Load FZF if available
+zinit ice as"command" from"gh-r" \
+    atclone"./fzf --zsh > init.zsh" \
+    atpull"%atclone" src"init.zsh"
+zinit light junegunn/fzf
+
+#------------------------------------------------------------------------------
+# Completion System Configuration
+#------------------------------------------------------------------------------
+
+# Add custom completion paths
+fpath=("$HOME/.dotfiles/.zsh/.zsh_completions" $fpath)
+
+# Make "/" a delimiter so forward-word stops on each directory
+WORDCHARS=${WORDCHARS//\//}
+
+# Enhanced completion styling
+zstyle ':completion:*' menu select                        # Enable menu selection
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}     # Colored menu
+zstyle ':completion:*' verbose yes                        # Verbose information
+zstyle ':completion:*' group-name ''                      # Group matches
+zstyle ':completion:*' squeeze-slashes true               # Remove extra slashes
+zstyle ':completion:*' special-dirs true                  # Complete . and ..
+
+# Enhanced description formatting
+zstyle ':completion:*:descriptions' format '%F{yellow}-- %d --%f'
+
+# Enhanced case-insensitive matching
+zstyle ':completion:*' matcher-list \
+    'm:{a-z}={A-Z}' \
+    'r:|[._-]=* r:|=*' \
+    'l:|=*'
+
+# Speed up completions
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "$HOME/.dotfiles/.zsh/.zcompcache"
+
+# Process completion
+zstyle ':completion:*:*:*:*:processes' command "ps -u $USER -o pid,user,comm -w -w"
+zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#) ([0-9a-z-]#)*=01;34=0=01'
+
+# Directory completion
+zstyle ':completion:*:cd:*' tag-order local-directories directory-stack path-directories
+zstyle ':completion:*:cd:*:directory-stack' menu yes select
+zstyle ':completion:*:-tilde-:*' group-order 'named-directories' 'path-directories' 'users' 'expand'
+
+#------------------------------------------------------------------------------
+# Key Bindings
+#------------------------------------------------------------------------------
+
+# Use emacs key bindings
+bindkey -e
+
+# Natural text editing like VS Code
+# ⌥ ← / ⌥ → for word left/right
+bindkey '\eb'        backward-word     # ESC b (iTerm "Left Option = Esc+")
+bindkey '\ef'        forward-word      # ESC f
+bindkey '\e[1;3D'    backward-word     # iTerm Alt‑Left when not Esc+
+bindkey '\e[1;3C'    forward-word      # iTerm Alt‑Right when not Esc+
+
+# ⌘ ← / ⌘ → for line start/end
+bindkey '^A'         beginning-of-line # Ctrl-A
+bindkey '^E'         end-of-line       # Ctrl-E
+bindkey '\e[H'       beginning-of-line # Home
+bindkey '\e[F'       end-of-line       # End
+
+# History search
+bindkey '^R'         history-incremental-search-backward
+bindkey '^S'         history-incremental-search-forward
+
+# Delete and backspace
+bindkey '^[[3~'      delete-char       # Delete
+bindkey '^?'         backward-delete-char # Backspace
+
+#------------------------------------------------------------------------------
+# Plugin Configuration
+#------------------------------------------------------------------------------
+
+# Autosuggestions configuration
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
+ZSH_AUTOSUGGEST_USE_ASYNC=true
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#808080'
+ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS=(forward-word)
+
+# Right arrow accepts next token, Ctrl-Right accepts entire suggestion
+bindkey '^[[C'       forward-word
+bindkey '\e[1;2C'    autosuggest-accept
+
+# You-Should-Use configuration
+YSU_MESSAGE_POSITION="after"
+YSU_MODE=ALL
+
+# FZF configuration (if not set in environment)
+if [[ -z "$FZF_DEFAULT_COMMAND" ]]; then
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+fi
+if [[ -z "$FZF_DEFAULT_OPTS" ]]; then
+    export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+fi
+
+# Load external FZF config if available
+[[ -f "$HOME/.config/fzf/config.fzf" ]] && source "$HOME/.config/fzf/config.fzf"
+
+#------------------------------------------------------------------------------
+# Terminal UI and Appearance
+#------------------------------------------------------------------------------
+
+# Oh My Posh initialization
+if [[ "$TERM" != "linux" ]] && command -v oh-my-posh >/dev/null 2>&1; then
+    eval "$(oh-my-posh init zsh --config ~/.dotfiles/.config/ohmyposh/prompt.json)"
+fi
+
+# Terminal screensaver configuration
+TMOUT=3600
+TRAPALRM() {
+    if command -v tty-clock >/dev/null 2>&1; then
+        tty-clock -S -c -B < /dev/tty > /dev/tty
+    fi
+    zle reset-prompt 2>/dev/null || true
+}
 
 #------------------------------------------------------------------------------
 # SSH Detection for Root Sessions
@@ -20,163 +222,10 @@ if [[ $EUID -eq 0 ]] && [[ -z "$SSH_CONNECTION" ]]; then
         export SSH_CONNECTION="detected"
     fi
 fi
-#------------------------------------------------------------------------------
-# Completion System Setup
-#------------------------------------------------------------------------------
-
-# Add custom completion paths
-FPATH="$HOME/.dotfiles/.zsh/.zsh_completions:$FPATH"
-
-# Make "/" a delimiter so forward-word stops on each directory
-WORDCHARS=${WORDCHARS//\//}
-
-# Initialize completion system
-autoload -Uz compinit
-
-# Optimize completion dump rebuilding (once per day)
-ZSH_COMPDUMP="${ZDOTDIR:-$HOME}/.zcompdump"
-
-# Function to get file modification time in seconds since epoch
-get_file_mtime() {
-    if [ -f "$1" ]; then
-        if stat -c '%Y' "$1" &>/dev/null; then
-            # GNU stat (Linux)
-            stat -c '%Y' "$1"
-        elif stat -f '%m' "$1" &>/dev/null; then
-            # BSD stat (macOS)
-            stat -f '%m' "$1"
-        else
-            echo 0
-        fi
-    else
-        echo 0
-    fi
-}
-
-current_day=$(date +%j)
-compdump_mtime=$(get_file_mtime "$ZSH_COMPDUMP")
-compdump_day=$(date -j -f "%s" "$compdump_mtime" +%j 2>/dev/null || date -d @"$compdump_mtime" +%j 2>/dev/null || echo 0)
-
-if [ "$compdump_mtime" -eq 0 ] || [ "$current_day" != "$compdump_day" ]; then
-    compinit -d "$ZSH_COMPDUMP"
-else
-    compinit -C -d "$ZSH_COMPDUMP"
-fi
-
-# Completion Styling
-zstyle ':completion:*' menu select                        # Enable menu selection
-zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' # Case insensitive
-zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}     # Colored menu
-zstyle ':completion:*' verbose yes                        # Verbose information
-zstyle ':completion:*' group-name ''                      # Group matches
 
 #------------------------------------------------------------------------------
-# Plugin Configuration
+# Source Additional Configuration
 #------------------------------------------------------------------------------
 
-# Load FZF config
-FZF_CONFIG="$HOME/.config/fzf/config.fzf"
-[[ -f "$FZF_CONFIG" ]] && source "$FZF_CONFIG"
-
-
-# Paths where zsh-autosuggestions might be installed
-ZSH_AUTOSUGGEST_LOCATIONS=(
-    "/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-    "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
-    "$(brew --prefix zsh-autosuggestions 2>/dev/null)/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-    "$HOME/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh"
-    "$HOME/.dotfiles/.zsh/.zshplugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
-)
-
-for plugin in "${ZSH_AUTOSUGGEST_LOCATIONS[@]}"; do
-    if [ -f "$plugin" ]; then
-        source "$plugin"
-        break
-    fi
-done
-
-# Auto-suggestion Settings
-ZSH_AUTOSUGGEST_STRATEGY=(history completion)
-ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
-ZSH_AUTOSUGGEST_USE_ASYNC=true
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#808080'
-
-
-# ─── Custom Keybindings ───────────────────────────
-
-# ------- Natural text editing like VS Code -------
-bindkey -e                       # emacs keymap (default on macOS)
-
-# ⌥ ← / ⌥ →  → word left/right
-bindkey '\eb'        backward-word   # ESC b (iTerm “Left Option = Esc+”)
-bindkey '\ef'        forward-word    # ESC f
-bindkey '\e[1;3D'    backward-word   # iTerm Alt‑Left when not Esc+
-bindkey '\e[1;3C'    forward-word    # iTerm Alt‑Right when not Esc+
-
-# ⌘ ← / ⌘ →  → line start/end
-bindkey '^A'         beginning-of-line   # sent if you chose Hex 01
-bindkey '^E'         end-of-line         # sent if you chose Hex 05
-bindkey '\e[H'       beginning-of-line   # ESC [ H  (Home)
-bindkey '\e[F'       end-of-line         # ESC [ F  (End)
-
-
-# ─── Autosuggestion navigation ──────────────────────────────
-# Use forward-word for “partial” accept
-ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS=(forward-word)  
-
-# Right‑arrow  → accept next token (/‑delimited path segment or word)
-bindkey '^[[C'     forward-word
-# Ctrl‑Right → accept the entire suggestion
-bindkey '\e[1;2C'  autosuggest-accept
-
-# You-Should-Use Configuration
-YSU_PLUGIN_PATHS=(
-    "$HOME/.dotfiles/.zsh/.zshplugins/zsh-you-should-use/you-should-use.plugin.zsh"
-    "/usr/share/zsh-you-should-use/zsh-you-should-use.plugin.zsh"
-    "$(brew --prefix 2>/dev/null)/share/zsh-you-should-use/you-should-use.plugin.zsh"
-)
-
-for ysu_plugin in "${YSU_PLUGIN_PATHS[@]}"; do
-    if [ -f "$ysu_plugin" ]; then
-        source "$ysu_plugin"
-        break
-    fi
-done
-
-YSU_MESSAGE_POSITION="after"  # Show alias message after command
-YSU_MODE=ALL                  # Show all matching aliases
-
-#------------------------------------------------------------------------------
-# Terminal UI and Appearance
-#------------------------------------------------------------------------------
-
-# Initialize Oh My Posh in any terminal that supports it
-
-if [ "$TERM" != "linux" ]; then
-  if type oh-my-posh &>/dev/null; then
-    eval "$(oh-my-posh init zsh --config ~/.dotfiles/.config/ohmyposh/prompt.json)"
-  fi
-fi
-
-# Terminal Screensaver Configuration
-TMOUT=600
-TRAPALRM() {
-    if type tty-clock &>/dev/null; then
-        tty-clock -S -c -B < /dev/tty > /dev/tty
-    fi
-    zle reset-prompt
-}
-
-# Syntax Highlighting (Must be last)
-ZSH_SYNTAX_HIGHLIGHT_LOCATIONS=(
-    "$HOME/.dotfiles/.zsh/.zshplugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-    "/usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-    "$(brew --prefix 2>/dev/null)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-)
-
-for syntax_plugin in "${ZSH_SYNTAX_HIGHLIGHT_LOCATIONS[@]}"; do
-    if [ -f "$syntax_plugin" ]; then
-        source "$syntax_plugin"
-        break
-    fi
-done
+# Load custom aliases
+[[ -f "$HOME/.dotfiles/.zsh/.zsh_aliases" ]] && source "$HOME/.dotfiles/.zsh/.zsh_aliases"
