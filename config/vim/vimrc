@@ -23,6 +23,9 @@ syntax on
 " Make sure Vim sees the XDG config tree
 set runtimepath^=~/.config/vim
 
+" Move viminfo to XDG location
+set viminfo+=n~/.config/vim/.viminfo
+
 " Load the Catppuccin Frappe palette
 colorscheme catppuccin_frappe
 

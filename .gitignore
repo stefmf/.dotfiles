@@ -18,13 +18,12 @@
 
 # Synced by Application
 .vscode/
-.config/raycast/
 
 # Zsh Generated Files
-.zsh/.zcompdump
-.zsh/.zsh_history
-.zsh/.zsh_sessions/
-.zsh/.zshplugins/
+shell/zsh/.zcompdump
+shell/zsh/.zsh_history  
+shell/zsh/.zsh_sessions/
+shell/zsh/.zshplugins/
 
 # Zsh compiled files
 **/*.zwc
