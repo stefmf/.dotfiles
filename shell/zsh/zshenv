@@ -10,6 +10,8 @@ export XDG_STATE_HOME="$HOME/.local/state"
 
 # Application-specific XDG compliance
 export LESSHISTFILE="$XDG_CACHE_HOME/less/history"
+export TLDR_CACHE_DIR="$XDG_CACHE_HOME/tldr"
+export NPM_CONFIG_CACHE="$XDG_CACHE_HOME/npm"
 
 # Dotfile Management
 export DOTFILES="$HOME/.dotfiles"                           # Central location for dotfiles
