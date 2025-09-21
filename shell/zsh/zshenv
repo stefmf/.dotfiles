@@ -151,3 +151,20 @@ if [[ "$PATH" == *"::"* ]] || [[ $(echo "$PATH" | tr ':' '\n' | sort | uniq -d |
     __dedupe_path
 fi
 unset -f __dedupe_path
+
+#------------------------------------------------------------------------------
+# Shell Completion Configuration
+#------------------------------------------------------------------------------
+
+# ZSH completion dump file location
+export ZCOMPDUMP="${ZDOTDIR:-$HOME}/.dotfiles/shell/zsh/.zcompdump"
+
+#------------------------------------------------------------------------------
+# Tool-Specific Configuration
+#------------------------------------------------------------------------------
+
+# FZF (Fuzzy Finder) configuration
+if command -v fd >/dev/null 2>&1; then
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+fi
+export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
