@@ -1,0 +1,17 @@
+# Machine-specific Git Configuration Template
+# Copy this file to ~/.gitconfig.local and customize for each machine
+# This file should NOT be committed to your dotfiles repository
+
+[user]
+    name = Stephen Monclova
+    email = steph.monclova@gmail.com
+    # For work machines, use work email:
+    # email = stephen.monclova@company.com
+
+# Optional: Machine-specific settings
+# [core]
+#     sshCommand = ssh -i ~/.ssh/work_key
+
+# Optional: Work-specific aliases or settings
+# [url "git@github-work:company/"]
+#     insteadOf = git@github.com:company/

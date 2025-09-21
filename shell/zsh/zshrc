@@ -56,19 +56,8 @@ if [[ $EUID -eq 0 ]] && [[ -z "$SSH_CONNECTION" ]]; then
 fi
 
 #------------------------------------------------------------------------------
-# History Configuration
-#------------------------------------------------------------------------------
-
-HISTFILE="$HOME/.dotfiles/shell/zsh/.zsh_history"
-HISTSIZE=50000                 # Increased history size
-SAVEHIST=50000                 # Increased save history size
-
-#------------------------------------------------------------------------------
 # Zinit Plugin Manager Setup
 #------------------------------------------------------------------------------
-
-# Set Zinit directory
-ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 
 # Download Zinit if not installed
 if [[ ! -d "$ZINIT_HOME" ]]; then
@@ -82,7 +71,6 @@ source "${ZINIT_HOME}/zinit.zsh"
 # Skip expensive security checks on trusted system
 # Disable Zinit's automatic compinit and handle it manually
 skip_global_compinit=1
-export ZINIT[ZCOMPDUMP_PATH]="$ZCOMPDUMP"
 autoload -Uz compinit
 compinit -C -d "$ZCOMPDUMP"
 
@@ -93,16 +81,7 @@ compinit -C -d "$ZCOMPDUMP"
 # Load Oh My Zsh framework
 zinit load ohmyzsh/ohmyzsh
 
-# Configure autosuggestions BEFORE loading
-ZSH_AUTOSUGGEST_STRATEGY=(history completion)
-ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
-ZSH_AUTOSUGGEST_USE_ASYNC=true
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#808080'
-# Only accept full suggestion on End; Right‑arrow should be partial (word/segment)
-ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(end-of-line)
-ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS=(forward-word vi-forward-word)
-
-# Load autosuggestions via zinit
+# Load autosuggestions via zinit (configuration is set in zshenv)
 zinit load zsh-users/zsh-autosuggestions
 
 # Load other essential plugins with async loading
@@ -142,11 +121,7 @@ zinit light junegunn/fzf
 # Add custom completion paths
 fpath=("$HOME/.dotfiles/shell/zsh/completions" $fpath)
 
-# Make "/" a delimiter so forward-word stops on each directory
-# Remove "/" from WORDCHARS but keep "." so dotfiles are treated as single words
-WORDCHARS='*?_-.[]~=&;!#$%^(){}<>'
-
-# Simple completion styling
+# Simple completion styling (WORDCHARS is set in zshenv)
 zstyle ':completion:*' menu select                        # Enable menu selection
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}     # Colored menu
 zstyle ':completion:*' squeeze-slashes true               # Remove extra slashes
@@ -223,14 +198,7 @@ bindkey -M menuselect '^M' .accept-line
 # Cancel completion with Escape
 bindkey -M menuselect '^[' send-break
 
-# You-Should-Use Configuration
-YSU_PLUGIN_PATHS=(
-    "${ZINIT_HOME}/plugins/MichaelAquilina---zsh-you-should-use/you-should-use.plugin.zsh"
-    "$HOME/.dotfiles/shell/zsh/plugins/zsh-you-should-use/you-should-use.plugin.zsh"
-    "/usr/share/zsh-you-should-use/zsh-you-should-use.plugin.zsh"
-    "$(brew --prefix 2>/dev/null)/share/zsh-you-should-use/you-should-use.plugin.zsh"
-)
-
+# You-Should-Use Configuration (plugin paths are set in zshenv)
 for ysu_plugin in "${YSU_PLUGIN_PATHS[@]}"; do
     if [ -f "$ysu_plugin" ]; then
         source "$ysu_plugin"
@@ -238,12 +206,11 @@ for ysu_plugin in "${YSU_PLUGIN_PATHS[@]}"; do
     fi
 done
 
-YSU_MESSAGE_POSITION="after"  # Show alias message after command
-YSU_MODE=ALL                  # Show all matching aliases
+# YSU behavior and color configuration is set in zshenv
 
 # Enhanced FZF-Tab configuration
-zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
-zstyle ':fzf-tab:complete:ls:*' fzf-preview 'eza -1 --color=always $realpath'
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'lsd -1 --color=always $realpath'
+zstyle ':fzf-tab:complete:ls:*' fzf-preview 'lsd -1 --color=always $realpath'
 zstyle ':fzf-tab:complete:cat:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath'
 zstyle ':fzf-tab:complete:less:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath'
 zstyle ':fzf-tab:complete:vim:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath'
@@ -265,7 +232,6 @@ if [[ "$TERM" != "linux" ]] && command -v oh-my-posh >/dev/null 2>&1; then
 fi
 
 # Terminal screensaver configuration
-TMOUT=3600
 TRAPALRM() {
     if command -v tty-clock >/dev/null 2>&1; then
         tty-clock -S -c -B < /dev/tty > /dev/tty

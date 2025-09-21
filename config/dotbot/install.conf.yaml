@@ -18,6 +18,8 @@
     ~/.zprofile: shell/zsh/zprofile
     ~/.zshrc: shell/zsh/zshrc
     ~/.hushlogin: shell/zsh/hushlogin
+    ~/.gitconfig: config/git/gitconfig
+    ~/.gitignore_global: config/git/gitignore_global
     /opt/homebrew/etc/dnsmasq.conf: system/dnsmasq/dnsmasq.conf
 
     # Special case: only link ~/.ssh/config if it doesn't already exist

@@ -63,6 +63,17 @@
           "template": " {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <#a6d189>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>",
           "foreground": "#a5adce",
           "background": "transparent"
+        },
+        {
+          "type": "executiontime",
+          "style": "plain",
+          "template": " <#e5c890>⏱</> {{ .FormattedMs }}",
+          "properties": {
+            "threshold": 5000,
+            "style": "round"
+          },
+          "foreground": "#e5c890",
+          "background": "transparent"
         }
       ]
     },
@@ -77,6 +88,16 @@
           "style": "plain",
           "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}\ueb3a SSH{{ end }}",
           "foreground": "#a6d189",
+          "background": "transparent"
+        },
+        {
+          "type": "time",
+          "style": "plain",
+          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}<#a5adce> ❘ </> {{ end }}{{ .CurrentDate | date \"Jan 2 15:04\" }}",
+          "properties": {
+            "time_format": "Jan 2 15:04"
+          },
+          "foreground": "#a5adce",
           "background": "transparent"
         }
       ]

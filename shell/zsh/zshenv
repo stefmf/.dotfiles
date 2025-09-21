@@ -20,6 +20,16 @@ export ZSH_CUSTOM="$DOTFILES/shell/zsh/plugins"            # Custom plugin direc
 export HISTFILE="$DOTFILES/shell/zsh/.zsh_history"         # History file
 export ZSH_SESSION_DIR="$HOME/.zsh_sessions"               # Session management
 
+# History Configuration
+export HISTSIZE=50000                 # Increased history size
+export SAVEHIST=50000                 # Increased save history size
+
+# Zinit Plugin Manager
+export ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+
+# Terminal timeout (screensaver)
+export TMOUT=3600
+
 # Default Applications & Editor Setup
 # Check for VS Code in common locations (using full paths to avoid alias conflicts)
 if /usr/bin/which code >/dev/null 2>&1; then
@@ -123,9 +133,9 @@ export CLEAR_ON_LOGOUT=1
 # Note: PATH deduplication happens at the end of this file to clean up any duplicates
 
 # Java Setup (conditional - only if directory exists)
-if [[ -d "/opt/homebrew/opt/openjdk@17" ]]; then
-    export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-    export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
+if [[ -d "/opt/homebrew/opt/openjdk" ]]; then
+    export JAVA_HOME="/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home"
+    export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 fi
 
 # Cleanup temporary functions and variables
@@ -168,3 +178,38 @@ if command -v fd >/dev/null 2>&1; then
     export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
 fi
 export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+
+#------------------------------------------------------------------------------
+# YSU (You Should Use) Configuration
+#------------------------------------------------------------------------------
+
+# YSU behavior settings
+export YSU_MESSAGE_POSITION="after"  # Show alias message after command
+export YSU_MODE="ALL"                # Show all matching aliases
+
+# Custom YSU message format with Catppuccin Frappe colors
+# Blue (#8caaee) for main text, Yellow (#e5c890) for alias type, Green (#a6d189) for alias
+export YSU_MESSAGE_FORMAT="$(tput setaf 75)Found existing $(tput setaf 222)%alias_type$(tput setaf 75) for \"$(tput setaf 255)%command$(tput setaf 75)\". You should use: \"$(tput setaf 150)%alias$(tput setaf 75)\"$(tput sgr0)"
+
+#------------------------------------------------------------------------------
+# ZSH Plugin Configuration
+#------------------------------------------------------------------------------
+
+# ZSH Autosuggestions Configuration
+export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+export ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
+export ZSH_AUTOSUGGEST_USE_ASYNC=true
+export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#808080'
+export ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(end-of-line)
+export ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS=(forward-word vi-forward-word)
+
+# Word boundary characters (affects completion and navigation)
+export WORDCHARS='*?_-.[]~=&;!#$%^(){}<>'
+
+# YSU plugin search paths
+export YSU_PLUGIN_PATHS=(
+    "${ZINIT_HOME}/plugins/MichaelAquilina---zsh-you-should-use/you-should-use.plugin.zsh"
+    "$HOME/.dotfiles/shell/zsh/plugins/zsh-you-should-use/you-should-use.plugin.zsh"
+    "/usr/share/zsh-you-should-use/zsh-you-should-use.plugin.zsh"
+    "$(brew --prefix 2>/dev/null)/share/zsh-you-should-use/you-should-use.plugin.zsh"
+)
