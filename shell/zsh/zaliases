@@ -82,7 +82,7 @@ elif command_exists gcat; then
 fi
 
 # File comparison
-alias diff='delta --config ~/.dotfiles/.config/delta/deltarc'
+alias diff='delta --config ~/.dotfiles/config/delta/deltarc'
 
 # Grep with color
 alias grep='grep --color=auto'
@@ -144,10 +144,10 @@ case "$OSTYPE" in
         #----------------------------------------------------------------------
         
         # Brewfile management
-        alias brewdump='brew bundle dump --force --no-vscode --file ~/.dotfiles/.bootstrap/macos/Brewfile'
+        alias brewdump='brew bundle dump --force --no-vscode --file ~/.dotfiles/bootstrap/macos/Brewfile'
         
         # Source and execute GNU utilities setup
-        source "$HOME/.dotfiles/helpers/setup_gnu_aliases"
+        source "$HOME/.dotfiles/scripts/setup_gnu_aliases"
         setup_gnu_aliases
         ;;
         
@@ -165,18 +165,18 @@ esac
 #------------------------------------------------------------------------------
 
 # Source helper functions for interactive use
-source "$HOME/.dotfiles/helpers/source_functions"
+source "$HOME/.dotfiles/scripts/source_functions"
 
 #------------------------------------------------------------------------------
 # Dotfiles Management  
 #------------------------------------------------------------------------------
 
 # Dotfiles management (kept as aliases since they're simple wrappers)
-alias dotup="$HOME/.dotfiles/helpers/dotup"              # Apply dotfiles
-alias pullbrut='git -C ~/.dotfiles pull brut:~/.dotfiles main && ~/.dotfiles/helpers/dotup'
+alias dotup="$HOME/.dotfiles/scripts/dotup"              # Apply dotfiles
+alias pullbrut='git -C ~/.dotfiles pull brut:~/.dotfiles main && ~/.dotfiles/scripts/dotup'
 
 #------------------------------------------------------------------------------
 # Entertainment and Visual
 #------------------------------------------------------------------------------
 
-alias fastfetch='$HOME/.dotfiles/.config/fastfetch/fastfetch_wrapper.zsh'
+alias fastfetch='$HOME/.dotfiles/config/fastfetch/fastfetch_wrapper.zsh'

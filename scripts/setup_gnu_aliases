@@ -7,20 +7,33 @@ setup_gnu_aliases() {
     # Only set up GNU aliases on macOS (they're default on Linux)
     case "$OSTYPE" in
         darwin*)
-            # GNU command alternatives that we prefer
+            # GNU command alternatives that we prefer (excluding rm to avoid conflicts)
             local gnu_commands=(
-                cp mv rm mkdir rmdir ln du df
+                cp mv mkdir rmdir ln du df
                 head tail sort wc cut grep xargs find
                 chmod chown date stat touch sed awk
                 readlink realpath
             )
 
-            # Only alias GNU commands if they are installed
+            # Only alias GNU commands if they are installed and don't conflict with git aliases
             for cmd in "${gnu_commands[@]}"; do
                 if command -v "g$cmd" >/dev/null 2>&1; then
-                    alias "$cmd"="g$cmd"
+                    # Check if g<cmd> is already aliased to a git command
+                    local git_alias_check=$(alias "g$cmd" 2>/dev/null | grep -q "git" && echo "git_conflict" || echo "safe")
+                    if [[ "$git_alias_check" == "safe" ]]; then
+                        alias "$cmd"="g$cmd"
+                    else
+                        # For conflicting commands, use the full GNU path if available
+                        local gnu_path="$(brew --prefix 2>/dev/null)/bin/g$cmd"
+                        if [[ -x "$gnu_path" ]]; then
+                            alias "$cmd"="$gnu_path"
+                        fi
+                    fi
                 fi
             done
+            
+            # Ensure rm stays as system rm, not git rm
+            unalias rm 2>/dev/null || true
             ;;
         *)
             # On Linux, GNU utils are already default, nothing to do

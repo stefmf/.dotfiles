@@ -90,7 +90,7 @@ This dotfiles repository is organized for clarity and maintainability:
 │   ├── zshrc                 # Main zsh configuration
 │   ├── zshenv                # Environment variables
 │   ├── zprofile              # Login shell config
-│   ├── aliases               # Shell aliases
+│   ├── zaliases               # Shell aliases
 │   ├── functions/            # Custom shell functions
 │   └── completions/          # Shell completions
 │

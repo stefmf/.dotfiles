@@ -10,10 +10,10 @@ export XDG_STATE_HOME="$HOME/.local/state"
 
 # Dotfile Management
 export DOTFILES="$HOME/.dotfiles"                           # Central location for dotfiles
-export ZSH_COMPDUMP="$DOTFILES/.zsh/.zcompdump"            # Completion cache
-export ZSH_CUSTOM="$DOTFILES/.zsh/plugins"                 # Custom plugin directory
-export HISTFILE="$DOTFILES/.zsh/.zsh_history"              # History file location
-export ZSH_SESSION_DIR="$DOTFILES/.zsh/zsh_sessions"       # Session management
+export ZSH_COMPDUMP="$DOTFILES/shell/zsh/.zcompdump"       # Completion cache
+export ZSH_CUSTOM="$DOTFILES/shell/zsh/plugins"            # Custom plugin directory
+export HISTFILE="$DOTFILES/shell/zsh/.zsh_history"         # History file
+export ZSH_SESSION_DIR="$HOME/.zsh_sessions"               # Session management
 
 # Default Applications & Editor Setup
 # Check for VS Code in common locations (using full paths to avoid alias conflicts)

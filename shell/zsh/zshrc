@@ -52,7 +52,7 @@ fi
 # History Configuration
 #------------------------------------------------------------------------------
 
-HISTFILE="$HOME/.dotfiles/.zsh/.zsh_history"
+HISTFILE="$HOME/.dotfiles/shell/zsh/.zsh_history"
 HISTSIZE=50000                 # Increased history size
 SAVEHIST=50000                 # Increased save history size
 
@@ -128,7 +128,7 @@ zinit light junegunn/fzf
 #------------------------------------------------------------------------------
 
 # Add custom completion paths
-fpath=("$HOME/.dotfiles/.zsh/.zsh_completions" $fpath)
+fpath=("$HOME/.dotfiles/shell/zsh/completions" $fpath)
 
 # Make "/" a delimiter so forward-word stops on each directory
 # Start with default WORDCHARS and remove "/"
@@ -145,7 +145,7 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' 'r:|[._-]=* r:|=*' 'l:|=* r:
 
 # Speed up completions
 zstyle ':completion:*' use-cache on
-zstyle ':completion:*' cache-path "$HOME/.dotfiles/.zsh/.zcompcache"
+zstyle ':completion:*' cache-path "$HOME/.dotfiles/shell/zsh/.zcompcache"
 
 # Enable incremental completion search
 zstyle ':completion:*:*:*:*:*' menu select search
@@ -214,7 +214,7 @@ bindkey -M menuselect '^[' send-break
 # You-Should-Use Configuration
 YSU_PLUGIN_PATHS=(
     "${ZINIT_HOME}/plugins/MichaelAquilina---zsh-you-should-use/you-should-use.plugin.zsh"
-    "$HOME/.dotfiles/.zsh/.zshplugins/zsh-you-should-use/you-should-use.plugin.zsh"
+    "$HOME/.dotfiles/shell/zsh/plugins/zsh-you-should-use/you-should-use.plugin.zsh"
     "/usr/share/zsh-you-should-use/zsh-you-should-use.plugin.zsh"
     "$(brew --prefix 2>/dev/null)/share/zsh-you-should-use/you-should-use.plugin.zsh"
 )
@@ -257,7 +257,7 @@ zstyle ':fzf-tab:*' fzf-command ftb-tmux-popup
 
 # Oh My Posh initialization
 if [[ "$TERM" != "linux" ]] && command -v oh-my-posh >/dev/null 2>&1; then
-    eval "$(oh-my-posh init zsh --config ~/.dotfiles/.config/ohmyposh/prompt.json)"
+    eval "$(oh-my-posh init zsh --config ~/.dotfiles/config/ohmyposh/prompt.json)"
 fi
 
 # Terminal screensaver configuration
@@ -274,4 +274,4 @@ TRAPALRM() {
 #------------------------------------------------------------------------------
 
 # Load custom aliases
-[[ -f "$HOME/.dotfiles/.zsh/.zaliases" ]] && source "$HOME/.dotfiles/.zsh/.zaliases"
+[[ -f "$HOME/.dotfiles/shell/zsh/zaliases" ]] && source "$HOME/.dotfiles/shell/zsh/zaliases"
