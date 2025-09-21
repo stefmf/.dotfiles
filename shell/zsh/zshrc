@@ -1,6 +1,13 @@
 #==============================================================================
 # ZSH Configuration File
-#==============================================================================
+#=============================================================================# ─── Autosuggestion navigation ──────────────────────────────
+
+# Right‑arrow → accept next token (/‑delimited path segment or word)
+# Use a simpler approach to avoid conflicts
+bindkey '^[[C'    forward-word   # CSI C (most common)
+bindkey '\e[C'    forward-word   # xterm normal mode
+# Ctrl‑Right → accept the entire suggestion
+bindkey '\e[1;2C'  autosuggest-accept
 
 #------------------------------------------------------------------------------
 # Core Shell Options
@@ -98,9 +105,12 @@ zinit load zsh-users/zsh-autosuggestions
 # Load other essential plugins with async loading
 zinit lucid for \
     atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" \
-        zdharma-continuum/fast-syntax-highlighting \
     blockf atpull'zinit creinstall -q .' \
         zsh-users/zsh-completions
+
+# Load syntax highlighting LAST to avoid conflicts (using simple plugin to prevent FUNCNEST errors)
+zinit lucid atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" for \
+    zsh-users/zsh-syntax-highlighting
 
 # Load fzf-tab for fuzzy completion menu
 # zinit light Aloxaf/fzf-tab
