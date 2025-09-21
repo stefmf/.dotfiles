@@ -1,0 +1,34 @@
+- defaults:
+    link:
+      relink: true
+      force: true
+
+- clean: ['~']
+
+- create:
+    - ~/.zsh_sessions
+    - ~/.config
+    - "~/Library/Application Support/Sublime Text/Packages/User"
+    - "~/Library/Application Support/Sublime Text/Installed Packages"
+    - ~/.ssh
+
+- link:
+    ~/.config: config
+    ~/.zlogout: shell/zsh/zlogout
+    ~/.zlogin: shell/zsh/zlogin
+    ~/.zshenv: shell/zsh/zshenv
+    ~/.zprofile: shell/zsh/zprofile
+    ~/.zshrc: shell/zsh/zshrc
+    ~/.hushlogin: shell/zsh/hushlogin
+    /opt/homebrew/etc/dnsmasq.conf: system/dnsmasq/dnsmasq.conf
+    "~/Library/Application Support/Sublime Text/Packages/User": config/sublime/User
+    "~/Library/Application Support/Sublime Text/Installed Packages": config/sublime/Installed Packages
+
+    # Special case: only link ~/.ssh/config if it doesn't already exist
+    ~/.ssh/config:
+      path: system/ssh/config
+      relink: false
+      force: false
+
+- shell:
+    - [rm -f ~/.bashrc ~/.bash_profile, Removing Bash configuration files]
