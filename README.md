@@ -73,7 +73,6 @@ This dotfiles repository is organized for clarity and maintainability:
 ├── config/                   # XDG-compliant app configurations
 │   ├── bat/                  # Bat (better cat) theme and config
 │   ├── btop/                 # System monitor config
-│   ├── delta/                # Git diff viewer config
 │   ├── dotbot/               # Dotbot installation config
 │   ├── fastfetch/            # System info tool config
 │   ├── fzf/                  # Fuzzy finder config and themes

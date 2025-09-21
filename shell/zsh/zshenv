@@ -15,10 +15,13 @@ export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc"
 
 # Dotfile Management
 export DOTFILES="$HOME/.dotfiles"                           # Central location for dotfiles
-export ZSH_COMPDUMP="$DOTFILES/shell/zsh/.zcompdump"       # Completion cache
+export ZSH_COMPDUMP="$XDG_CACHE_HOME/zsh/zcompdump"        # Completion cache
 export ZSH_CUSTOM="$DOTFILES/shell/zsh/plugins"            # Custom plugin directory
 export HISTFILE="$DOTFILES/shell/zsh/.zsh_history"         # History file
 export ZSH_SESSION_DIR="$HOME/.zsh_sessions"               # Session management
+
+# ZSH completion cache directory (for systems that use this variable)
+export ZSH_CACHE_DIR="$XDG_CACHE_HOME/zsh"
 
 # History Configuration
 export HISTSIZE=50000                 # Increased history size
@@ -161,13 +164,6 @@ if [[ "$PATH" == *"::"* ]] || [[ $(echo "$PATH" | tr ':' '\n' | sort | uniq -d |
     __dedupe_path
 fi
 unset -f __dedupe_path
-
-#------------------------------------------------------------------------------
-# Shell Completion Configuration
-#------------------------------------------------------------------------------
-
-# ZSH completion dump file location
-export ZCOMPDUMP="${ZDOTDIR:-$HOME}/.dotfiles/shell/zsh/.zcompdump"
 
 #------------------------------------------------------------------------------
 # Tool-Specific Configuration

@@ -4,10 +4,6 @@
 # Aliases Configuration - Cleaned and Optimized
 #==============================================================================
 
-#------------------------------------------------------------------------------
-# Helper Functions
-#------------------------------------------------------------------------------
-
 # Check if a command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -100,10 +96,7 @@ elif command_exists gcat; then
 fi
 
 # File comparison
-alias diff='delta --config ~/.dotfiles/config/delta/deltarc'
 
-# Grep with color
-alias grep='grep --color=auto'
 
 #------------------------------------------------------------------------------
 # Fuzzy Finding
@@ -133,18 +126,21 @@ alias shutdown='sudo shutdown -h now'
 # Development and Version Control
 #------------------------------------------------------------------------------
 
-# Note: Git aliases are provided by Oh My Zsh git plugin
-# Available: gst, ga, gcm, gco, gbr, gpsh, gpl, glg, etc.
-# Custom overrides below:
+# Git Aliases
+alias gst='git status'                         # git status
+alias ga='git add'                             # git add
+alias gaa='git add --all'                      # git add all files
+alias gsw='git switch'                         # git switch (modern alternative to checkout)
+alias gd='git diff'                            # git diff
 
-# Git Aliases (Override Oh My Zsh defaults)
-alias gcm='git commit -m'                      # Override: was 'git checkout $(git_main_branch)'
-alias gpl='git pull'                           # Override: was 'git pull' (same but explicit)
-alias gpsh='git push'                          # Override: was 'git push' (same but explicit)
-alias gbr='git branch'                         # Override: was 'git branch --remote'
-alias gca='git commit --amend -m'             # New: git commit amend with message
-alias grs='git restore --staged'               # Override: was 'git restore' - unstage files
-alias grsa='git restore --staged .'            # New: unstage all files
+# Additional custom git aliases
+alias gcm='git commit -m'                      # git commit with message
+alias gpl='git pull'                           # git pull
+alias gpsh='git push'                          # git push
+alias gbr='git branch'                         # git branch
+alias gca='git commit --amend -m'             # git commit amend with message
+alias grs='git restore --staged'               # unstage files
+alias grsa='git restore --staged .'            # unstage all files
 
 # AWS Profile Management
 alias awswork='export AWS_PROFILE=swa'
@@ -174,15 +170,14 @@ case "$OSTYPE" in
         # Linux Configuration  
         #----------------------------------------------------------------------
         
-        # Package management handled by update helper script
         ;;
 esac
 
 #------------------------------------------------------------------------------
-# Load Helper Functions
+# Load Scripts
 #------------------------------------------------------------------------------
 
-# Source helper functions for interactive use
+# Source scripts for interactive use
 source "$HOME/.dotfiles/scripts/source_functions"
 
 #------------------------------------------------------------------------------

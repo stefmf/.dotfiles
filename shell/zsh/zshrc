@@ -1,13 +1,6 @@
 #==============================================================================
 # ZSH Configuration File
-#=============================================================================# ─── Autosuggestion navigation ──────────────────────────────
-
-# Right‑arrow → accept next token (/‑delimited path segment or word)
-# Use a simpler approach to avoid conflicts
-bindkey '^[[C'    forward-word   # CSI C (most common)
-bindkey '\e[C'    forward-word   # xterm normal mode
-# Ctrl‑Right → accept the entire suggestion
-bindkey '\e[1;2C'  autosuggest-accept
+#==============================================================================
 
 #------------------------------------------------------------------------------
 # Core Shell Options
@@ -72,14 +65,11 @@ source "${ZINIT_HOME}/zinit.zsh"
 # Disable Zinit's automatic compinit and handle it manually
 skip_global_compinit=1
 autoload -Uz compinit
-compinit -C -d "$ZCOMPDUMP"
+compinit -C -d "$ZSH_COMPDUMP"
 
 #------------------------------------------------------------------------------
 # Zinit Plugin Loading
 #------------------------------------------------------------------------------
-
-# Load Oh My Zsh framework
-zinit load ohmyzsh/ohmyzsh
 
 # Load autosuggestions via zinit (configuration is set in zshenv)
 zinit load zsh-users/zsh-autosuggestions
@@ -98,15 +88,7 @@ fast-theme XDG:catppuccin-frappe >/dev/null 2>&1
 
 # Load utility plugins
 zinit wait lucid for \
-    MichaelAquilina/zsh-you-should-use \
-    wfxr/forgit
-
-# Load OMZ libraries and plugins we need
-zinit wait lucid for \
-    OMZL::git.zsh \
-    OMZP::git \
-    OMZP::command-not-found \
-    OMZP::sudo               # Press ESC twice to add sudo to current command
+    MichaelAquilina/zsh-you-should-use
 
 # Load FZF if available
 zinit ice as"command" from"gh-r" \
@@ -132,7 +114,7 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' 'r:|[._-]=* r:|=*' 'l:|=* r:
 
 # Speed up completions
 zstyle ':completion:*' use-cache on
-zstyle ':completion:*' cache-path "$HOME/.dotfiles/shell/zsh/.zcompcache"
+zstyle ':completion:*' cache-path "$XDG_CACHE_HOME/zsh/cache"
 
 # Enable incremental completion search
 zstyle ':completion:*:*:*:*:*' menu select search
@@ -144,46 +126,43 @@ zstyle ':completion:*:*:*:*:*' menu select search
 # Use emacs key bindings
 bindkey -e
 
-# ─── Custom Keybindings ───────────────────────────
+# ─── Navigation and Editing ──────────────────────────────────────────────────
 
-# ------- Natural text editing like VS Code -------
-bindkey -e                       # emacs keymap (default on macOS)
+# Word navigation (⌥ ← / ⌥ →)
+bindkey '\eb'        backward-word     # ESC b (iTerm "Left Option = Esc+")
+bindkey '\ef'        forward-word      # ESC f
+bindkey '\e[1;3D'    backward-word     # iTerm Alt‑Left when not Esc+
+bindkey '\e[1;3C'    forward-word      # iTerm Alt‑Right when not Esc+
 
-# ⌥ ← / ⌥ →  → word left/right
-bindkey '\eb'        backward-word   # ESC b (iTerm "Left Option = Esc+")
-bindkey '\ef'        forward-word    # ESC f
-bindkey '\e[1;3D'    backward-word   # iTerm Alt‑Left when not Esc+
-bindkey '\e[1;3C'    forward-word    # iTerm Alt‑Right when not Esc+
+# Line navigation (⌘ ← / ⌘ →)
+bindkey '^A'         beginning-of-line # Ctrl-A or Hex 01
+bindkey '^E'         end-of-line       # Ctrl-E or Hex 05
+bindkey '\e[H'       beginning-of-line # Home key
+bindkey '\e[F'       end-of-line       # End key
 
-# ⌘ ← / ⌘ →  → line start/end
-bindkey '^A'         beginning-of-line   # sent if you chose Hex 01
-bindkey '^E'         end-of-line         # sent if you chose Hex 05
-bindkey '\e[H'       beginning-of-line   # ESC [ H  (Home)
-bindkey '\e[F'       end-of-line         # ESC [ F  (End)
+# Delete and backspace
+bindkey '^[[3~'      delete-char       # Delete key
+bindkey '^?'         backward-delete-char # Backspace
 
-
-# ─── Autosuggestion navigation ──────────────────────────────
+# ─── Autosuggestion Navigation ───────────────────────────────────────────────
 
 # Right‑arrow → accept next token (/‑delimited path segment or word)
-# Cover common escape sequences and terminfo so we don’t fall back to forward-char
-bindkey '^[[C'    forward-word   # CSI C
-bindkey '\e[C'   forward-word   # xterm normal mode
-bindkey '\eOC'   forward-word   # application cursor mode
+bindkey '^[[C'       forward-word      # CSI C (most terminals)
+bindkey '\e[C'       forward-word      # xterm normal mode
+bindkey '\eOC'       forward-word      # application cursor mode
 if [[ -n ${terminfo[kRIT]} ]]; then
-  bindkey "${terminfo[kRIT]}" forward-word
+  bindkey "${terminfo[kRIT]}" forward-word  # terminfo right arrow
 fi
-# Ctrl‑Right → accept the entire suggestion
-bindkey '\e[1;2C'  autosuggest-accept
 
-# History search
+# Ctrl‑Right → accept the entire suggestion
+bindkey '\e[1;2C'    autosuggest-accept
+
+# ─── History Search ──────────────────────────────────────────────────────────
+
 bindkey '^R'         history-incremental-search-backward
 bindkey '^S'         history-incremental-search-forward
 
-# Delete and backspace
-bindkey '^[[3~'      delete-char       # Delete
-bindkey '^?'         backward-delete-char # Backspace
-
-# ─── Completion menu navigation and search ──────────────────
+# ─── Completion Menu Navigation ──────────────────────────────────────────────
 
 # Load menuselect for advanced menu features
 zmodload zsh/complist
@@ -197,6 +176,18 @@ bindkey -M menuselect '^M' .accept-line
 
 # Cancel completion with Escape
 bindkey -M menuselect '^[' send-break
+
+# ─── Custom Functions ────────────────────────────────────────────────────────
+
+# Load sudo toggle function
+[[ -f "$HOME/.dotfiles/scripts/sudo-toggle" ]] && source "$HOME/.dotfiles/scripts/sudo-toggle"
+
+# Double-ESC to toggle sudo
+bindkey '\e\e' sudo-command-line
+
+#------------------------------------------------------------------------------
+# Plugin Configuration
+#------------------------------------------------------------------------------
 
 # You-Should-Use Configuration (plugin paths are set in zshenv)
 for ysu_plugin in "${YSU_PLUGIN_PATHS[@]}"; do
