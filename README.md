@@ -59,6 +59,66 @@ If your email is private or the fetch fails, you may need to set them manually.
 
 - Uses `/etc/pam.d/sudo_local` (survives OS updates).
 
+---
+
+## 📁 Directory Structure
+
+This dotfiles repository is organized for clarity and maintainability:
+
+```
+~/.dotfiles/
+├── README.md                 # This file
+├── install*                  # Main installation script
+│
+├── config/                   # XDG-compliant app configurations
+│   ├── bat/                  # Bat (better cat) theme and config
+│   ├── btop/                 # System monitor config
+│   ├── delta/                # Git diff viewer config
+│   ├── dotbot/               # Dotbot installation config
+│   ├── fastfetch/            # System info tool config
+│   ├── fzf/                  # Fuzzy finder config and themes
+│   ├── git/                  # Git configuration (placeholder)
+│   ├── htop/                 # Process viewer config
+│   ├── iterm2/               # Terminal profiles and themes
+│   ├── nvim/                 # Neovim config (placeholder)
+│   ├── ohmyposh/             # Prompt theme config
+│   ├── sublime/              # Sublime Text settings
+│   ├── tmux/                 # Terminal multiplexer (placeholder)
+│   └── vim/                  # Vim configuration and themes
+│
+├── shell/zsh/                # Shell configurations
+│   ├── zshrc                 # Main zsh configuration
+│   ├── zshenv                # Environment variables
+│   ├── zprofile              # Login shell config
+│   ├── aliases               # Shell aliases
+│   ├── functions/            # Custom shell functions
+│   └── completions/          # Shell completions
+│
+├── system/                   # System-level configurations
+│   ├── ssh/config            # SSH client configuration
+│   ├── dnsmasq/              # DNS configuration
+│   └── pam.d/                # PAM authentication config
+│
+├── bootstrap/                # Machine-specific setup
+│   ├── macos/                # macOS bootstrap scripts and Brewfile
+│   └── linux/                # Linux bootstrap scripts and packages
+│
+├── scripts/                  # Utility scripts
+│   ├── update                # Update all tools and packages
+│   ├── cleanup.sh            # Clean up system files
+│   └── dotall                # Run dotfiles commands
+│
+└── tools/                    # Third-party tools
+    └── dotbot/               # Dotbot installation tool
+```
+
+### Key Benefits:
+- **Logical Grouping**: Related configurations are grouped together
+- **XDG Compliance**: Modern apps use `~/.config/` via symlinks
+- **Clean Naming**: No unnecessary leading dots or mixed conventions
+- **Scalable**: Easy to add new tools (nvim, tmux, etc.)
+- **Maintainable**: Clear separation of concerns
+
 Run any `sudo` command and tap your sensor instead of typing a password.  
 **Troubleshoot:** Ensure `/etc/pam.d/sudo_local` contains the `pam_tid.so` line and you’ve authenticated once since reboot.
 

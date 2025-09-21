@@ -8,8 +8,6 @@
 - create:
     - ~/.zsh_sessions
     - ~/.config
-    - "~/Library/Application Support/Sublime Text/Packages/User"
-    - "~/Library/Application Support/Sublime Text/Installed Packages"
     - ~/.ssh
 
 - link:
@@ -21,8 +19,6 @@
     ~/.zshrc: shell/zsh/zshrc
     ~/.hushlogin: shell/zsh/hushlogin
     /opt/homebrew/etc/dnsmasq.conf: system/dnsmasq/dnsmasq.conf
-    "~/Library/Application Support/Sublime Text/Packages/User": config/sublime/User
-    "~/Library/Application Support/Sublime Text/Installed Packages": config/sublime/Installed Packages
 
     # Special case: only link ~/.ssh/config if it doesn't already exist
     ~/.ssh/config:
