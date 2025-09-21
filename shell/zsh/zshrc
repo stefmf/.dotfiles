@@ -131,8 +131,8 @@ zinit light junegunn/fzf
 fpath=("$HOME/.dotfiles/shell/zsh/completions" $fpath)
 
 # Make "/" a delimiter so forward-word stops on each directory
-# Start with default WORDCHARS and remove "/"
-WORDCHARS=${WORDCHARS//\//}
+# Remove "/" from WORDCHARS but keep "." so dotfiles are treated as single words
+WORDCHARS='*?_-.[]~=&;!#$%^(){}<>'
 
 # Simple completion styling
 zstyle ':completion:*' menu select                        # Enable menu selection
