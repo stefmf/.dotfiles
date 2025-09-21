@@ -48,7 +48,7 @@ brew "screen"
 brew "shellcheck"
 brew "tailscale", restart_service: :changed
 brew "terraform"
-brew "tldr"
+brew "tlrc"
 brew "tmux"
 brew "tmuxinator"
 brew "tty-clock"

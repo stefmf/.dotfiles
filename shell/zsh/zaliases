@@ -14,7 +14,8 @@ command_exists() {
 #------------------------------------------------------------------------------
 
 # Documentation
-alias man='tldr'                     # Use tldr instead of man for quick help
+alias man='batman --paging always'                   # Use batman as man replacement
+# Fallback: use \man for system man
 
 # Network
 alias wget='wget2'                   # Use wget2 if available
@@ -95,7 +96,10 @@ elif command_exists gcat; then
     alias cat='gcat'                  # GNU cat fallback
 fi
 
+
 # File comparison
+alias diff='batdiff'  # Use batdiff for diffs
+# Fallback: use \diff for system diff
 
 
 #------------------------------------------------------------------------------
