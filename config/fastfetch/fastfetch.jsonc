@@ -11,9 +11,9 @@
     "display": {
         "separator": ": ",
         "color": {
-            "keys": "blue",
-            "title": "cyan",
-            "output": "white"
+            "keys": "#8caaee",
+            "title": "#99d1db",
+            "output": "#c6d0f5"
         },
         "brightColor": true,
         "disableLinewrap": true,
@@ -59,7 +59,7 @@
         {
             "type": "cpu",
             "key": "Processor",
-            "outputColor": "yellow"
+            "outputColor": "#e5c890"
         },
         {
             "type": "memory",

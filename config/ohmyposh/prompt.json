@@ -2,16 +2,16 @@
   "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
   "secondary_prompt": {
     "template": "{{ if .Root }}❯❯{{ else }}❯❯{{ end }} ",
-    "foreground_templates": ["{{ if .Root }}#facc15{{ else }}#61a5fa{{ end }}"],
+    "foreground_templates": ["{{ if .Root }}#e5c890{{ else }}#8caaee{{ end }}"],
     "background": "transparent"
   },
   "transient_prompt": {
     "template": "❯ ",
     "background": "transparent",
     "foreground_templates": [
-      "{{ if gt .Code 0 }}#ef4444{{ end }}",
-      "{{ if and (eq .Code 0) .Root }}#facc15{{ end }}",
-      "{{ if and (eq .Code 0) (not .Root) }}#61a5fa{{ end }}"
+      "{{ if gt .Code 0 }}#e78284{{ end }}",
+      "{{ if and (eq .Code 0) .Root }}#e5c890{{ end }}",
+      "{{ if and (eq .Code 0) (not .Root) }}#8caaee{{ end }}"
     ]
   },
   "upgrade": {
@@ -31,15 +31,15 @@
           "style": "plain",
           "template": " {{ .UserName }}",
           "foreground_templates": [
-            "{{ if .Root }}#ff5555{{ else }}#61a5fa{{ end }}"
+            "{{ if .Root }}#e78284{{ else }}#8caaee{{ end }}"
           ],
           "background": "transparent"
         },
         {
           "type": "session",
           "style": "plain",
-          "template": "<#9ca3af> ❘ </>󰇄 {{ .HostName }}<#9ca3af> ❘ </>",
-          "foreground": "#61a5fa",
+          "template": "<#a5adce> ❘ </>󰇄 {{ .HostName }}<#a5adce> ❘ </>",
+          "foreground": "#8caaee",
           "background": "transparent"
         },
         {
@@ -49,7 +49,7 @@
             "style": "full"
           },
           "template": " {{ .Path }}",
-          "foreground": "#60a5fa",
+          "foreground": "#8caaee",
           "background": "transparent"
         },
         {
@@ -60,8 +60,8 @@
             "commit_icon": "@",
             "fetch_status": true
           },
-          "template": " {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <#6ee7b7>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>",
-          "foreground": "#9ca3af",
+          "template": " {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <#a6d189>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>",
+          "foreground": "#a5adce",
           "background": "transparent"
         }
       ]
@@ -76,7 +76,7 @@
           "type": "session",
           "style": "plain",
           "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}\ueb3a SSH{{ end }}",
-          "foreground": "#059669",
+          "foreground": "#a6d189",
           "background": "transparent"
         }
       ]
@@ -91,7 +91,7 @@
           "type": "text",
           "style": "plain",
           "foreground_templates": [
-            "{{ if .Root }}#facc15{{ else }}#61a5fa{{ end }}"
+            "{{ if .Root }}#e5c890{{ else }}#8caaee{{ end }}"
           ]
         }
       ],

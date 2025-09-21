@@ -25,10 +25,18 @@ alias wget='wget2'                   # Use wget2 if available
 
 # Shell Management
 #------------------------------------------------------------------------------
-# Shell Management
-#------------------------------------------------------------------------------
 function reload() {
-    source ~/.zshrc
+    # Clear functions and aliases to prevent duplication
+    unalias -a 2>/dev/null || true
+    unfunction '*' 2>/dev/null || true
+    
+    # Clear zinit cache and restart cleanly
+    if [[ -n "$ZINIT_HOME" ]] && command -v zinit >/dev/null 2>&1; then
+        zinit cclear 2>/dev/null || true
+    fi
+    
+    # Restart zsh cleanly instead of just sourcing
+    exec zsh
 }
 
 alias rl='reload'                   # Short alias for reload
@@ -189,3 +197,4 @@ alias pullbrut='git -C ~/.dotfiles pull brut:~/.dotfiles main && ~/.dotfiles/scr
 # Entertainment and Visual
 #------------------------------------------------------------------------------
 
+alias fastfetch='$HOME/.dotfiles/config/fastfetch/fastfetch_wrapper.zsh'

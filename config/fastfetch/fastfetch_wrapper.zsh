@@ -50,11 +50,15 @@ generate_star() {
 }
 
 # Determine the appropriate config file
+# Get the directory of the script
+SCRIPT_DIR=$(dirname "${(%):-%x}")
+DOTFILES_DIR=$(dirname "$(dirname "$SCRIPT_DIR")")
+
 USERNAME=$(whoami)
 if [[ "$USERNAME" == "root" || "$USERNAME" == "admin" ]]; then
-    CONFIG_FILE="$HOME/.dotfiles/config/fastfetch/fastfetch_admin.jsonc"
+    CONFIG_FILE="$DOTFILES_DIR/config/fastfetch/fastfetch_admin.jsonc"
 else
-    CONFIG_FILE="$HOME/.dotfiles/config/fastfetch/fastfetch.jsonc"
+    CONFIG_FILE="$DOTFILES_DIR/config/fastfetch/fastfetch.jsonc"
 fi
 
 # Generate starry field and pipe it to fastfetch with the appropriate config

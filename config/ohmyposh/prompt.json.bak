@@ -1,16 +1,17 @@
 {
   "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
   "secondary_prompt": {
-    "template": "❯❯ ",
-    "foreground": "magenta",
+    "template": "{{ if .Root }}❯❯{{ else }}❯❯{{ end }} ",
+    "foreground_templates": ["{{ if .Root }}#e5c890{{ else }}#8caaee{{ end }}"],
     "background": "transparent"
   },
   "transient_prompt": {
     "template": "❯ ",
     "background": "transparent",
     "foreground_templates": [
-      "{{ if gt .Code 0 }}red{{ end }}",
-      "{{ if eq .Code 0 }}magenta{{ end }}"
+      "{{ if gt .Code 0 }}#e78284{{ end }}",
+      "{{ if and (eq .Code 0) .Root }}#e5c890{{ end }}",
+      "{{ if and (eq .Code 0) (not .Root) }}#8caaee{{ end }}"
     ]
   },
   "upgrade": {
@@ -19,33 +20,49 @@
     "auto": false,
     "notice": false
   },
-  "console_title_template": "{{ .Shell }} in {{ .Folder }}",
+  "console_title_template": "Terminal",
   "blocks": [
     {
       "type": "prompt",
       "alignment": "left",
       "segments": [
         {
+          "type": "session",
+          "style": "plain",
+          "template": " {{ .UserName }}",
+          "foreground_templates": [
+            "{{ if .Root }}#e78284{{ else }}#8caaee{{ end }}"
+          ],
+          "background": "transparent"
+        },
+        {
+          "type": "session",
+          "style": "plain",
+          "template": "<#a5adce> ❘ </>󰇄 {{ .HostName }}<#a5adce> ❘ </>",
+          "foreground": "#8caaee",
+          "background": "transparent"
+        },
+        {
+          "type": "path",
+          "style": "plain",
           "properties": {
             "style": "full"
           },
-          "template": "{{ .Path }}",
-          "foreground": "blue",
-          "background": "transparent",
-          "type": "path",
-          "style": "plain"
+          "template": " {{ .Path }}",
+          "foreground": "#8caaee",
+          "background": "transparent"
         },
         {
+          "type": "git",
+          "style": "plain",
           "properties": {
-            "branch_icon": "\ue0a0 ",
+            "branch_icon": "\uf408 \ue0a0 ",
             "commit_icon": "@",
             "fetch_status": true
           },
-          "template": " {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <cyan>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>",
-          "foreground": "p:grey",
-          "background": "transparent",
-          "type": "git",
-          "style": "plain"
+          "template": " {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <#a6d189>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>",
+          "foreground": "#a5adce",
+          "background": "transparent"
         }
       ]
     },
@@ -56,13 +73,11 @@
       "filler": " ",
       "segments": [
         {
-          "type": "text",
-          "style": "diamond",
-          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}SSH 🔒{{ end }}",
-          "foreground": "#eff6ff",
-          "background": "#12a036",
-          "leading_diamond": "\uE0B6",
-          "trailing_diamond": "\uE0B4"
+          "type": "session",
+          "style": "plain",
+          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}\ueb3a SSH{{ end }}",
+          "foreground": "#a6d189",
+          "background": "transparent"
         }
       ]
     },
@@ -76,8 +91,7 @@
           "type": "text",
           "style": "plain",
           "foreground_templates": [
-            "{{ if gt .Code 0 }}red{{ end }}",
-            "{{ if eq .Code 0 }}magenta{{ end }}"
+            "{{ if .Root }}#e5c890{{ else }}#8caaee{{ end }}"
           ]
         }
       ],
