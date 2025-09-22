@@ -236,3 +236,17 @@ TRAPALRM() {
 
 # Load custom aliases
 [[ -f "$HOME/.dotfiles/shell/zsh/zaliases" ]] && source "$HOME/.dotfiles/shell/zsh/zaliases"
+
+# Source scripts for interactive use
+[[ -f "$HOME/.dotfiles/scripts/source_functions" ]] && source "$HOME/.dotfiles/scripts/source_functions"
+
+# Platform-specific configuration
+case "$OSTYPE" in
+    darwin*)
+        # Source and execute GNU utilities setup
+        [[ -f "$HOME/.dotfiles/scripts/setup_gnu_aliases" ]] && source "$HOME/.dotfiles/scripts/setup_gnu_aliases" && setup_gnu_aliases
+        ;;
+    linux-gnu*|linux-musl*)
+        # Linux-specific configurations can go here
+        ;;
+esac

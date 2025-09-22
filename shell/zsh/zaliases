@@ -152,39 +152,6 @@ alias awspersonal='export AWS_PROFILE=personal'
 alias awsclear='unset AWS_PROFILE'
 
 #------------------------------------------------------------------------------
-# Platform-Specific Configuration
-#------------------------------------------------------------------------------
-
-case "$OSTYPE" in
-    darwin*)
-        #----------------------------------------------------------------------
-        # macOS Configuration
-        #----------------------------------------------------------------------
-        
-        # Brewfile management
-        alias brewdump='brew bundle dump --force --no-vscode --file ~/.dotfiles/bootstrap/macos/Brewfile'
-        
-        # Source and execute GNU utilities setup
-        source "$HOME/.dotfiles/scripts/setup_gnu_aliases"
-        setup_gnu_aliases
-        ;;
-        
-    linux-gnu*|linux-musl*)
-        #----------------------------------------------------------------------
-        # Linux Configuration  
-        #----------------------------------------------------------------------
-        
-        ;;
-esac
-
-#------------------------------------------------------------------------------
-# Load Scripts
-#------------------------------------------------------------------------------
-
-# Source scripts for interactive use
-source "$HOME/.dotfiles/scripts/source_functions"
-
-#------------------------------------------------------------------------------
 # Dotfiles Management  
 #------------------------------------------------------------------------------
 
