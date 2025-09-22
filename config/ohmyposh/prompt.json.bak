@@ -27,9 +27,9 @@
       "alignment": "left",
       "segments": [
         {
-          "type": "session",
+          "type": "text",
           "style": "plain",
-          "template": " {{ .UserName }}",
+          "template": "{{ if lt (atoi .Env.COLUMNS) 70 }}{{ .UserName }}<#a5adce>@</>{{ .HostName }} <#8caaee>{{ $pwd := .PWD }}{{ $home := .Env.HOME }}{{ if eq $pwd $home }}~{{ else if hasPrefix $pwd (print $home \"/\") }}{{ $rel := trimPrefix (print $home \"/\") $pwd }}{{ $parts := splitList \"/\" $rel }}{{ $len := len $parts }}{{ if ge $len 2 }}~/{{ index $parts (sub $len 2) }}/{{ index $parts (sub $len 1) }}{{ else }}~/{{ $rel }}{{ end }}{{ else }}{{ $parts := splitList \"/\" $pwd }}{{ $len := len $parts }}{{ if ge $len 3 }}…/{{ index $parts (sub $len 2) }}/{{ index $parts (sub $len 1) }}{{ else }}{{ $pwd }}{{ end }}{{ end }}</> <#a5adce>{{ if .Root }}#{{ else }}%{{ end }}</>{{ end }}",
           "foreground_templates": [
             "{{ if .Root }}#e78284{{ else }}#8caaee{{ end }}"
           ],
@@ -38,7 +38,16 @@
         {
           "type": "session",
           "style": "plain",
-          "template": "<#a5adce> ❘ </>󰇄 {{ .HostName }}<#a5adce> ❘ </>",
+          "template": "{{ if ge (atoi .Env.COLUMNS) 70 }} {{ .UserName }}{{ end }}",
+          "foreground_templates": [
+            "{{ if .Root }}#e78284{{ else }}#8caaee{{ end }}"
+          ],
+          "background": "transparent"
+        },
+        {
+          "type": "session",
+          "style": "plain",
+          "template": "{{ if ge (atoi .Env.COLUMNS) 70 }}<#a5adce> ❘ </>󰇄 {{ .HostName }}<#a5adce> ❘ </>{{ end }}",
           "foreground": "#8caaee",
           "background": "transparent"
         },
@@ -50,7 +59,7 @@
             "max_width": "{{ max 8 (sub (atoi .Env.COLUMNS) 45) }}",
             "folder_icon": "…"
           },
-          "template": " {{ .Path }}",
+          "template": "{{ if ge (atoi .Env.COLUMNS) 70 }} {{ .Path }}{{ end }}",
           "foreground": "#8caaee",
           "background": "transparent"
         },
@@ -62,14 +71,14 @@
             "commit_icon": "@",
             "fetch_status": true
           },
-          "template": " {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <#a6d189>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>",
+          "template": "{{ if ge (atoi .Env.COLUMNS) 70 }} {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <#a6d189>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>{{ end }}",
           "foreground": "#a5adce",
           "background": "transparent"
         },
         {
           "type": "executiontime",
           "style": "plain",
-          "template": " <#e5c890>⏱</> {{ .FormattedMs }}",
+          "template": "{{ if ge (atoi .Env.COLUMNS) 85 }} <#e5c890>⏱</> {{ .FormattedMs }}{{ end }}",
           "properties": {
             "threshold": 5000,
             "style": "round"
@@ -84,11 +93,12 @@
       "alignment": "right",
       "newline": false,
       "filler": " ",
+      "overflow": "hide",
       "segments": [
         {
           "type": "time",
           "style": "plain",
-          "template": "{{ .CurrentDate | date \"Jan 2 15:04\" }}",
+          "template": "{{ if ge (atoi .Env.COLUMNS) 85 }}{{ .CurrentDate | date \"Jan 2 15:04\" }}{{ end }}",
           "properties": {
             "time_format": "Jan 2 15:04"
           },
@@ -102,7 +112,7 @@
       "alignment": "left",
       "segments": [
         {
-          "template": "❯",
+          "template": "{{ if ge (atoi .Env.COLUMNS) 70 }}❯{{ end }}",
           "background": "transparent",
           "type": "text",
           "style": "plain",
