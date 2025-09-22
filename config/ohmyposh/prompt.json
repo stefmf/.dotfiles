@@ -46,7 +46,9 @@
           "type": "path",
           "style": "plain",
           "properties": {
-            "style": "full"
+            "style": "agnoster",
+            "max_width": "{{ max 8 (sub (atoi .Env.COLUMNS) 45) }}",
+            "folder_icon": "…"
           },
           "template": " {{ .Path }}",
           "foreground": "#8caaee",
@@ -84,16 +86,9 @@
       "filler": " ",
       "segments": [
         {
-          "type": "session",
-          "style": "plain",
-          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}\ueb3a SSH{{ end }}",
-          "foreground": "#a6d189",
-          "background": "transparent"
-        },
-        {
           "type": "time",
           "style": "plain",
-          "template": "{{ if or .Env.SSH_CONNECTION .Env.SSH_CLIENT }}<#a5adce> ❘ </> {{ end }}{{ .CurrentDate | date \"Jan 2 15:04\" }}",
+          "template": "{{ .CurrentDate | date \"Jan 2 15:04\" }}",
           "properties": {
             "time_format": "Jan 2 15:04"
           },

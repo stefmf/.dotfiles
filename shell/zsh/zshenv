@@ -209,3 +209,8 @@ export YSU_PLUGIN_PATHS=(
     "/usr/share/zsh-you-should-use/zsh-you-should-use.plugin.zsh"
     "$(brew --prefix 2>/dev/null)/share/zsh-you-should-use/you-should-use.plugin.zsh"
 )
+
+# Export COLUMNS for Oh My Posh dynamic path shortening (only in interactive shells)
+if [[ -o interactive ]]; then
+    precmd() { export COLUMNS; }
+fi

@@ -103,6 +103,12 @@
             "key": "Tailscale IP"
         },
         {
+            "type": "command",
+            "shell": "/bin/bash",
+            "text": "if [ -n \"$SSH_CONNECTION\" ] || [ -n \"$SSH_CLIENT\" ]; then echo $SSH_CONNECTION | awk '{print $1}'; fi",
+            "key": "Active SSH Connection From"
+        },
+        {
             "type": "netio",
             "key": "Network I/O"
         },
