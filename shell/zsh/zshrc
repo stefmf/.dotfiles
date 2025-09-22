@@ -15,6 +15,9 @@ setopt hist_verify             # Show command with history expansion to user bef
 setopt hist_expire_dups_first  # Delete duplicates first when HISTFILE size exceeds HISTSIZE
 setopt hist_ignore_space       # Don't record commands that start with space
 setopt extended_history        # Record timestamp of command
+setopt hist_save_no_dups       # Don't write duplicates to the history file
+setopt hist_ignore_all_dups    # Remove older duplicate entries
+setopt hist_find_no_dups       # Don't show duplicates when searching history
 
 # Completion and correction
 setopt correct                 # Correct mistyped commands

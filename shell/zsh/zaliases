@@ -102,6 +102,19 @@ alias diff='batdiff'  # Use batdiff for diffs
 # Fallback: use \diff for system diff
 
 
+# --- Simple ripgrep-based grep alias (Catppuccin Frappé Yellow) ---
+# Use \grep to access system grep.
+if command_exists rg; then
+    unalias grep 2>/dev/null || true
+    unset -f grep 2>/dev/null || true
+    alias grep="rg -n --color=always \
+        --colors 'line:fg:131,139,167' \
+    --colors 'match:fg:229,200,144' \
+    --colors 'match:bg:79,82,104' \
+    --colors 'match:style:bold' \
+    --colors 'match:style:underline'"
+fi
+
 #------------------------------------------------------------------------------
 # Fuzzy Finding
 #------------------------------------------------------------------------------
