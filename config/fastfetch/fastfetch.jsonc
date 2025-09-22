@@ -1,12 +1,6 @@
 {
     "logo": {
-        "type": "file-raw",
-        "source": "-",
-        "padding": {
-            "left": 0,
-            "right": 2
-        },
-        "position": "right"
+        "type": "none"
     },
     "display": {
         "separator": ": ",
@@ -23,14 +17,8 @@
         {
             "type": "command",
             "shell": "/bin/bash",
-            "text": "EMOJIS=('🔧' '🤖' '💻' '🛠️' '🚀' '✨'); COLORS=(32 35 31); RANDOM_EMOJI=${EMOJIS[$RANDOM % ${#EMOJIS[@]}]}; RANDOM_COLOR_CODE=${COLORS[$RANDOM % ${#COLORS[@]}]}; USERNAME=$(whoami); CAPITALIZED_USERNAME=$(echo $USERNAME | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}'); if [ \"$USERNAME\" = 'user' ]; then MESSAGE=\"Welcome to your Terminal! $RANDOM_EMOJI\"; else MESSAGE=\"Welcome to your Terminal $CAPITALIZED_USERNAME! $RANDOM_EMOJI\"; fi; echo -e \"\\033[1;${RANDOM_COLOR_CODE}m$MESSAGE\\033[0m\"",
+            "text": "EMOJIS=('💻' '🛠️' '🚀'); COLORS=(32 35 31); RANDOM_EMOJI=${EMOJIS[$RANDOM % ${#EMOJIS[@]}]}; RANDOM_COLOR_CODE=${COLORS[$RANDOM % ${#COLORS[@]}]}; USERNAME=$(whoami); CAPITALIZED_USERNAME=$(echo $USERNAME | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}'); if [ \"$USERNAME\" = 'user' ]; then MESSAGE=\"Welcome to your Terminal! $RANDOM_EMOJI\"; else MESSAGE=\"Welcome to your Terminal $CAPITALIZED_USERNAME! $RANDOM_EMOJI\"; fi; echo -e \"\\033[1;${RANDOM_COLOR_CODE}m$MESSAGE\\033[0m\"",
             "key": " "
-        },
-        {
-            "type": "command",
-            "shell": "/bin/bash",
-            "text": "hostname -s",
-            "key": "Host"
         },
         {
             "type": "localip",
@@ -41,25 +29,6 @@
             "shell": "/bin/bash",
             "text": "tailscale ip -4",
             "key": "Tailscale IP"
-        },
-        {
-            "type": "command",
-            "shell": "/bin/bash",
-            "text": "date '+%A, %B %d, %Y %I:%M:%S %p'",
-            "key": "Date & Time"
-        },
-        {
-            "type": "os",
-            "key": "Operating System"
-        },
-        {
-            "type": "uptime",
-            "key": "Uptime"
-        },
-        {
-            "type": "cpu",
-            "key": "Processor",
-            "outputColor": "#e5c890"
         },
         {
             "type": "memory",

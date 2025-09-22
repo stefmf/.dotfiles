@@ -34,16 +34,16 @@ safe_remove() {
         
         # Check if it's a directory or file
         if [[ -d "$path" ]]; then
-            echo -e "  Type: Directory ($(du -sh "$path" 2>/dev/null | cut -f1) size)"
+            echo -e "  Type: Directory ($(du -sh "$path" 2>/dev/null | /usr/bin/cut -f1) size)"
         else
-            echo -e "  Type: File ($(ls -lh "$path" 2>/dev/null | awk '{print $5}') size)"
+            echo -e "  Type: File ($(/bin/ls -lh "$path" 2>/dev/null | /usr/bin/awk '{print $5}') size)"
         fi
         
         read -q "?  Remove this? (y/n): "
         echo ""
         
         if [[ $REPLY == "y" ]]; then
-            rm -rf "$path"
+            /bin/rm -rf "$path"
             echo -e "${GREEN}✅ Removed${NC}"
         else
             echo -e "${YELLOW}⏭️  Skipped${NC}"
@@ -83,5 +83,63 @@ echo "• ZSH files: Now in ~/.dotfiles/shell/zsh/"
 echo "• Application configs: Now in ~/.config/"
 echo "• Application caches: Now in ~/.cache/"
 echo "• Application data: Now in ~/.local/share/"
+echo ""
+
+# Ask if user wants to apply changes immediately
+echo -e "${YELLOW}To apply all ZSH configuration changes, you should restart your shell session.${NC}"
+echo ""
+read -q "?Would you like to apply the changes now? (y/n): "
+echo ""
+
+if [[ $REPLY == "y" ]]; then
+    echo -e "${BLUE}Applying configuration changes...${NC}"
+    
+    # Detect terminal environment and handle accordingly
+    if [[ -n "${VSCODE_INJECTION:-}" ]] || [[ "${TERM_PROGRAM:-}" == "vscode" ]] || [[ -n "${VSCODE_PID:-}" ]]; then
+        # VS Code integrated terminal
+        echo -e "${BLUE}VS Code detected: Restarting shell session...${NC}"
+        echo -e "${GREEN}✨ Shell session restarted with cleaned XDG configuration! ✨${NC}"
+        exec zsh
+        
+    elif [[ "${TERM_PROGRAM:-}" == "iTerm.app" ]]; then
+        # iTerm2 - quit the application
+        echo -e "${BLUE}iTerm2 detected: Quitting application...${NC}"
+        osascript -e 'tell application "iTerm2" to quit'
+        
+    elif [[ "${TERM_PROGRAM:-}" == "Apple_Terminal" ]]; then
+        # Terminal.app - quit the application
+        echo -e "${BLUE}Terminal.app detected: Quitting application...${NC}"
+        osascript -e 'tell application "Terminal" to quit'
+        
+    elif [[ -n "${SSH_CONNECTION:-}" ]] || [[ -n "${SSH_CLIENT:-}" ]] || [[ -n "${SSH_TTY:-}" ]]; then
+        # SSH session - restart shell
+        echo -e "${BLUE}SSH session detected: Restarting shell...${NC}"
+        echo -e "${GREEN}✨ Shell session restarted with cleaned XDG configuration! ✨${NC}"
+        exec zsh
+        
+    else
+        # Fallback for other integrated terminals or unknown environments
+        echo -e "${BLUE}Integrated terminal detected: Attempting to restart shell...${NC}"
+        
+        # Try exec zsh first
+        if command -v zsh >/dev/null 2>&1; then
+            echo -e "${GREEN}✨ Shell session restarted with cleaned XDG configuration! ✨${NC}"
+            exec zsh
+        else
+            # Fallback to exit if exec fails somehow
+            echo -e "${YELLOW}Shell restart failed. Attempting to exit current session...${NC}"
+            sleep 1
+            exit 0
+        fi
+    fi
+    
+else
+    echo -e "${YELLOW}⏭️  Skipped applying changes.${NC}"
+    echo -e "${BLUE}To apply changes manually:${NC}"
+    echo -e "  • In VS Code: Close terminal and open new one"
+    echo -e "  • In iTerm2/Terminal: Quit and reopen application"
+    echo -e "  • In any terminal: Run 'exec zsh'"
+fi
+
 echo ""
 echo -e "${GREEN}Your system is now XDG Base Directory compliant! ✨${NC}"

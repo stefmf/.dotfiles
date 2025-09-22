@@ -31,7 +31,7 @@ export SAVEHIST=50000                 # Increased save history size
 export ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 
 # Terminal timeout (screensaver)
-export TMOUT=3600
+export TMOUT=18000
 
 # Default Applications & Editor Setup
 # Check for VS Code in common locations (using full paths to avoid alias conflicts)

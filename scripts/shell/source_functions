@@ -6,10 +6,10 @@ SCRIPTS_DIR="$HOME/.dotfiles/scripts"
 
 # List of scripts that provide functions for interactive use
 SCRIPTS=(
-    "update"
-    "dotall" 
-    "nuke"
-    "setup_gnu_aliases"
+    "system/update"
+    "dotfiles/dotall" 
+    "shell/nuke"
+    "system/setup_gnu_aliases"
 )
 
 # Source each script to make functions available

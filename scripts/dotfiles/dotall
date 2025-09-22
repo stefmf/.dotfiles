@@ -36,7 +36,7 @@ dotall() {
 
         # ── 1. Try key‑only (silent) ────────────────────────────────────
         if ssh "${SSH_KEY_OPTS[@]}" "$h" true 2>/dev/null; then
-            ssh "${SSH_KEY_OPTS[@]}" "$h" '~/.dotfiles/scripts/dotup' \
+            ssh "${SSH_KEY_OPTS[@]}" "$h" '~/.dotfiles/scripts/dotfiles/dotup' \
                 | sed -u "s/^/[$h] /"
             print -P "%F{green}[dotall]%f ← $h OK"
             continue
@@ -44,7 +44,7 @@ dotall() {
 
         # ── 2. Key failed → always prompt (uses your ProxyJump) ────────
         print -P "%F{yellow}[dotall]%f no key for $h — prompting…"
-        if ssh "${SSH_INT_OPTS[@]}" "$h" '~/.dotfiles/scripts/dotup' \
+        if ssh "${SSH_INT_OPTS[@]}" "$h" '~/.dotfiles/scripts/dotfiles/dotup' \
              | sed -u "s/^/[$h] /"; then
             print -P "%F{green}[dotall]%f ← $h OK (interactive)"
         else

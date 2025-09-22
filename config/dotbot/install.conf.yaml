@@ -11,16 +11,27 @@
     - ~/.ssh
 
 - link:
+    # Config files
     ~/.config: config
+
+    # Zsh configuration files
     ~/.zlogout: shell/zsh/zlogout
     ~/.zlogin: shell/zsh/zlogin
     ~/.zshenv: shell/zsh/zshenv
     ~/.zprofile: shell/zsh/zprofile
     ~/.zshrc: shell/zsh/zshrc
     ~/.hushlogin: shell/zsh/hushlogin
+
+    # Git configuration files
     ~/.gitconfig: config/git/gitconfig
     ~/.gitignore_global: config/git/gitignore_global
+
+    # System configuration files
     /opt/homebrew/etc/dnsmasq.conf: system/dnsmasq/dnsmasq.conf
+    /etc/pam.d/sudo_local: system/pam.d/sudo_local
+
+    # Global EditorConfig file
+    ~/.editorconfig: config/.editorconfig
 
     # Special case: only link ~/.ssh/config if it doesn't already exist
     ~/.ssh/config:

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$HOME/.dotfiles"
-post="$repo/scripts/dotpost"
+post="$repo/scripts/dotfiles/dotpost"
 
 echo "[dotup] pulling latest…"
 git -C "$repo" pull --ff-only        # abort if merge needed

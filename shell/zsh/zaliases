@@ -169,8 +169,8 @@ alias awsclear='unset AWS_PROFILE'
 #------------------------------------------------------------------------------
 
 # Dotfiles management (kept as aliases since they're simple wrappers)
-alias dotup="$HOME/.dotfiles/scripts/dotup"              # Apply dotfiles
-alias pullbrut='git -C ~/.dotfiles pull brut:~/.dotfiles main && ~/.dotfiles/scripts/dotup'
+alias dotup="$HOME/.dotfiles/scripts/dotfiles/dotup"              # Apply dotfiles
+alias pullbrut='git -C ~/.dotfiles pull brut:~/.dotfiles main && ~/.dotfiles/scripts/dotfiles/dotup'
 
 #------------------------------------------------------------------------------
 # Entertainment and Visual
