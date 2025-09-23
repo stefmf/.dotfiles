@@ -1,3 +1,5 @@
+# Ignore all .local files
+*.local
 # macOS
 .DS_Store
 

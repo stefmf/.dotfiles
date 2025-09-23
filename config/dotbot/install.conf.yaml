@@ -24,6 +24,7 @@
 
     # Git configuration files
     ~/.gitconfig: config/git/gitconfig
+    ~/.gitconfig.local: config/git/gitconfig.local
     ~/.gitignore_global: config/git/gitignore_global
 
     # System configuration files
