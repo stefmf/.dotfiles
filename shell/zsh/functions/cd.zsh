@@ -14,7 +14,7 @@
 # Only define the wrapper in interactive shells
 if [[ -o interactive ]]; then
     
-    cd() {
+    function cd() {
         # Handle special cases - pass directly to builtin cd
         case "${1:-}" in
             # No arguments - go to $HOME
@@ -72,7 +72,7 @@ fi
 # Bash compatibility version
 if [[ -n "$BASH_VERSION" ]] && [[ $- == *i* ]]; then
     
-    cd() {
+    function cd() {
         # Handle special cases - pass directly to builtin cd
         case "${1:-}" in
             # No arguments - go to $HOME

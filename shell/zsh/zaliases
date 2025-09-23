@@ -68,21 +68,9 @@ alias mkdir='mkdir -p'               # Create parent directories as needed
 
 # Enhanced file listing with lsd
 if command_exists lsd; then
-    # Remove any existing ls alias/function before defining new function
-    unalias ls &>/dev/null || true
-    unset -f ls &>/dev/null || true
-    
-    # Smart ls with git status only when in a git repo
-    function ls() {
-        if git rev-parse --is-inside-work-tree &>/dev/null; then
-            lsd --long --git --config-file ~/.dotfiles/config/lsd/config.yaml "$@"
-        else
-            lsd --long --config-file ~/.dotfiles/config/lsd/config-nogit.yaml "$@"
-        fi
-    }
     alias tree='lsd --tree --depth=3 --config-file ~/.dotfiles/config/lsd/config.yaml'
 elif command_exists gls; then
-    # GNU ls fallback (macOS with coreutils)
+    # GNU ls fallback (macOS with coreutils)  
     alias ls='gls -la --group-directories-first --color=always'
 else
     # Basic ls fallback

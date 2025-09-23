@@ -238,25 +238,8 @@ TRAPALRM() {
 }
 
 #------------------------------------------------------------------------------
-# Source Additional Configuration
+# Load Shell Extensions
 #------------------------------------------------------------------------------
 
-# Load custom aliases
-[[ -f "$HOME/.dotfiles/shell/zsh/zaliases" ]] && source "$HOME/.dotfiles/shell/zsh/zaliases"
-
-# Load smart cd wrapper function
-[[ -f "$HOME/.dotfiles/shell/zsh/functions/cd_wrapper.zsh" ]] && source "$HOME/.dotfiles/shell/zsh/functions/cd_wrapper.zsh"
-
-# Source scripts for interactive use
-[[ -f "$HOME/.dotfiles/scripts/shell/source_functions" ]] && source "$HOME/.dotfiles/scripts/shell/source_functions"
-
-# Platform-specific configuration
-case "$OSTYPE" in
-    darwin*)
-        # Source and execute GNU utilities setup
-        [[ -f "$HOME/.dotfiles/scripts/system/setup_gnu_aliases" ]] && source "$HOME/.dotfiles/scripts/system/setup_gnu_aliases" && setup_gnu_aliases
-        ;;
-    linux-gnu*|linux-musl*)
-        # Linux-specific configurations can go here
-        ;;
-esac
+# Load all custom functions, aliases, and interactive scripts
+[[ -f "$HOME/.dotfiles/scripts/shell/load_shell_extensions" ]] && source "$HOME/.dotfiles/scripts/shell/load_shell_extensions"
