@@ -244,6 +244,9 @@ TRAPALRM() {
 # Load custom aliases
 [[ -f "$HOME/.dotfiles/shell/zsh/zaliases" ]] && source "$HOME/.dotfiles/shell/zsh/zaliases"
 
+# Load smart cd wrapper function
+[[ -f "$HOME/.dotfiles/shell/zsh/functions/cd_wrapper.zsh" ]] && source "$HOME/.dotfiles/shell/zsh/functions/cd_wrapper.zsh"
+
 # Source scripts for interactive use
 [[ -f "$HOME/.dotfiles/scripts/shell/source_functions" ]] && source "$HOME/.dotfiles/scripts/shell/source_functions"
 
