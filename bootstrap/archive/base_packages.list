@@ -1,4 +1,4 @@
-# Description: Core packages for initial system setup
+# Description: Core packages for initial system setup (archived reference)
 # Each line represents a single package to be installed via apt
 ansible
 bat

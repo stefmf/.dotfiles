@@ -35,7 +35,7 @@ trap 'kill "$KEEPALIVE_PID"' EXIT
 
 # Set Dotfiles directory
 readonly DOTFILES_DIR="$HOME/.dotfiles"
-readonly PACKAGES_FILE="$DOTFILES_DIR/.bootstrap/linux/base_packages.list"
+readonly PACKAGES_FILE="$DOTFILES_DIR/bootstrap/archive/base_packages.list"
 readonly DOTBOT_INSTALL="$DOTFILES_DIR/install"
 readonly ZPROFILE="$DOTFILES_DIR/.zsh/.zprofile"
 
@@ -285,14 +285,14 @@ update_path() {
     {
         echo "# Path configuration"
         echo "# Added by bootstrap script"
-        echo "if [[ \"\$PATH\" != *\"\$HOME/.local/bin\"* ]]; then"
-        echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+        echo "if [[ \"$PATH\" != *\"$HOME/.local/bin\"* ]]; then"
+        echo "    export PATH=\"$HOME/.local/bin:$PATH\""
         echo "fi"
-        echo "if [[ \"\$PATH\" != *\"\$HOME/bin\"* ]]; then"
-        echo "    export PATH=\"\$HOME/bin:\$PATH\""
+        echo "if [[ \"$PATH\" != *\"$HOME/bin\"* ]]; then"
+        echo "    export PATH=\"$HOME/bin:$PATH\""
         echo "fi"
-        echo "if [[ \"\$PATH\" != *\"\$HOME/.cargo/bin\"* ]]; then"
-        echo "    export PATH=\"\$HOME/.cargo/bin:\$PATH\""
+        echo "if [[ \"$PATH\" != *\"$HOME/.cargo/bin\"* ]]; then"
+        echo "    export PATH=\"$HOME/.cargo/bin:$PATH\""
         echo "fi"
         echo ""
         cat "$ZPROFILE"
@@ -383,8 +383,8 @@ install_docker() {
 
         # Add the repository to apt sources
         echo \
-        "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-        "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+        "deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+        \"$(. /etc/os-release && echo "$VERSION_CODENAME")\" stable" | \
         sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
         # Install Docker packages
@@ -508,16 +508,16 @@ install_fastfetch() {
         if sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch && sudo apt update && sudo apt install -y fastfetch; then
             log_info "✅ Fastfetch installed successfully!"
         else
-            log_warning "⚠️ Failed to install Fastfetch."
+            log_info "Ubuntu version is less than 22.04, using alternative installation method."
+            # Use alternative method if needed
+            if sudo apt install -y fastfetch; then
+                log_info "✅ Fastfetch installed successfully!"
+            else
+                log_warning "⚠️ Failed to install Fastfetch."
+            fi
         fi
     else
-        log_info "Ubuntu version is less than 22.04, using alternative installation method."
-        # Use alternative method if needed
-        if sudo apt install -y fastfetch; then
-            log_info "✅ Fastfetch installed successfully!"
-        else
-            log_warning "⚠️ Failed to install Fastfetch."
-        fi
+        log_warning "⚠️ Failed to install Fastfetch."
     fi
 }
 

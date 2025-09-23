@@ -20,7 +20,7 @@ cd ~/.dotfiles
 
 3. **Run the Bootstrap Script**  
   ```bash
-  ./.bootstrap/macos/bootstrap_macos.zsh
+  ./bootstrap/bootstrap.sh
   ```
   The script will install tools, symlink configs, configure Touch ID for `sudo`, set up DNS/MagicDNS, enable services, and apply your Dock layout.
 
@@ -98,9 +98,11 @@ This dotfiles repository is organized for clarity and maintainability:
 │   ├── dnsmasq/              # DNS configuration
 │   └── pam.d/                # PAM authentication config
 │
-├── bootstrap/                # Machine-specific setup
-│   ├── macos/                # macOS bootstrap scripts and Brewfile
-│   └── linux/                # Linux bootstrap scripts and packages
+├── bootstrap/                # Machine setup (unified)
+│   ├── bootstrap.sh          # Unified bootstrap (macOS & Linux)
+│   ├── Brewfile              # Homebrew bundle file (macOS)
+│   ├── README.md             # Bootstrap docs
+│   └── archive/              # Archived legacy OS-specific scripts
 │
 ├── scripts/                  # Utility scripts
 │   ├── update                # Update all tools and packages
@@ -155,7 +157,7 @@ sudo networksetup -setdnsservers "Ethernet" Empty
   sudo brew services restart dnsmasq
   ```
 
-The `Brewfile` installs CLI tools, shells, productivity apps, Docker/K8s tools, fonts, and casks (iTerm2, VSCode, Chrome, etc.).
+The `bootstrap/Brewfile` installs CLI tools, shells, productivity apps, Docker/K8s tools, fonts, and casks (iTerm2, VSCode, Chrome, etc.).
 
 ---
 
