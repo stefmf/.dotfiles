@@ -29,7 +29,6 @@
 
     # System configuration files
     /opt/homebrew/etc/dnsmasq.conf: system/dnsmasq/dnsmasq.conf
-    /etc/pam.d/sudo_local: system/pam.d/sudo_local
 
     # Global EditorConfig file
     ~/.editorconfig: config/.editorconfig

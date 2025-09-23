@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Ensure /etc/pam.d/sudo_local is linked with sudo (prompt for password if needed)
+sudo ln -sf "$(pwd)/system/pam.d/sudo_local" /etc/pam.d/sudo_local
+echo "[INFO] /etc/pam.d/sudo_local linked with sudo."
+
 readonly CONFIG="config/dotbot/install.conf.yaml"
 readonly DOTBOT_DIR="tools/dotbot"
 readonly DOTBOT_BIN="bin/dotbot"
