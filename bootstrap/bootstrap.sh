@@ -18,8 +18,9 @@
 #   Fastfetch, Oh My Posh, Nerd Fonts, bat symlink) are not yet ported here and
 #   remain in archived scripts for reference.
 # - Interactive prompts can be bypassed with env flags: INSTALL_CASKS,
-#   INSTALL_SERVICES, INSTALL_OFFICE_TOOLS, INSTALL_SLACK, INSTALL_PARALLELS,
-#   CONFIGURE_DNS, GITHUB_AUTH, CHANGE_SHELL.
+#   INSTALL_MAS_APPS, INSTALL_SERVICES, INSTALL_OFFICE_TOOLS, INSTALL_SLACK, 
+#   INSTALL_PARALLELS, CONFIGURE_DNS, GITHUB_AUTH, CHANGE_SHELL, SETUP_DEV_DIR,
+#   RUN_XDG_CLEANUP, or by setting UNATTENDED_MODE=true for full automation.
 # - This script is designed for iterative testing and refinement.
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -31,12 +32,91 @@ set -euo pipefail
 _color() { command -v tput >/dev/null 2>&1 && tput setaf "$1" || true; }
 _reset() { command -v tput >/dev/null 2>&1 && tput sgr0 || true; }
 INFO=$(_color 2); WARN=$(_color 3); ERR=$(_color 1); RST=$(_reset)
-log_info()    { printf "%b[INFO]%b %s\n"    "$INFO" "$RST" "$*"; }
-log_warning() { printf "%b[WARNING]%b %s\n" "$WARN" "$RST" "$*"; }
+log_info()    { [[ "${DEBUG_MODE:-false}" == "true" ]] && printf "%b[INFO]%b %s\n"    "$INFO" "$RST" "$*"; }
+log_warning() { [[ "${DEBUG_MODE:-false}" == "true" ]] && printf "%b[WARNING]%b %s\n" "$WARN" "$RST" "$*"; }
 log_error()   { printf "%b[ERROR]%b %s\n"   "$ERR"  "$RST" "$*" 1>&2; }
 
 err_trap() { log_error "Bootstrap failed at line $1"; }
 trap 'err_trap $LINENO' ERR
+
+# ----------------------------------------------------------------------------
+# Command-line argument parsing
+# ----------------------------------------------------------------------------
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -debug|--debug)
+        if [[ -n "$2" && "$2" != -* ]]; then
+          DEBUG_MODE="$2"
+          shift 2
+        else
+          DEBUG_MODE="true"
+          shift
+        fi
+        ;;
+      -unattended|--unattended)
+        if [[ -n "$2" && "$2" != -* ]]; then
+          UNATTENDED_MODE="$2"
+          shift 2
+        else
+          UNATTENDED_MODE="true"
+          shift
+        fi
+        ;;
+      -h|--help)
+        show_help
+        exit 0
+        ;;
+      *)
+        log_error "Unknown option: $1"
+        show_help
+        exit 1
+        ;;
+    esac
+  done
+  
+  # Validate boolean values
+  case "${DEBUG_MODE,,}" in
+    true|yes|1|on) DEBUG_MODE="true" ;;
+    false|no|0|off) DEBUG_MODE="false" ;;
+    *) log_error "Invalid value for debug: $DEBUG_MODE (use true/false)"; exit 1 ;;
+  esac
+  
+  case "${UNATTENDED_MODE,,}" in
+    true|yes|1|on) UNATTENDED_MODE="true" ;;
+    false|no|0|off) UNATTENDED_MODE="false" ;;
+    *) log_error "Invalid value for unattended: $UNATTENDED_MODE (use true/false)"; exit 1 ;;
+  esac
+}
+
+show_help() {
+  cat << EOF
+Unified Bootstrap Script for macOS and Linux
+
+USAGE:
+  $0 [OPTIONS]
+
+OPTIONS:
+  -debug <true|false>      Enable/disable debug logging (default: false)
+  -unattended <true|false> Enable/disable unattended mode (default: false)
+  -h, --help              Show this help message
+
+EXAMPLES:
+  $0                           # Interactive mode with minimal logging (default)
+  $0 -debug                   # Interactive mode with debug logging  
+  $0 -unattended             # Unattended mode with minimal logging
+  $0 -debug -unattended      # Unattended mode with debug logging
+
+ENVIRONMENT VARIABLES:
+  You can also set these via environment variables:
+  DEBUG_MODE=true UNATTENDED_MODE=true $0
+  
+  Or override specific install options:
+  INSTALL_CASKS=no INSTALL_OFFICE_TOOLS=yes $0
+
+For more details, see the script header comments.
+EOF
+}
 
 # ----------------------------------------------------------------------------
 # Common: Guards and constants
@@ -61,8 +141,13 @@ export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 export ZSH_SESSION_DIR="$HOME/.zsh_sessions"
 export DOTFILES="$DOTFILES_DIR"
 
+# Default values for command-line flags
+DEBUG_MODE=${DEBUG_MODE:-false}
+UNATTENDED_MODE=${UNATTENDED_MODE:-false}
+
 # Options (can be pre-seeded via env for non-interactive runs)
 INSTALL_CASKS=${INSTALL_CASKS:-ask}
+INSTALL_MAS_APPS=${INSTALL_MAS_APPS:-ask}
 INSTALL_SERVICES=${INSTALL_SERVICES:-ask}
 INSTALL_OFFICE_TOOLS=${INSTALL_OFFICE_TOOLS:-ask}
 INSTALL_SLACK=${INSTALL_SLACK:-ask}
@@ -70,6 +155,48 @@ INSTALL_PARALLELS=${INSTALL_PARALLELS:-ask}
 CONFIGURE_DNS=${CONFIGURE_DNS:-ask}
 GITHUB_AUTH=${GITHUB_AUTH:-ask}
 CHANGE_SHELL=${CHANGE_SHELL:-ask}
+SETUP_DEV_DIR=${SETUP_DEV_DIR:-ask}
+RUN_XDG_CLEANUP=${RUN_XDG_CLEANUP:-ask}
+
+# ----------------------------------------------------------------------------
+# Unattended mode setup
+# ----------------------------------------------------------------------------
+setup_unattended_mode() {
+  if [[ "${UNATTENDED_MODE}" != "true" ]]; then
+    if yesno "Run installation in unattended mode with predefined defaults?" default_no; then
+      UNATTENDED_MODE=true
+      log_info "Running in unattended mode with these defaults:"
+      log_info "  • Install casks: yes"
+      log_info "  • Install Mac App Store apps: no"  
+      log_info "  • Install services (Tailscale, dnsmasq): yes"
+      log_info "  • Install office tools: no"
+      log_info "  • Install Slack: no"
+      log_info "  • Install Parallels: no"
+      log_info "  • Configure DNS: yes"
+      log_info "  • GitHub CLI login: no"
+      log_info "  • Change shell: no"
+      log_info "  • Setup dev directory: no"
+      log_info "  • Run XDG cleanup: yes"
+      log_info "  • Git setup: skipped"
+      log_info ""
+    fi
+  fi
+  
+  # Set defaults for unattended mode
+  if [[ "${UNATTENDED_MODE}" == "true" ]]; then
+    INSTALL_CASKS=${INSTALL_CASKS:-yes}
+    INSTALL_MAS_APPS=${INSTALL_MAS_APPS:-no}
+    INSTALL_SERVICES=${INSTALL_SERVICES:-yes}
+    INSTALL_OFFICE_TOOLS=${INSTALL_OFFICE_TOOLS:-no}
+    INSTALL_SLACK=${INSTALL_SLACK:-no}
+    INSTALL_PARALLELS=${INSTALL_PARALLELS:-no}
+    CONFIGURE_DNS=${CONFIGURE_DNS:-yes}
+    GITHUB_AUTH=${GITHUB_AUTH:-no}
+    CHANGE_SHELL=${CHANGE_SHELL:-no}
+    SETUP_DEV_DIR=${SETUP_DEV_DIR:-no}
+    RUN_XDG_CLEANUP=${RUN_XDG_CLEANUP:-yes}
+  fi
+}
 
 # ----------------------------------------------------------------------------
 # Helpers: prompts and sudo keep-alive
@@ -78,12 +205,41 @@ yesno() {
   # yesno "Question?" default_no|default_yes|no_prompt -> returns 0 for yes
   local prompt default reply
   prompt="$1"; default="${2:-default_no}"
-  case "$default" in
-    default_yes) read -r -p "$prompt [Y/n] " reply || true ;;
-    no_prompt)   reply=y ;;
-    *)           read -r -p "$prompt [y/N] " reply || true ;;
-  esac
-  [[ "$reply" =~ ^([Yy]|[Yy][Ee][Ss])$ ]] && return 0 || return 1
+  
+  # In unattended mode, use defaults without prompting
+  if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
+    case "$default" in
+      default_yes) return 0 ;;
+      no_prompt)   return 0 ;;
+      *)           return 1 ;;
+    esac
+  fi
+  
+  while true; do
+    case "$default" in
+      default_yes) read -r -p "$prompt [Y/n] " reply || true ;;
+      no_prompt)   reply=y ;;
+      *)           read -r -p "$prompt [y/N] " reply || true ;;
+    esac
+    
+    # Handle empty input (use default)
+    if [[ -z "$reply" ]]; then
+      case "$default" in
+        default_yes|no_prompt) return 0 ;;
+        *) return 1 ;;
+      esac
+    fi
+    
+    # Validate input
+    case "${reply,,}" in  # Convert to lowercase
+      y|yes) return 0 ;;
+      n|no)  return 1 ;;
+      *) 
+        log_warning "Please enter 'y' for yes or 'n' for no"
+        continue
+        ;;
+    esac
+  done
 }
 
 ensure_sudo() {
@@ -158,6 +314,9 @@ macos_install_brewfile() {
   if [[ "$INSTALL_CASKS" == "ask" ]]; then
     yesno "Install Homebrew cask apps?" default_yes && INSTALL_CASKS=yes || INSTALL_CASKS=no
   fi
+  if [[ "$INSTALL_MAS_APPS" == "ask" ]]; then
+    yesno "Install Mac App Store apps?" default_no && INSTALL_MAS_APPS=yes || INSTALL_MAS_APPS=no
+  fi
   if [[ "$INSTALL_SERVICES" == "ask" ]]; then
     yesno "Install Tailscale and dnsmasq?" default_yes && INSTALL_SERVICES=yes || INSTALL_SERVICES=no
   fi
@@ -172,8 +331,12 @@ macos_install_brewfile() {
   fi
 
   if [[ "$INSTALL_CASKS" == "no" ]]; then
-    # Keep nerd font cask installed separately later if needed; remove other casks and mas
-    sed -i '' -e '/^cask "font-jetbrains-mono-nerd-font"/!{/^cask /d;}' -e '/^mas /d' "$tmp" || true
+    # Keep nerd font cask installed separately later if needed; remove other casks
+    sed -i '' -e '/^cask "font-jetbrains-mono-nerd-font"/!{/^cask /d;}' "$tmp" || true
+  fi
+
+  if [[ "$INSTALL_MAS_APPS" == "no" ]]; then
+    sed -i '' -e '/^mas /d' "$tmp" || true
   fi
 
   if [[ "$INSTALL_SERVICES" == "no" ]]; then
@@ -415,6 +578,15 @@ validate_email() {
 }
 
 setup_git() {
+  # Skip git setup in unattended mode
+  if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
+    log_info "Skipping Git user configuration (unattended mode)"
+    log_info "Configure Git manually later with:"
+    log_info "  git config --global user.name 'Your Name'"
+    log_info "  git config --global user.email 'your.email@example.com'"
+    return
+  fi
+
   local name email
   
   # Get and verify git user name
@@ -473,13 +645,18 @@ github_auth() {
 # Additional setup functions
 # ----------------------------------------------------------------------------
 run_xdg_cleanup() {
+  if [[ "$RUN_XDG_CLEANUP" == "ask" ]]; then
+    yesno "Run XDG cleanup to remove legacy config files?" default_yes && RUN_XDG_CLEANUP=yes || RUN_XDG_CLEANUP=no
+  fi
+  [[ "$RUN_XDG_CLEANUP" != "yes" ]] && { log_info "Skipping XDG cleanup"; return; }
+
   local xdg_script="$DOTFILES_DIR/scripts/system/xdg-cleanup"
   if [[ -x "$xdg_script" ]]; then
-    if yesno "Run XDG cleanup to remove legacy config files?" default_yes; then
-      log_info "Running XDG cleanup script…"
-      "$xdg_script" || log_warning "XDG cleanup script had issues"
+    log_info "Running XDG cleanup script…"
+    if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
+      "$xdg_script" --unattended || log_warning "XDG cleanup script had issues"
     else
-      log_info "Skipping XDG cleanup"
+      "$xdg_script" || log_warning "XDG cleanup script had issues"
     fi
   else
     log_warning "XDG cleanup script not found at $xdg_script"
@@ -487,15 +664,16 @@ run_xdg_cleanup() {
 }
 
 setup_dev_directory() {
+  if [[ "$SETUP_DEV_DIR" == "ask" ]]; then
+    yesno "Set up ~/dev directory structure?" default_yes && SETUP_DEV_DIR=yes || SETUP_DEV_DIR=no
+  fi
+  [[ "$SETUP_DEV_DIR" != "yes" ]] && { log_info "Skipping dev directory setup"; return; }
+
   local dev_script="$DOTFILES_DIR/scripts/dev/bootstrap_dev_dir.sh"
   if [[ -x "$dev_script" ]]; then
-    if yesno "Set up ~/dev directory structure?" default_yes; then
-      log_info "Setting up development directory structure…"
-      "$dev_script" || log_warning "Dev directory setup had issues"
-      log_info "Development directory structure created at ~/dev"
-    else
-      log_info "Skipping dev directory setup"
-    fi
+    log_info "Setting up development directory structure…"
+    "$dev_script" || log_warning "Dev directory setup had issues"
+    log_info "Development directory structure created at ~/dev"
   else
     log_warning "Dev directory script not found at $dev_script"
   fi
@@ -563,6 +741,9 @@ maybe_change_shell() {
 # Main
 # ----------------------------------------------------------------------------
 main() {
+  # Parse command-line arguments first
+  parse_args "$@"
+  
   log_info "Starting unified bootstrap…"
   
   # Set terminal environment to minimize color/escape sequence issues
@@ -571,6 +752,18 @@ main() {
   
   # Suppress potential shell startup warnings during bootstrap
   export BOOTSTRAP_MODE=1
+  
+  # Setup unattended mode if requested
+  setup_unattended_mode
+  
+  # For unattended mode, ensure sudo credentials upfront
+  if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
+    log_info "Unattended mode: acquiring sudo credentials for system operations…"
+    ensure_sudo || {
+      log_error "Unattended mode requires sudo credentials. Please run 'sudo -v' first or run interactively."
+      exit 1
+    }
+  fi
   
   ensure_directories
   ensure_repo_writable
@@ -615,7 +808,10 @@ main() {
   log_info "Bootstrap complete!"
   log_info ""
   
-  if macos_is; then
+  if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
+    log_info "Installation completed in unattended mode."
+    log_info "Please restart your terminal to apply all changes."
+  elif macos_is; then
     log_info "To apply all changes, you need to restart your terminal."
     log_info ""
     if yesno "Quit terminal now to apply changes?" default_yes; then

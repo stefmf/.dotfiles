@@ -9,6 +9,12 @@
 
 set -euo pipefail
 
+# Check for unattended mode
+UNATTENDED_MODE=false
+if [[ "${1:-}" == "--unattended" ]]; then
+    UNATTENDED_MODE=true
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -39,14 +45,19 @@ safe_remove() {
             echo -e "  Type: File ($(/bin/ls -lh "$path" 2>/dev/null | /usr/bin/awk '{print $5}') size)"
         fi
         
-        read -q "?  Remove this? (y/n): "
-        echo ""
-        
-        if [[ $REPLY == "y" ]]; then
+        if [[ "$UNATTENDED_MODE" == "true" ]]; then
             /bin/rm -rf "$path"
-            echo -e "${GREEN}✅ Removed${NC}"
+            echo -e "${GREEN}✅ Removed (unattended mode)${NC}"
         else
-            echo -e "${YELLOW}⏭️  Skipped${NC}"
+            read -q "?  Remove this? (y/n): "
+            echo ""
+            
+            if [[ $REPLY == "y" ]]; then
+                /bin/rm -rf "$path"
+                echo -e "${GREEN}✅ Removed${NC}"
+            else
+                echo -e "${YELLOW}⏭️  Skipped${NC}"
+            fi
         fi
         echo ""
     fi
@@ -85,13 +96,18 @@ echo "• Application caches: Now in ~/.cache/"
 echo "• Application data: Now in ~/.local/share/"
 echo ""
 
-# Ask if user wants to apply changes immediately
-echo -e "${YELLOW}To apply all ZSH configuration changes, you should restart your shell session.${NC}"
-echo ""
-read -q "?Would you like to apply the changes now? (y/n): "
-echo ""
+# Handle shell restart in unattended vs interactive mode
+if [[ "$UNATTENDED_MODE" == "true" ]]; then
+    echo -e "${BLUE}Cleanup completed in unattended mode.${NC}"
+    echo -e "${YELLOW}Note: Shell restart will be handled by the bootstrap script.${NC}"
+else
+    # Ask if user wants to apply changes immediately
+    echo -e "${YELLOW}To apply all ZSH configuration changes, you should restart your shell session.${NC}"
+    echo ""
+    read -q "?Would you like to apply the changes now? (y/n): "
+    echo ""
 
-if [[ $REPLY == "y" ]]; then
+    if [[ $REPLY == "y" ]]; then
     echo -e "${BLUE}Applying configuration changes...${NC}"
     
     # Detect terminal environment and handle accordingly
@@ -133,12 +149,13 @@ if [[ $REPLY == "y" ]]; then
         fi
     fi
     
-else
-    echo -e "${YELLOW}⏭️  Skipped applying changes.${NC}"
-    echo -e "${BLUE}To apply changes manually:${NC}"
-    echo -e "  • In VS Code: Close terminal and open new one"
-    echo -e "  • In iTerm2/Terminal: Quit and reopen application"
-    echo -e "  • In any terminal: Run 'exec zsh'"
+    else
+        echo -e "${YELLOW}⏭️  Skipped applying changes.${NC}"
+        echo -e "${BLUE}To apply changes manually:${NC}"
+        echo -e "  • In VS Code: Close terminal and open new one"
+        echo -e "  • In iTerm2/Terminal: Quit and reopen application"
+        echo -e "  • In any terminal: Run 'exec zsh'"
+    fi
 fi
 
 echo ""
