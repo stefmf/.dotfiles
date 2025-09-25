@@ -510,19 +510,20 @@ macos_enable_touchid() {
 }
 
 macos_configure_iterm2() {
-  log_info "Configuring iTerm2 preferences…"
-  defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$HOME/.config/iterm2"
-  defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
+  echo "→ Configuring iTerm2 preferences…"
+  defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$HOME/.config/iterm2" 2>/dev/null || true
+  defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true 2>/dev/null || true
   mkdir -p "$HOME/.config/iterm2/DynamicProfiles"
   local src="$DOTFILES_DIR/config/iterm2/DynamicProfiles/Stef.json"
   local dst="$HOME/.config/iterm2/DynamicProfiles/Stef.json"
   if [[ -f "$src" ]]; then
     if [[ ! -f "$dst" ]] || ! cmp -s "$src" "$dst"; then
-      cp "$src" "$dst"
-      log_info "Updated iTerm2 dynamic profile"
+      cp "$src" "$dst" && echo "  ✓ Updated iTerm2 dynamic profile"
     else
-      log_info "iTerm2 dynamic profile already up to date"
+      echo "  ✓ iTerm2 dynamic profile already up to date"
     fi
+  else
+    echo "  ⚠ iTerm2 profile source not found at $src"
   fi
 }
 
@@ -761,10 +762,10 @@ maybe_change_shell() {
   local current_shell="${SHELL:-$(getent passwd "$USER" 2>/dev/null | cut -d: -f7 || echo)}"
   current_shell="${current_shell:-/bin/bash}"  # fallback
   
-  log_info "Current shell: $current_shell"
+  echo "→ Checking default shell (current: $current_shell)"
   
   if [[ "$current_shell" == */zsh ]]; then
-    log_info "Shell is already zsh, skipping shell change"
+    echo "  ✓ Shell is already zsh, no change needed"
     return
   fi
 
@@ -776,12 +777,12 @@ maybe_change_shell() {
   if command -v zsh >/dev/null 2>&1; then
     local zpath
     zpath=$(command -v zsh) || {
-      log_warning "Could not determine zsh path"
+      echo "  ⚠ Could not determine zsh path" >&2
       return
     }
     
     if [[ "$SHELL" != "$zpath" ]]; then
-      log_info "Changing default shell to $zpath…"
+      echo "  • Changing default shell to $zpath…"
       # Temporarily disable error trapping for this operation
       set +e
       chsh -s "$zpath" "${USER}"
@@ -789,16 +790,16 @@ maybe_change_shell() {
       set -e
       
       if [[ $chsh_result -ne 0 ]]; then
-        log_warning "Could not change default shell (exit code: $chsh_result)"
-        log_info "You can change it manually later with: chsh -s $zpath"
+        echo "    ⚠ Could not change default shell (exit code: $chsh_result)" >&2
+        echo "    ℹ You can change it manually later with: chsh -s $zpath"
       else
-        log_info "Default shell changed successfully"
+        echo "    ✓ Default shell changed successfully"
       fi
     else
-      log_info "Default shell already zsh"
+      echo "  ✓ Default shell is already zsh"
     fi
   else
-    log_warning "zsh not installed; cannot change default shell"
+    echo "  ⚠ zsh not installed; cannot change default shell" >&2
   fi
 }
 
@@ -847,7 +848,6 @@ main() {
     macos_enable_services
     macos_configure_dock
     macos_configure_dns
-    macos_enable_touchid
     macos_configure_iterm2
   elif linux_is; then
     echo "Detected Linux"
@@ -873,25 +873,26 @@ main() {
   run_xdg_cleanup
   setup_dev_directory
   
-  echo "Bootstrap complete!"
-  log_info ""
+  echo ""
+  echo "🎉 Bootstrap complete!"
+  echo ""
   
   if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-    log_info "Installation completed in unattended mode."
-    log_info "Please restart your terminal to apply all changes."
+    echo "✅ Installation completed in unattended mode."
+    echo "ℹ  Please restart your terminal to apply all changes."
   elif macos_is; then
-    log_info "To apply all changes, you need to restart your terminal."
-    log_info ""
+    echo "ℹ  To apply all changes, you need to restart your terminal."
+    echo ""
     if yesno "Quit terminal now to apply changes?" default_yes; then
       macos_quit_terminal
     else
-      log_info "Please restart your terminal manually when ready"
+      echo "ℹ  Please restart your terminal manually when ready"
     fi
   else
-    log_info "IMPORTANT: Close this terminal and open a new one to:"
-    log_info "  • Pick up the new shell configuration"
-    log_info "  • Allow zinit and other tools to initialize properly"
-    log_info "  • Ensure all environment variables are set correctly"
+    echo "❗ IMPORTANT: Close this terminal and open a new one to:"
+    echo "  • Pick up the new shell configuration"
+    echo "  • Allow zinit and other tools to initialize properly"
+    echo "  • Ensure all environment variables are set correctly"
   fi
 }
 
