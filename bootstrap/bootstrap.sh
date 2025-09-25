@@ -43,6 +43,18 @@ announce_step() {
   fi
 }
 
+SUDO_KEEPALIVE_PID=""
+
+cleanup() {
+  if [[ -n "${SUDO_KEEPALIVE_PID:-}" ]]; then
+    kill "${SUDO_KEEPALIVE_PID}" 2>/dev/null || true
+    wait "${SUDO_KEEPALIVE_PID}" 2>/dev/null || true
+    SUDO_KEEPALIVE_PID=""
+  fi
+}
+
+trap cleanup EXIT
+
 err_trap() { log_error "Bootstrap failed at line $1"; }
 trap 'err_trap $LINENO' ERR
 
@@ -219,11 +231,24 @@ setup_unattended_mode() {
 # ----------------------------------------------------------------------------
 # Helpers: prompts and sudo keep-alive
 # ----------------------------------------------------------------------------
+start_sudo_keepalive() {
+  if [[ -n "${SUDO_KEEPALIVE_PID:-}" ]] && kill -0 "${SUDO_KEEPALIVE_PID}" 2>/dev/null; then
+    return
+  fi
+
+  (
+    while true; do
+      sudo -n true 2>/dev/null || break
+      sleep 60
+    done
+  ) &
+  SUDO_KEEPALIVE_PID=$!
+}
+
 yesno() {
   # yesno "Question?" default_no|default_yes|no_prompt -> returns 0 for yes
   local prompt default reply
   prompt="$1"; default="${2:-default_no}"
-  
   # In unattended mode, use defaults without prompting
   if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
     case "$default" in
@@ -270,6 +295,8 @@ ensure_sudo() {
     fi
     echo "✓ Administrator privileges confirmed"
   fi
+
+  start_sudo_keepalive
 }
 
 # ----------------------------------------------------------------------------
@@ -861,6 +888,7 @@ main() {
       exit 1
     fi
     echo "✅ Sudo credentials verified for unattended mode."
+    start_sudo_keepalive
   fi
   
   announce_step "Ensuring XDG base directories exist"
