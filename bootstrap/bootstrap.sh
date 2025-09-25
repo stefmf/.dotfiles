@@ -430,6 +430,12 @@ macos_enable_services() {
 }
 
 macos_configure_dns() {
+  # Skip DNS configuration if services were not installed
+  if [[ "$INSTALL_SERVICES" == "no" ]]; then
+    echo "→ Services not installed, skipping DNS configuration"
+    return
+  fi
+  
   # Only offer DNS configuration if dnsmasq is actually installed
   if ! command -v brew >/dev/null 2>&1 || ! brew list dnsmasq >/dev/null 2>&1; then
     echo "→ dnsmasq not installed, skipping DNS configuration"
@@ -494,13 +500,13 @@ macos_enable_touchid() {
   fi
 
   # Create symlink to our dotfiles version
-  log_info "Creating symlink to dotfiles sudo_local…"
-  sudo ln -sf "$dotfiles_sudo_local" /etc/pam.d/sudo_local || {
-    log_warning "Could not create symlink to dotfiles sudo_local"
+  echo "  • Creating symlink to dotfiles sudo_local…"
+  if sudo ln -sf "$dotfiles_sudo_local" /etc/pam.d/sudo_local; then
+    echo "    ✓ Touch ID for sudo configured successfully"
+  else
+    echo "    ⚠ Could not create symlink to dotfiles sudo_local" >&2
     return
-  }
-
-  log_info "Touch ID for sudo configured successfully"
+  fi
 }
 
 macos_configure_iterm2() {
