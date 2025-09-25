@@ -18,7 +18,8 @@
 #   Fastfetch, Oh My Posh, Nerd Fonts, bat symlink) are not yet ported here and
 #   remain in archived scripts for reference.
 # - Interactive prompts can be bypassed with env flags: INSTALL_CASKS,
-#   INSTALL_SERVICES, CONFIGURE_DNS, GITHUB_AUTH, CHANGE_SHELL.
+#   INSTALL_SERVICES, INSTALL_OFFICE_TOOLS, INSTALL_SLACK, INSTALL_PARALLELS,
+#   CONFIGURE_DNS, GITHUB_AUTH, CHANGE_SHELL.
 # - This script is designed for iterative testing and refinement.
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,9 @@ export DOTFILES="$DOTFILES_DIR"
 # Options (can be pre-seeded via env for non-interactive runs)
 INSTALL_CASKS=${INSTALL_CASKS:-ask}
 INSTALL_SERVICES=${INSTALL_SERVICES:-ask}
+INSTALL_OFFICE_TOOLS=${INSTALL_OFFICE_TOOLS:-ask}
+INSTALL_SLACK=${INSTALL_SLACK:-ask}
+INSTALL_PARALLELS=${INSTALL_PARALLELS:-ask}
 CONFIGURE_DNS=${CONFIGURE_DNS:-ask}
 GITHUB_AUTH=${GITHUB_AUTH:-ask}
 CHANGE_SHELL=${CHANGE_SHELL:-ask}
@@ -157,6 +161,15 @@ macos_install_brewfile() {
   if [[ "$INSTALL_SERVICES" == "ask" ]]; then
     yesno "Install Tailscale and dnsmasq?" default_yes && INSTALL_SERVICES=yes || INSTALL_SERVICES=no
   fi
+  if [[ "$INSTALL_OFFICE_TOOLS" == "ask" ]]; then
+    yesno "Install Microsoft Office tools (Excel, PowerPoint, Word, Teams)?" default_no && INSTALL_OFFICE_TOOLS=yes || INSTALL_OFFICE_TOOLS=no
+  fi
+  if [[ "$INSTALL_SLACK" == "ask" ]]; then
+    yesno "Install Slack?" default_no && INSTALL_SLACK=yes || INSTALL_SLACK=no
+  fi
+  if [[ "$INSTALL_PARALLELS" == "ask" ]]; then
+    yesno "Install Parallels virtualization software?" default_no && INSTALL_PARALLELS=yes || INSTALL_PARALLELS=no
+  fi
 
   if [[ "$INSTALL_CASKS" == "no" ]]; then
     # Keep nerd font cask installed separately later if needed; remove other casks and mas
@@ -165,6 +178,21 @@ macos_install_brewfile() {
 
   if [[ "$INSTALL_SERVICES" == "no" ]]; then
     sed -i '' -e '/brew "tailscale"/d' -e '/brew "dnsmasq"/d' "$tmp" || true
+  fi
+
+  if [[ "$INSTALL_OFFICE_TOOLS" == "no" ]]; then
+    sed -i '' -e '/cask "microsoft-teams"/d' \
+           -e '/mas "Microsoft Excel"/d' \
+           -e '/mas "Microsoft PowerPoint"/d' \
+           -e '/mas "Microsoft Word"/d' "$tmp" || true
+  fi
+
+  if [[ "$INSTALL_SLACK" == "no" ]]; then
+    sed -i '' -e '/mas "Slack"/d' "$tmp" || true
+  fi
+
+  if [[ "$INSTALL_PARALLELS" == "no" ]]; then
+    sed -i '' -e '/cask "parallels"/d' "$tmp" || true
   fi
 
   log_info "Running brew bundle…"
@@ -389,13 +417,19 @@ validate_email() {
 setup_git() {
   local name email
   
-  # Get git user name
+  # Get and verify git user name
   while [[ -z "${GIT_USER_NAME:-}" ]]; do 
     read -r -p "Enter global Git user.name: " name
-    if [[ -n "$name" ]]; then
+    if [[ -z "$name" ]]; then
+      log_warning "Name cannot be empty"
+      continue
+    fi
+    
+    echo "Name: $name"
+    if yesno "Is this name correct?" default_yes; then
       GIT_USER_NAME="$name"
     else
-      log_warning "Name cannot be empty"
+      log_info "Please enter your name again"
     fi
   done
   
@@ -432,6 +466,38 @@ github_auth() {
     gh auth login --hostname github.com --git-protocol ssh || log_warning "gh auth login failed"
   else
     log_warning "gh CLI not installed; skipping GitHub login"
+  fi
+}
+
+# ----------------------------------------------------------------------------
+# Additional setup functions
+# ----------------------------------------------------------------------------
+run_xdg_cleanup() {
+  local xdg_script="$DOTFILES_DIR/scripts/system/xdg-cleanup"
+  if [[ -x "$xdg_script" ]]; then
+    if yesno "Run XDG cleanup to remove legacy config files?" default_yes; then
+      log_info "Running XDG cleanup script…"
+      "$xdg_script" || log_warning "XDG cleanup script had issues"
+    else
+      log_info "Skipping XDG cleanup"
+    fi
+  else
+    log_warning "XDG cleanup script not found at $xdg_script"
+  fi
+}
+
+setup_dev_directory() {
+  local dev_script="$DOTFILES_DIR/scripts/dev/bootstrap_dev_dir.sh"
+  if [[ -x "$dev_script" ]]; then
+    if yesno "Set up ~/dev directory structure?" default_yes; then
+      log_info "Setting up development directory structure…"
+      "$dev_script" || log_warning "Dev directory setup had issues"
+      log_info "Development directory structure created at ~/dev"
+    else
+      log_info "Skipping dev directory setup"
+    fi
+  else
+    log_warning "Dev directory script not found at $dev_script"
   fi
 }
 
@@ -542,17 +608,17 @@ main() {
 
   maybe_change_shell
   
+  # Additional setup
+  run_xdg_cleanup
+  setup_dev_directory
+  
   log_info "Bootstrap complete!"
   log_info ""
   
   if macos_is; then
     log_info "To apply all changes, you need to restart your terminal."
-    log_info "This will:"
-    log_info "  • Pick up the new shell configuration"
-    log_info "  • Allow zinit and other tools to initialize properly"
-    log_info "  • Ensure all environment variables are set correctly"
     log_info ""
-    if yesno "Quit Terminal.app now (you can then open iTerm2 or a new Terminal)?" default_yes; then
+    if yesno "Quit terminal now to apply changes?" default_yes; then
       macos_quit_terminal
     else
       log_info "Please restart your terminal manually when ready"

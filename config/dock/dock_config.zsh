@@ -4,7 +4,7 @@
 dockutil --remove all --no-restart
 
 # Add items in specified order
-dockutil --add /Applications/Launchpad.app --no-restart
+dockutil --add /Applications/Apps.app --no-restart
 dockutil --add /Applications/iTerm.app --no-restart
 dockutil --add /Applications/Sublime\ Text.app --no-restart
 dockutil --add /Applications/Visual\ Studio\ Code.app --no-restart
