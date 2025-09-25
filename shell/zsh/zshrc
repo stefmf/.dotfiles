@@ -2,9 +2,8 @@
 # ZSH Configuration File
 #==============================================================================
 
-# Re-source HISTFILE from zshenv to override system /etc/zshrc setting
-# (System /etc/zshrc sets HISTFILE after zshenv but before zshrc)
-source <(grep "^export HISTFILE=" "$HOME/.dotfiles/shell/zsh/zshenv")
+# Source environment variables first from zshenv to override system /etc/zshrc settings
+source "$HOME/.dotfiles/shell/zsh/zshenv"
 
 #------------------------------------------------------------------------------
 # Core Shell Options

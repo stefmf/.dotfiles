@@ -84,9 +84,10 @@ yesno() {
 
 sudo_keepalive_start() {
   if sudo -v; then
-    ( while true; do sudo -n true; sleep 60; kill -0 $$ || exit; done ) &
+    ( while true; do sudo -n true; sleep 45; kill -0 $$ || exit; done ) &
     SUDO_KEEPALIVE_PID=$!
     trap 'sudo_keepalive_stop' EXIT
+    log_info "Sudo credentials acquired and keepalive started"
   else
     log_error "Failed to acquire sudo credentials"
     exit 1
@@ -98,6 +99,19 @@ sudo_keepalive_stop() {
     kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
     wait "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
     unset SUDO_KEEPALIVE_PID
+  fi
+}
+
+sudo_refresh() {
+  # Refresh sudo credentials and restart keepalive if needed
+  if ! sudo -n true 2>/dev/null; then
+    log_info "Refreshing sudo credentials…"
+    if sudo -v; then
+      log_info "Sudo credentials refreshed"
+    else
+      log_warning "Failed to refresh sudo credentials"
+      return 1
+    fi
   fi
 }
 
@@ -175,6 +189,9 @@ macos_install_brewfile() {
     sed -i '' -e '/brew "tailscale"/d' -e '/brew "dnsmasq"/d' "$tmp" || true
   fi
 
+  # Refresh sudo credentials before potentially long brew operations
+  sudo_refresh
+  
   log_info "Running brew bundle…"
   brew bundle --file="$tmp" || log_warning "Some brew bundle items failed"
   rm -f "$tmp"
@@ -198,6 +215,13 @@ macos_configure_dock() {
 macos_enable_services() {
   [[ "$INSTALL_SERVICES" == "no" ]] && { log_info "Skipping services"; return; }
   if ! command -v brew >/dev/null 2>&1; then return; fi
+  
+  # Refresh sudo credentials before starting services
+  sudo_refresh || {
+    log_warning "Could not refresh sudo credentials, skipping service startup"
+    return
+  }
+  
   local svcs=(tailscale dnsmasq)
   for s in "${svcs[@]}"; do
     if brew list "$s" >/dev/null 2>&1; then
@@ -212,6 +236,12 @@ macos_configure_dns() {
     yesno "Configure system DNS to 127.0.0.1 for dnsmasq?" default_no && CONFIGURE_DNS=yes || CONFIGURE_DNS=no
   fi
   [[ "$CONFIGURE_DNS" != "yes" ]] && { log_info "Skipping DNS configuration"; return; }
+
+  # Refresh sudo credentials before DNS operations
+  sudo_refresh || {
+    log_warning "Could not refresh sudo credentials, skipping DNS configuration"
+    return
+  }
 
   log_info "Setting DNS servers to 127.0.0.1 for all non‑VPN services…"
   local svc
@@ -231,30 +261,36 @@ macos_enable_touchid() {
     return
   fi
 
-  # Handle sudo_local setup more robustly
-  if [[ ! -f /etc/pam.d/sudo_local ]]; then
-    if [[ -f /etc/pam.d/sudo_local.template ]]; then
-      sudo cp /etc/pam.d/sudo_local.template /etc/pam.d/sudo_local 2>/dev/null || {
-        log_warning "Could not copy sudo_local template, trying alternative approach"
-        # Create minimal sudo_local if template doesn't exist
-        echo "# sudo_local - created by bootstrap" | sudo tee /etc/pam.d/sudo_local >/dev/null
-        echo "auth       sufficient     pam_tid.so" | sudo tee -a /etc/pam.d/sudo_local >/dev/null
-        return
-      }
-    else
-      log_info "No sudo_local template found, creating from scratch…"
-      echo "# sudo_local - created by bootstrap" | sudo tee /etc/pam.d/sudo_local >/dev/null
-      echo "auth       sufficient     pam_tid.so" | sudo tee -a /etc/pam.d/sudo_local >/dev/null
-      return
-    fi
+  # Check if our dotfiles sudo_local exists
+  local dotfiles_sudo_local="$DOTFILES_DIR/system/pam.d/sudo_local"
+  if [[ ! -f "$dotfiles_sudo_local" ]]; then
+    log_warning "Dotfiles sudo_local not found at $dotfiles_sudo_local, skipping Touch ID setup"
+    return
   fi
-  
-  # Only run sed if the file exists and is regular
-  if [[ -f /etc/pam.d/sudo_local ]]; then
-    sudo sed -i '' -E 's/^#?(auth[[:space:]]+sufficient[[:space:]]+pam_tid\.so)/\1/' /etc/pam.d/sudo_local 2>/dev/null || {
-      log_warning "Could not modify existing sudo_local, Touch ID may not work"
+
+  # Refresh sudo credentials before making system changes
+  sudo_refresh || {
+    log_warning "Could not refresh sudo credentials, skipping Touch ID setup"
+    return
+  }
+
+  # Force remove any existing sudo_local (file or symlink)
+  if [[ -e /etc/pam.d/sudo_local || -L /etc/pam.d/sudo_local ]]; then
+    log_info "Removing existing sudo_local…"
+    sudo rm -f /etc/pam.d/sudo_local || {
+      log_warning "Could not remove existing sudo_local"
+      return
     }
   fi
+
+  # Create symlink to our dotfiles version
+  log_info "Creating symlink to dotfiles sudo_local…"
+  sudo ln -sf "$dotfiles_sudo_local" /etc/pam.d/sudo_local || {
+    log_warning "Could not create symlink to dotfiles sudo_local"
+    return
+  }
+
+  log_info "Touch ID for sudo configured successfully"
 }
 
 macos_configure_iterm2() {
@@ -429,6 +465,14 @@ maybe_change_shell() {
 # ----------------------------------------------------------------------------
 main() {
   log_info "Starting unified bootstrap…"
+  
+  # Set terminal environment to minimize color/escape sequence issues
+  export TERM="${TERM:-xterm-256color}"
+  export COLORTERM="${COLORTERM:-truecolor}"
+  
+  # Suppress potential shell startup warnings during bootstrap
+  export BOOTSTRAP_MODE=1
+  
   ensure_directories
   ensure_repo_writable
   sudo_keepalive_start
