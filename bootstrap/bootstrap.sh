@@ -288,6 +288,12 @@ yesno() {
 ensure_sudo() {
   # Ensure we have sudo credentials, prompting if necessary
   if ! sudo -n true 2>/dev/null; then
+    if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
+      echo "❌ Administrator privileges are required but no cached sudo credentials were found." >&2
+      echo "   Run 'sudo -v' to authenticate, then rerun this script with --unattended." >&2
+      exit 1
+    fi
+
     echo "→ Administrator privileges required for system operations…"
     if ! sudo -v; then
       echo "✗ Failed to acquire sudo credentials" >&2
@@ -297,6 +303,30 @@ ensure_sudo() {
   fi
 
   start_sudo_keepalive
+}
+
+sudo_run() {
+  local display_cmd
+  display_cmd=$(printf '%q ' "$@")
+  display_cmd=${display_cmd% }
+
+  if sudo -n "$@"; then
+    start_sudo_keepalive
+    return 0
+  fi
+
+  if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
+    echo "❌ Unable to run 'sudo ${display_cmd}' without prompting." >&2
+    echo "   Refresh credentials with 'sudo -v' and rerun, or run interactively." >&2
+    exit 1
+  fi
+
+  sudo "$@"
+  local status=$?
+  if [[ $status -eq 0 ]]; then
+    start_sudo_keepalive
+  fi
+  return $status
 }
 
 # ----------------------------------------------------------------------------
@@ -311,7 +341,7 @@ ensure_directories() {
 ensure_repo_writable() {
   if [[ ! -w "$DOTFILES_DIR" ]]; then
     echo "⚠ Dotfiles repo not writable by $(id -un); attempting chown…" >&2
-    if sudo chown -R "$(id -un):$(id -gn)" "$DOTFILES_DIR"; then
+    if sudo_run chown -R "$(id -un):$(id -gn)" "$DOTFILES_DIR"; then
       echo "✓ Repository ownership fixed"
     else
       echo "✗ Could not chown $DOTFILES_DIR" >&2
@@ -458,7 +488,7 @@ macos_enable_services() {
   for s in "${svcs[@]}"; do
     if brew list "$s" >/dev/null 2>&1; then
       echo "  • Starting $s as root via brew services…"
-      if sudo brew services start "$s"; then
+      if sudo_run brew services start "$s"; then
         echo "    ✓ $s started successfully"
       else
         echo "    ⚠ Failed to start $s" >&2
@@ -498,7 +528,7 @@ macos_configure_dns() {
   while IFS= read -r svc; do
     svc="${svc#\*}"; svc="$(echo "$svc" | xargs)"
     [[ -z "$svc" || "$svc" == *VPN* || "$svc" == Tailscale* ]] && continue
-    if sudo networksetup -setdnsservers "$svc" 127.0.0.1; then
+    if sudo_run networksetup -setdnsservers "$svc" 127.0.0.1; then
       echo "    ✓ DNS configured for $svc"
     else
       echo "    ⚠ Failed DNS setup on $svc" >&2
@@ -531,7 +561,7 @@ macos_enable_touchid() {
   # Force remove any existing sudo_local (file or symlink)
   if [[ -e /etc/pam.d/sudo_local || -L /etc/pam.d/sudo_local ]]; then
     echo "  • Removing existing sudo_local…"
-    if sudo rm -f /etc/pam.d/sudo_local; then
+    if sudo_run rm -f /etc/pam.d/sudo_local; then
       echo "    ✓ Existing sudo_local removed"
     else
       echo "    ⚠ Could not remove existing sudo_local" >&2
@@ -541,7 +571,7 @@ macos_enable_touchid() {
 
   # Create symlink to our dotfiles version
   echo "  • Creating symlink to dotfiles sudo_local…"
-  if sudo ln -sf "$dotfiles_sudo_local" /etc/pam.d/sudo_local; then
+  if sudo_run ln -sf "$dotfiles_sudo_local" /etc/pam.d/sudo_local; then
     echo "    ✓ Touch ID for sudo configured successfully"
   else
     echo "    ⚠ Could not create symlink to dotfiles sudo_local" >&2
@@ -591,11 +621,11 @@ linux_detect_pkgmgr() {
 linux_update_system() {
   case "$linux_pkg_manager" in
     apt)
-      sudo apt update
-      sudo apt upgrade -y || true
+      sudo_run apt update
+      sudo_run apt upgrade -y || true
       ;;
     pacman)
-      sudo pacman -Syu --noconfirm || true
+      sudo_run pacman -Syu --noconfirm || true
       ;;
     *) log_warning "Unknown package manager; skipping update" ;;
   esac
@@ -611,7 +641,7 @@ linux_install_base_packages() {
         while IFS= read -r line; do
           pkgs+=("$line")
         done < <(grep -vE '^\s*#' "$list" | sed '/^\s*$/d')
-        sudo apt install -y "${pkgs[@]}" || log_warning "Some apt packages failed"
+        sudo_run apt install -y "${pkgs[@]}" || log_warning "Some apt packages failed"
       else
         log_warning "Package list not found at $list"
       fi
@@ -619,7 +649,7 @@ linux_install_base_packages() {
     pacman)
       # Best-effort mapping for common packages
       local pkgs=(git zsh bat eza fzf htop nmap python screen shellcheck tldr tmux github-cli git-delta glab)
-      sudo pacman -S --needed --noconfirm "${pkgs[@]}" || log_warning "Some pacman packages failed"
+      sudo_run pacman -S --needed --noconfirm "${pkgs[@]}" || log_warning "Some pacman packages failed"
       ;;
   esac
 }
