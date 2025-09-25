@@ -82,34 +82,12 @@ yesno() {
   [[ "$reply" =~ ^([Yy]|[Yy][Ee][Ss])$ ]] && return 0 || return 1
 }
 
-sudo_keepalive_start() {
-  if sudo -v; then
-    ( while true; do sudo -n true; sleep 45; kill -0 $$ || exit; done ) &
-    SUDO_KEEPALIVE_PID=$!
-    trap 'sudo_keepalive_stop' EXIT
-    log_info "Sudo credentials acquired and keepalive started"
-  else
-    log_error "Failed to acquire sudo credentials"
-    exit 1
-  fi
-}
-
-sudo_keepalive_stop() {
-  if [[ -n ${SUDO_KEEPALIVE_PID:-} ]]; then
-    kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
-    wait "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
-    unset SUDO_KEEPALIVE_PID
-  fi
-}
-
-sudo_refresh() {
-  # Refresh sudo credentials and restart keepalive if needed
+ensure_sudo() {
+  # Ensure we have sudo credentials, prompting if necessary
   if ! sudo -n true 2>/dev/null; then
-    log_info "Refreshing sudo credentials…"
-    if sudo -v; then
-      log_info "Sudo credentials refreshed"
-    else
-      log_warning "Failed to refresh sudo credentials"
+    log_info "Administrator privileges required for system operations…"
+    if ! sudo -v; then
+      log_error "Failed to acquire sudo credentials"
       return 1
     fi
   fi
@@ -189,9 +167,6 @@ macos_install_brewfile() {
     sed -i '' -e '/brew "tailscale"/d' -e '/brew "dnsmasq"/d' "$tmp" || true
   fi
 
-  # Refresh sudo credentials before potentially long brew operations
-  sudo_refresh
-  
   log_info "Running brew bundle…"
   brew bundle --file="$tmp" || log_warning "Some brew bundle items failed"
   rm -f "$tmp"
@@ -216,9 +191,8 @@ macos_enable_services() {
   [[ "$INSTALL_SERVICES" == "no" ]] && { log_info "Skipping services"; return; }
   if ! command -v brew >/dev/null 2>&1; then return; fi
   
-  # Refresh sudo credentials before starting services
-  sudo_refresh || {
-    log_warning "Could not refresh sudo credentials, skipping service startup"
+  ensure_sudo || {
+    log_warning "Could not acquire sudo credentials, skipping service startup"
     return
   }
   
@@ -237,9 +211,8 @@ macos_configure_dns() {
   fi
   [[ "$CONFIGURE_DNS" != "yes" ]] && { log_info "Skipping DNS configuration"; return; }
 
-  # Refresh sudo credentials before DNS operations
-  sudo_refresh || {
-    log_warning "Could not refresh sudo credentials, skipping DNS configuration"
+  ensure_sudo || {
+    log_warning "Could not acquire sudo credentials, skipping DNS configuration"
     return
   }
 
@@ -268,9 +241,8 @@ macos_enable_touchid() {
     return
   fi
 
-  # Refresh sudo credentials before making system changes
-  sudo_refresh || {
-    log_warning "Could not refresh sudo credentials, skipping Touch ID setup"
+  ensure_sudo || {
+    log_warning "Could not acquire sudo credentials, skipping Touch ID setup"
     return
   }
 
@@ -423,9 +395,26 @@ github_auth() {
 }
 
 # ----------------------------------------------------------------------------
+# Terminal restart (macOS)
+# ----------------------------------------------------------------------------
+macos_restart_terminal() {
+  log_info "Restarting Terminal.app to apply changes…"
+  osascript -e 'tell application "Terminal" to quit'
+  sleep 2
+  open -a Terminal
+  log_info "Terminal.app restarted"
+}
+
+# ----------------------------------------------------------------------------
 # Change login shell to zsh (optional)
 # ----------------------------------------------------------------------------
 maybe_change_shell() {
+  # On macOS, zsh is the default shell since Catalina (10.15), so usually unnecessary
+  if macos_is && [[ "$SHELL" == */zsh ]]; then
+    log_info "Shell is already zsh (default on macOS), skipping shell change"
+    return
+  fi
+
   if [[ "$CHANGE_SHELL" == "ask" ]]; then
     yesno "Change your default shell to zsh?" default_yes && CHANGE_SHELL=yes || CHANGE_SHELL=no
   fi
@@ -475,7 +464,6 @@ main() {
   
   ensure_directories
   ensure_repo_writable
-  sudo_keepalive_start
 
   if macos_is; then
     log_info "Detected macOS ($(sw_vers -productVersion 2>/dev/null || echo))"
@@ -510,17 +498,24 @@ main() {
 
   maybe_change_shell
   
-  # Clean up sudo keepalive
-  sudo_keepalive_stop
-  
   log_info "Bootstrap complete!"
   log_info ""
-  log_info "IMPORTANT: Close this terminal and open a new one to:"
-  log_info "  • Pick up the new shell configuration"
-  log_info "  • Allow zinit and other tools to initialize properly"
-  log_info "  • Ensure all environment variables are set correctly"
-  log_info ""
-  log_info "If you see errors on first shell startup, simply close and reopen the terminal again."
+  
+  if macos_is; then
+    if yesno "Restart Terminal.app now to apply all changes?" default_yes; then
+      macos_restart_terminal
+    else
+      log_info "IMPORTANT: Restart Terminal.app manually to apply all changes:"
+      log_info "  • Pick up the new shell configuration"
+      log_info "  • Allow zinit and other tools to initialize properly"
+      log_info "  • Ensure all environment variables are set correctly"
+    fi
+  else
+    log_info "IMPORTANT: Close this terminal and open a new one to:"
+    log_info "  • Pick up the new shell configuration"
+    log_info "  • Allow zinit and other tools to initialize properly"
+    log_info "  • Ensure all environment variables are set correctly"
+  fi
 }
 
 main "$@"
