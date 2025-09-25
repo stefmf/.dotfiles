@@ -31,10 +31,17 @@ set -euo pipefail
 # ----------------------------------------------------------------------------
 _color() { command -v tput >/dev/null 2>&1 && tput setaf "$1" || true; }
 _reset() { command -v tput >/dev/null 2>&1 && tput sgr0 || true; }
-INFO=$(_color 2); WARN=$(_color 3); ERR=$(_color 1); RST=$(_reset)
+INFO=$(_color 2); WARN=$(_color 3); ERR=$(_color 1); STEP=$(_color 4); RST=$(_reset)
 log_info()    { [[ "${DEBUG_MODE:-false}" == "true" ]] && printf "%b[INFO]%b %s\n"    "$INFO" "$RST" "$*"; }
-log_warning() { [[ "${DEBUG_MODE:-false}" == "true" ]] && printf "%b[WARNING]%b %s\n" "$WARN" "$RST" "$*"; }
+log_warning() { printf "%b[WARNING]%b %s\n" "$WARN" "$RST" "$*"; }
 log_error()   { printf "%b[ERROR]%b %s\n"   "$ERR"  "$RST" "$*" 1>&2; }
+announce_step() {
+  if [[ -n "$STEP" && -n "$RST" ]]; then
+    printf "%b→%b %s\n" "$STEP" "$RST" "$1"
+  else
+    printf "→ %s\n" "$1"
+  fi
+}
 
 err_trap() { log_error "Bootstrap failed at line $1"; }
 trap 'err_trap $LINENO' ERR
@@ -42,60 +49,62 @@ trap 'err_trap $LINENO' ERR
 # ----------------------------------------------------------------------------
 # Command-line argument parsing
 # ----------------------------------------------------------------------------
+normalize_bool_var() {
+  local var_name="$1"
+  local value="${!var_name:-}"
+
+  if [[ -z "$value" ]]; then
+    printf -v "$var_name" "false"
+    return
+  fi
+
+  case "$(echo "$value" | tr '[:upper:]' '[:lower:]')" in
+    true|yes|1|on)
+      printf -v "$var_name" "true"
+      ;;
+    false|no|0|off)
+      printf -v "$var_name" "false"
+      ;;
+    *)
+      log_error "Invalid value for $var_name: $value (expected true/false)"
+      exit 1
+      ;;
+  esac
+}
+
 parse_args() {
-  local debug_set=false
-  local unattended_set=false
-  
   while [[ $# -gt 0 ]]; do
     case $1 in
-      -debug|--debug)
-        debug_set=true
-        if [[ $# -gt 1 && "$2" != -* ]]; then
-          DEBUG_MODE="$2"
-          shift 2
-        else
-          DEBUG_MODE="true"
-          shift
-        fi
+      -d|--debug)
+        DEBUG_MODE="true"
         ;;
-      -unattended|--unattended)
-        unattended_set=true
-        if [[ $# -gt 1 && "$2" != -* ]]; then
-          UNATTENDED_MODE="$2"
-          shift 2
-        else
-          UNATTENDED_MODE="true"
-          shift
-        fi
+      -u|--unattended)
+        UNATTENDED_MODE="true"
         ;;
       -h|--help)
         show_help
         exit 0
         ;;
-      *)
+      --)
+        shift
+        break
+        ;;
+      -* )
         log_error "Unknown option: $1"
         show_help
         exit 1
         ;;
+      *)
+        log_error "Unexpected argument: $1"
+        show_help
+        exit 1
+        ;;
     esac
+    shift
   done
-  
-  # Only validate values that were actually set by arguments
-  if [[ "$debug_set" == "true" ]]; then
-    case "$(echo "$DEBUG_MODE" | tr '[:upper:]' '[:lower:]')" in
-      true|yes|1|on) DEBUG_MODE="true" ;;
-      false|no|0|off) DEBUG_MODE="false" ;;
-      *) log_error "Invalid value for debug: $DEBUG_MODE (use true/false)"; exit 1 ;;
-    esac
-  fi
-  
-  if [[ "$unattended_set" == "true" ]]; then
-    case "$(echo "$UNATTENDED_MODE" | tr '[:upper:]' '[:lower:]')" in
-      true|yes|1|on) UNATTENDED_MODE="true" ;;
-      false|no|0|off) UNATTENDED_MODE="false" ;;
-      *) log_error "Invalid value for unattended: $UNATTENDED_MODE (use true/false)"; exit 1 ;;
-    esac
-  fi
+
+  normalize_bool_var DEBUG_MODE
+  normalize_bool_var UNATTENDED_MODE
 }
 
 show_help() {
@@ -106,15 +115,15 @@ USAGE:
   $0 [OPTIONS]
 
 OPTIONS:
-  -debug <true|false>      Enable/disable debug logging (default: false)
-  -unattended <true|false> Enable/disable unattended mode (default: false)
-  -h, --help              Show this help message
+  -d, --debug        Enable verbose debug logging
+  -u, --unattended   Run without interactive prompts (uses safe defaults)
+  -h, --help         Show this help message
 
 EXAMPLES:
-  $0                           # Interactive mode with minimal logging (default)
-  $0 -debug                   # Interactive mode with debug logging  
-  $0 -unattended             # Unattended mode with minimal logging
-  $0 -debug -unattended      # Unattended mode with debug logging
+  $0                    # Interactive mode with minimal logging (default)
+  $0 --debug            # Interactive mode with verbose logging  
+  $0 --unattended       # Unattended mode with minimal logging
+  $0 --debug --unattended  # Unattended mode with verbose logging
 
 ENVIRONMENT VARIABLES:
   You can also set these via environment variables:
@@ -173,20 +182,24 @@ RUN_XDG_CLEANUP=${RUN_XDG_CLEANUP:-ask}
 setup_unattended_mode() {
   # Only set defaults if unattended mode was explicitly requested
   if [[ "${UNATTENDED_MODE}" == "true" ]]; then
-    echo "Running in unattended mode with these defaults:"
-    echo "  • Install casks: yes"
-    echo "  • Install Mac App Store apps: no"  
-    echo "  • Install services (Tailscale, dnsmasq): yes"
-    echo "  • Install office tools: no"
-    echo "  • Install Slack: no"
-    echo "  • Install Parallels: no"
-    echo "  • Configure DNS: yes"
-    echo "  • GitHub CLI login: no"
-    echo "  • Change shell: no"
-    echo "  • Setup dev directory: no"
-    echo "  • Run XDG cleanup: yes"
-    echo "  • Git setup: skipped"
-    echo ""
+    if [[ "${DEBUG_MODE}" == "true" ]]; then
+      echo "Running in unattended mode with these defaults:"
+      echo "  • Install casks: yes"
+      echo "  • Install Mac App Store apps: no"  
+      echo "  • Install services (Tailscale, dnsmasq): yes"
+      echo "  • Install office tools: no"
+      echo "  • Install Slack: no"
+      echo "  • Install Parallels: no"
+      echo "  • Configure DNS: yes"
+      echo "  • GitHub CLI login: no"
+      echo "  • Change shell: no"
+      echo "  • Setup dev directory: no"
+      echo "  • Run XDG cleanup: yes"
+      echo "  • Git setup: skipped"
+      echo ""
+    else
+      echo "Running in unattended mode."
+    fi
     
     # Set defaults for unattended mode (override "ask" values)
     [[ "$INSTALL_CASKS" == "ask" ]] && INSTALL_CASKS=yes
@@ -534,9 +547,18 @@ linux_is() { [[ "$(uname)" == "Linux" ]]; }
 
 linux_pkg_manager=""
 linux_detect_pkgmgr() {
-  if command -v apt >/dev/null 2>&1; then linux_pkg_manager=apt; return; fi
-  if command -v pacman >/dev/null 2>&1; then linux_pkg_manager=pacman; return; fi
+  if command -v apt >/dev/null 2>&1; then
+    linux_pkg_manager=apt
+    echo "  • Detected apt"
+    return
+  fi
+  if command -v pacman >/dev/null 2>&1; then
+    linux_pkg_manager=pacman
+    echo "  • Detected pacman"
+    return
+  fi
   linux_pkg_manager=unknown
+  echo "⚠ Could not detect a supported package manager"
 }
 
 linux_update_system() {
@@ -577,20 +599,27 @@ linux_install_base_packages() {
 
 linux_manual_installs() {
   # Keep this lightweight: Docker/Kubernetes/Helm/Terraform can be added as needed
-  :
+  echo "  • No manual Linux installers defined yet"
 }
 
 linux_set_terminal_font() {
   # Optional: attempt to set Nerd Font for GNOME
-  if command -v gsettings >/dev/null 2>&1; then
-    local prof
-    prof=$(gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'") || true
-    if [[ -n "$prof" ]]; then
-      local path="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$prof/"
-      gsettings set "$path" font 'JetBrainsMono Nerd Font 14' || true
-      gsettings set "$path" use-system-font false || true
-    fi
+  if ! command -v gsettings >/dev/null 2>&1; then
+    echo "  • gsettings not available; skipping terminal font configuration"
+    return
   fi
+
+  local prof
+  prof=$(gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'") || true
+  if [[ -z "$prof" ]]; then
+    echo "  • GNOME Terminal default profile not found; skipping"
+    return
+  fi
+
+  local path="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$prof/"
+  echo "  • Setting GNOME Terminal font to JetBrainsMono Nerd Font 14"
+  gsettings set "$path" font 'JetBrainsMono Nerd Font 14' || echo "⚠ Failed to set GNOME Terminal font" >&2
+  gsettings set "$path" use-system-font false || true
 }
 
 # ----------------------------------------------------------------------------
@@ -631,10 +660,10 @@ validate_email() {
 setup_git() {
   # Skip git setup in unattended mode
   if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-    log_info "Skipping Git user configuration (unattended mode)"
-    log_info "Configure Git manually later with:"
-    log_info "  git config --global user.name 'Your Name'"
-    log_info "  git config --global user.email 'your.email@example.com'"
+    echo "→ Skipping Git user configuration (unattended mode)"
+    echo "   Configure Git manually later with:"
+    echo "     git config --global user.name 'Your Name'"
+    echo "     git config --global user.email 'your.email@example.com'"
     return
   fi
 
@@ -714,18 +743,18 @@ run_xdg_cleanup() {
   if [[ "$RUN_XDG_CLEANUP" == "ask" ]]; then
     yesno "Run XDG cleanup to remove legacy config files?" default_yes && RUN_XDG_CLEANUP=yes || RUN_XDG_CLEANUP=no
   fi
-  [[ "$RUN_XDG_CLEANUP" != "yes" ]] && { log_info "Skipping XDG cleanup"; return; }
+  [[ "$RUN_XDG_CLEANUP" != "yes" ]] && { echo "→ Skipping XDG cleanup"; return; }
 
   local xdg_script="$DOTFILES_DIR/scripts/system/xdg-cleanup"
   if [[ -x "$xdg_script" ]]; then
-    log_info "Running XDG cleanup script…"
+    echo "→ Running XDG cleanup script…"
     if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-      "$xdg_script" --unattended --from-bootstrap || log_warning "XDG cleanup script had issues"
+      "$xdg_script" --unattended --from-bootstrap || echo "⚠ XDG cleanup script reported issues" >&2
     else
-      "$xdg_script" --from-bootstrap || log_warning "XDG cleanup script had issues"
+      "$xdg_script" --from-bootstrap || echo "⚠ XDG cleanup script reported issues" >&2
     fi
   else
-    log_warning "XDG cleanup script not found at $xdg_script"
+    echo "⚠ XDG cleanup script not found at $xdg_script" >&2
   fi
 }
 
@@ -733,15 +762,15 @@ setup_dev_directory() {
   if [[ "$SETUP_DEV_DIR" == "ask" ]]; then
     yesno "Set up ~/dev directory structure?" default_yes && SETUP_DEV_DIR=yes || SETUP_DEV_DIR=no
   fi
-  [[ "$SETUP_DEV_DIR" != "yes" ]] && { log_info "Skipping dev directory setup"; return; }
+  [[ "$SETUP_DEV_DIR" != "yes" ]] && { echo "→ Skipping dev directory setup"; return; }
 
   local dev_script="$DOTFILES_DIR/scripts/dev/bootstrap_dev_dir.sh"
   if [[ -x "$dev_script" ]]; then
-    log_info "Setting up development directory structure…"
-    "$dev_script" || log_warning "Dev directory setup had issues"
-    log_info "Development directory structure created at ~/dev"
+    echo "→ Setting up development directory structure…"
+    "$dev_script" || echo "⚠ Dev directory setup reported issues" >&2
+    echo "→ Development directory structure ensured at ~/dev"
   else
-    log_warning "Dev directory script not found at $dev_script"
+    echo "⚠ Dev directory script not found at $dev_script" >&2
   fi
 }
 
@@ -749,9 +778,9 @@ setup_dev_directory() {
 # Terminal management (macOS)
 # ----------------------------------------------------------------------------
 macos_quit_terminal() {
-  log_info "Quitting Terminal.app to apply changes…"
+  echo "→ Quitting Terminal.app to apply changes…"
   osascript -e 'tell application "Terminal" to quit'
-  log_info "Terminal.app closed"
+  echo "→ Terminal.app closed"
 }
 
 # ----------------------------------------------------------------------------
@@ -834,43 +863,69 @@ main() {
     echo "✅ Sudo credentials verified for unattended mode."
   fi
   
+  announce_step "Ensuring XDG base directories exist"
   ensure_directories
+
+  announce_step "Ensuring dotfiles repository is writable"
   ensure_repo_writable
 
   if macos_is; then
     echo "Detected macOS ($(sw_vers -productVersion 2>/dev/null || echo))"
+    announce_step "Checking for Xcode Command Line Tools"
     macos_require_clt
+    announce_step "Installing Homebrew and evaluating Brew bundle"
     macos_install_homebrew
+    announce_step "Applying Homebrew bundle"
     macos_install_brewfile
+    announce_step "Linking dotfiles with Dotbot"
     run_dotbot
+    announce_step "Configuring global Git settings"
     setup_git
+    announce_step "Handling GitHub CLI authentication"
     github_auth
+    announce_step "Starting macOS background services"
     macos_enable_services
+    announce_step "Applying Dock preferences"
     macos_configure_dock
+    announce_step "Configuring DNS for dnsmasq"
     macos_configure_dns
+    announce_step "Enabling Touch ID for sudo"
+    macos_enable_touchid
+    announce_step "Applying iTerm2 preferences"
     macos_configure_iterm2
   elif linux_is; then
     echo "Detected Linux"
+    announce_step "Detecting package manager"
     linux_detect_pkgmgr
+    announce_step "Updating base system packages"
     linux_update_system
+    announce_step "Installing essential packages"
     linux_install_base_packages
+    announce_step "Running additional Linux installers"
     linux_manual_installs
+    announce_step "Linking dotfiles with Dotbot"
     run_dotbot
+    announce_step "Configuring global Git settings"
     setup_git
+    announce_step "Handling GitHub CLI authentication"
     github_auth
+    announce_step "Setting terminal font preferences"
     linux_set_terminal_font
   else
     log_error "Unsupported OS: $(uname)"
     exit 1
   fi
 
-  echo "Creating SSH socket directory…"
+  announce_step "Creating SSH socket directory"
   mkdir -p "$HOME/.ssh/sockets" && chmod 700 "$HOME/.ssh/sockets"
 
+  announce_step "Evaluating default shell configuration"
   maybe_change_shell
   
   # Additional setup
+  announce_step "Cleaning up legacy configuration via XDG script"
   run_xdg_cleanup
+  announce_step "Bootstrapping ~/dev directory structure"
   setup_dev_directory
   
   echo ""
