@@ -43,9 +43,13 @@ trap 'err_trap $LINENO' ERR
 # Command-line argument parsing
 # ----------------------------------------------------------------------------
 parse_args() {
+  local debug_set=false
+  local unattended_set=false
+  
   while [[ $# -gt 0 ]]; do
     case $1 in
       -debug|--debug)
+        debug_set=true
         if [[ $# -gt 1 && "$2" != -* ]]; then
           DEBUG_MODE="$2"
           shift 2
@@ -55,6 +59,7 @@ parse_args() {
         fi
         ;;
       -unattended|--unattended)
+        unattended_set=true
         if [[ $# -gt 1 && "$2" != -* ]]; then
           UNATTENDED_MODE="$2"
           shift 2
@@ -75,18 +80,22 @@ parse_args() {
     esac
   done
   
-  # Validate boolean values (use tr for bash 3.2 compatibility)
-  case "$(echo "$DEBUG_MODE" | tr '[:upper:]' '[:lower:]')" in
-    true|yes|1|on) DEBUG_MODE="true" ;;
-    false|no|0|off) DEBUG_MODE="false" ;;
-    *) log_error "Invalid value for debug: $DEBUG_MODE (use true/false)"; exit 1 ;;
-  esac
+  # Only validate values that were actually set by arguments
+  if [[ "$debug_set" == "true" ]]; then
+    case "$(echo "$DEBUG_MODE" | tr '[:upper:]' '[:lower:]')" in
+      true|yes|1|on) DEBUG_MODE="true" ;;
+      false|no|0|off) DEBUG_MODE="false" ;;
+      *) log_error "Invalid value for debug: $DEBUG_MODE (use true/false)"; exit 1 ;;
+    esac
+  fi
   
-  case "$(echo "$UNATTENDED_MODE" | tr '[:upper:]' '[:lower:]')" in
-    true|yes|1|on) UNATTENDED_MODE="true" ;;
-    false|no|0|off) UNATTENDED_MODE="false" ;;
-    *) log_error "Invalid value for unattended: $UNATTENDED_MODE (use true/false)"; exit 1 ;;
-  esac
+  if [[ "$unattended_set" == "true" ]]; then
+    case "$(echo "$UNATTENDED_MODE" | tr '[:upper:]' '[:lower:]')" in
+      true|yes|1|on) UNATTENDED_MODE="true" ;;
+      false|no|0|off) UNATTENDED_MODE="false" ;;
+      *) log_error "Invalid value for unattended: $UNATTENDED_MODE (use true/false)"; exit 1 ;;
+    esac
+  fi
 }
 
 show_help() {
@@ -162,39 +171,35 @@ RUN_XDG_CLEANUP=${RUN_XDG_CLEANUP:-ask}
 # Unattended mode setup
 # ----------------------------------------------------------------------------
 setup_unattended_mode() {
-  if [[ "${UNATTENDED_MODE}" != "true" ]]; then
-    if yesno "Run installation in unattended mode with predefined defaults?" default_no; then
-      UNATTENDED_MODE=true
-      log_info "Running in unattended mode with these defaults:"
-      log_info "  • Install casks: yes"
-      log_info "  • Install Mac App Store apps: no"  
-      log_info "  • Install services (Tailscale, dnsmasq): yes"
-      log_info "  • Install office tools: no"
-      log_info "  • Install Slack: no"
-      log_info "  • Install Parallels: no"
-      log_info "  • Configure DNS: yes"
-      log_info "  • GitHub CLI login: no"
-      log_info "  • Change shell: no"
-      log_info "  • Setup dev directory: no"
-      log_info "  • Run XDG cleanup: yes"
-      log_info "  • Git setup: skipped"
-      log_info ""
-    fi
-  fi
-  
-  # Set defaults for unattended mode
+  # Only set defaults if unattended mode was explicitly requested
   if [[ "${UNATTENDED_MODE}" == "true" ]]; then
-    INSTALL_CASKS=${INSTALL_CASKS:-yes}
-    INSTALL_MAS_APPS=${INSTALL_MAS_APPS:-no}
-    INSTALL_SERVICES=${INSTALL_SERVICES:-yes}
-    INSTALL_OFFICE_TOOLS=${INSTALL_OFFICE_TOOLS:-no}
-    INSTALL_SLACK=${INSTALL_SLACK:-no}
-    INSTALL_PARALLELS=${INSTALL_PARALLELS:-no}
-    CONFIGURE_DNS=${CONFIGURE_DNS:-yes}
-    GITHUB_AUTH=${GITHUB_AUTH:-no}
-    CHANGE_SHELL=${CHANGE_SHELL:-no}
-    SETUP_DEV_DIR=${SETUP_DEV_DIR:-no}
-    RUN_XDG_CLEANUP=${RUN_XDG_CLEANUP:-yes}
+    echo "Running in unattended mode with these defaults:"
+    echo "  • Install casks: yes"
+    echo "  • Install Mac App Store apps: no"  
+    echo "  • Install services (Tailscale, dnsmasq): yes"
+    echo "  • Install office tools: no"
+    echo "  • Install Slack: no"
+    echo "  • Install Parallels: no"
+    echo "  • Configure DNS: yes"
+    echo "  • GitHub CLI login: no"
+    echo "  • Change shell: no"
+    echo "  • Setup dev directory: no"
+    echo "  • Run XDG cleanup: yes"
+    echo "  • Git setup: skipped"
+    echo ""
+    
+    # Set defaults for unattended mode (override "ask" values)
+    [[ "$INSTALL_CASKS" == "ask" ]] && INSTALL_CASKS=yes
+    [[ "$INSTALL_MAS_APPS" == "ask" ]] && INSTALL_MAS_APPS=no
+    [[ "$INSTALL_SERVICES" == "ask" ]] && INSTALL_SERVICES=yes
+    [[ "$INSTALL_OFFICE_TOOLS" == "ask" ]] && INSTALL_OFFICE_TOOLS=no
+    [[ "$INSTALL_SLACK" == "ask" ]] && INSTALL_SLACK=no
+    [[ "$INSTALL_PARALLELS" == "ask" ]] && INSTALL_PARALLELS=no
+    [[ "$CONFIGURE_DNS" == "ask" ]] && CONFIGURE_DNS=yes
+    [[ "$GITHUB_AUTH" == "ask" ]] && GITHUB_AUTH=no
+    [[ "$CHANGE_SHELL" == "ask" ]] && CHANGE_SHELL=no
+    [[ "$SETUP_DEV_DIR" == "ask" ]] && SETUP_DEV_DIR=no
+    [[ "$RUN_XDG_CLEANUP" == "ask" ]] && RUN_XDG_CLEANUP=yes
   fi
 }
 
@@ -235,7 +240,7 @@ yesno() {
       y|yes) return 0 ;;
       n|no)  return 1 ;;
       *) 
-        log_warning "Please enter 'y' for yes or 'n' for no"
+        echo "Please enter 'y' for yes or 'n' for no"
         continue
         ;;
     esac
@@ -275,20 +280,20 @@ ensure_repo_writable() {
 macos_is() { [[ "$(uname)" == "Darwin" ]]; }
 
 macos_require_clt() {
-  log_info "Checking Xcode Command Line Tools…"
+  echo "Checking Xcode Command Line Tools…"
   if ! xcode-select -p >/dev/null 2>&1; then
     xcode-select --install || true
-    log_info "Waiting for CLT to be installed…"
+    echo "Waiting for CLT to be installed…"
     until xcode-select -p >/dev/null 2>&1; do sleep 10; done
   fi
 }
 
 macos_install_homebrew() {
   if ! command -v brew >/dev/null 2>&1; then
-    log_info "Installing Homebrew…"
+    echo "Installing Homebrew…"
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   else
-    log_info "Homebrew already installed"
+    echo "Homebrew already installed"
   fi
 
   # shellenv (runtime only; permanent config handled by your zprofile)
@@ -306,7 +311,7 @@ macos_install_brewfile() {
     return
   fi
 
-  log_info "Preparing Brewfile install…"
+  echo "Preparing Brewfile install…"
   local tmp=; tmp=$(mktemp)
   cp "$brewfile" "$tmp"
 
@@ -358,7 +363,7 @@ macos_install_brewfile() {
     sed -i '' -e '/cask "parallels"/d' "$tmp" || true
   fi
 
-  log_info "Running brew bundle…"
+  echo "Running brew bundle…"
   brew bundle --file="$tmp" || log_warning "Some brew bundle items failed"
   rm -f "$tmp"
 
@@ -567,7 +572,7 @@ prepare_dotbot_dependencies() {
 run_dotbot() {
   prepare_dotbot_dependencies
   if [[ -x "$DOTBOT_INSTALL" ]]; then
-    log_info "Running Dotbot…"
+    echo "Running Dotbot…"
     "$DOTBOT_INSTALL" -v || log_warning "Dotbot reported issues"
   else
     log_error "Dotbot installer not found at $DOTBOT_INSTALL"
@@ -747,7 +752,7 @@ main() {
   # Parse command-line arguments first
   parse_args "$@"
   
-  log_info "Starting unified bootstrap…"
+  echo "Starting unified bootstrap…"
   
   # Set terminal environment to minimize color/escape sequence issues
   export TERM="${TERM:-xterm-256color}"
@@ -759,20 +764,23 @@ main() {
   # Setup unattended mode if requested
   setup_unattended_mode
   
-  # For unattended mode, ensure sudo credentials upfront
+  # For unattended mode, ensure sudo credentials upfront without prompting
   if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-    log_info "Unattended mode: acquiring sudo credentials for system operations…"
-    ensure_sudo || {
-      log_error "Unattended mode requires sudo credentials. Please run 'sudo -v' first or run interactively."
+    echo "Checking sudo credentials for system operations…"
+    if ! sudo -n true 2>/dev/null; then
+      echo "❌ ERROR: Unattended mode requires pre-authenticated sudo credentials."
+      echo "Please run 'sudo -v' first to authenticate, then run this script again."
+      echo "Alternatively, run without --unattended for interactive mode."
       exit 1
-    }
+    fi
+    echo "✅ Sudo credentials verified for unattended mode."
   fi
   
   ensure_directories
   ensure_repo_writable
 
   if macos_is; then
-    log_info "Detected macOS ($(sw_vers -productVersion 2>/dev/null || echo))"
+    echo "Detected macOS ($(sw_vers -productVersion 2>/dev/null || echo))"
     macos_require_clt
     macos_install_homebrew
     macos_install_brewfile
@@ -785,7 +793,7 @@ main() {
     macos_enable_touchid
     macos_configure_iterm2
   elif linux_is; then
-    log_info "Detected Linux"
+    echo "Detected Linux"
     linux_detect_pkgmgr
     linux_update_system
     linux_install_base_packages
@@ -799,7 +807,7 @@ main() {
     exit 1
   fi
 
-  log_info "Creating SSH socket directory…"
+  echo "Creating SSH socket directory…"
   mkdir -p "$HOME/.ssh/sockets" && chmod 700 "$HOME/.ssh/sockets"
 
   maybe_change_shell
@@ -808,7 +816,7 @@ main() {
   run_xdg_cleanup
   setup_dev_directory
   
-  log_info "Bootstrap complete!"
+  echo "Bootstrap complete!"
   log_info ""
   
   if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
