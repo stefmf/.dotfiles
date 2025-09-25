@@ -206,6 +206,12 @@ macos_enable_services() {
 }
 
 macos_configure_dns() {
+  # Only offer DNS configuration if dnsmasq is actually installed
+  if ! command -v brew >/dev/null 2>&1 || ! brew list dnsmasq >/dev/null 2>&1; then
+    log_info "dnsmasq not installed, skipping DNS configuration"
+    return
+  fi
+  
   if [[ "$CONFIGURE_DNS" == "ask" ]]; then
     yesno "Configure system DNS to 127.0.0.1 for dnsmasq?" default_no && CONFIGURE_DNS=yes || CONFIGURE_DNS=no
   fi
@@ -374,10 +380,45 @@ run_dotbot() {
   fi
 }
 
+validate_email() {
+  local email="$1"
+  # Basic email validation regex
+  [[ "$email" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]
+}
+
 setup_git() {
   local name email
-  while [[ -z "${GIT_USER_NAME:-}" ]]; do read -r -p "Enter global Git user.name: " name; GIT_USER_NAME="$name"; done
-  while [[ -z "${GIT_USER_EMAIL:-}" ]]; do read -r -p "Enter global Git user.email: " email; GIT_USER_EMAIL="$email"; done
+  
+  # Get git user name
+  while [[ -z "${GIT_USER_NAME:-}" ]]; do 
+    read -r -p "Enter global Git user.name: " name
+    if [[ -n "$name" ]]; then
+      GIT_USER_NAME="$name"
+    else
+      log_warning "Name cannot be empty"
+    fi
+  done
+  
+  # Get and validate git user email
+  while [[ -z "${GIT_USER_EMAIL:-}" ]]; do 
+    read -r -p "Enter global Git user.email: " email
+    if [[ -z "$email" ]]; then
+      log_warning "Email cannot be empty"
+      continue
+    fi
+    
+    if validate_email "$email"; then
+      echo "Email: $email"
+      if yesno "Is this email correct?" default_yes; then
+        GIT_USER_EMAIL="$email"
+      else
+        log_info "Please enter your email again"
+      fi
+    else
+      log_warning "Invalid email format. Please enter a valid email address (e.g., user@example.com)"
+    fi
+  done
+  
   git config --global user.name "$GIT_USER_NAME" || log_warning "Failed to set git user.name"
   git config --global user.email "$GIT_USER_EMAIL" || log_warning "Failed to set git user.email"
 }
@@ -395,23 +436,26 @@ github_auth() {
 }
 
 # ----------------------------------------------------------------------------
-# Terminal restart (macOS)
+# Terminal management (macOS)
 # ----------------------------------------------------------------------------
-macos_restart_terminal() {
-  log_info "Restarting Terminal.app to apply changes…"
+macos_quit_terminal() {
+  log_info "Quitting Terminal.app to apply changes…"
   osascript -e 'tell application "Terminal" to quit'
-  sleep 2
-  open -a Terminal
-  log_info "Terminal.app restarted"
+  log_info "Terminal.app closed"
 }
 
 # ----------------------------------------------------------------------------
 # Change login shell to zsh (optional)
 # ----------------------------------------------------------------------------
 maybe_change_shell() {
-  # On macOS, zsh is the default shell since Catalina (10.15), so usually unnecessary
-  if macos_is && [[ "$SHELL" == */zsh ]]; then
-    log_info "Shell is already zsh (default on macOS), skipping shell change"
+  # Check current shell
+  local current_shell="${SHELL:-$(getent passwd "$USER" 2>/dev/null | cut -d: -f7 || echo)}"
+  current_shell="${current_shell:-/bin/bash}"  # fallback
+  
+  log_info "Current shell: $current_shell"
+  
+  if [[ "$current_shell" == */zsh ]]; then
+    log_info "Shell is already zsh, skipping shell change"
     return
   fi
 
@@ -502,13 +546,16 @@ main() {
   log_info ""
   
   if macos_is; then
-    if yesno "Restart Terminal.app now to apply all changes?" default_yes; then
-      macos_restart_terminal
+    log_info "To apply all changes, you need to restart your terminal."
+    log_info "This will:"
+    log_info "  • Pick up the new shell configuration"
+    log_info "  • Allow zinit and other tools to initialize properly"
+    log_info "  • Ensure all environment variables are set correctly"
+    log_info ""
+    if yesno "Quit Terminal.app now (you can then open iTerm2 or a new Terminal)?" default_yes; then
+      macos_quit_terminal
     else
-      log_info "IMPORTANT: Restart Terminal.app manually to apply all changes:"
-      log_info "  • Pick up the new shell configuration"
-      log_info "  • Allow zinit and other tools to initialize properly"
-      log_info "  • Ensure all environment variables are set correctly"
+      log_info "Please restart your terminal manually when ready"
     fi
   else
     log_info "IMPORTANT: Close this terminal and open a new one to:"
