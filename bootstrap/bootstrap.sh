@@ -231,7 +231,7 @@ yesno() {
     fi
     
     # Validate input
-    case "${reply,,}" in  # Convert to lowercase
+    case "$(echo "$reply" | tr '[:upper:]' '[:lower:]')" in  # Convert to lowercase
       y|yes) return 0 ;;
       n|no)  return 1 ;;
       *) 
@@ -510,7 +510,10 @@ linux_install_base_packages() {
   local list="$DOTFILES_DIR/bootstrap/archive/base_packages.list"
       if [[ -f "$list" ]]; then
         # filter comments/empty
-        mapfile -t pkgs < <(grep -vE '^\s*#' "$list" | sed '/^\s*$/d')
+        pkgs=()
+        while IFS= read -r line; do
+          pkgs+=("$line")
+        done < <(grep -vE '^\s*#' "$list" | sed '/^\s*$/d')
         sudo apt install -y "${pkgs[@]}" || log_warning "Some apt packages failed"
       else
         log_warning "Package list not found at $list"
