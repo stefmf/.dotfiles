@@ -46,7 +46,7 @@ parse_args() {
   while [[ $# -gt 0 ]]; do
     case $1 in
       -debug|--debug)
-        if [[ -n "$2" && "$2" != -* ]]; then
+        if [[ $# -gt 1 && "$2" != -* ]]; then
           DEBUG_MODE="$2"
           shift 2
         else
@@ -55,7 +55,7 @@ parse_args() {
         fi
         ;;
       -unattended|--unattended)
-        if [[ -n "$2" && "$2" != -* ]]; then
+        if [[ $# -gt 1 && "$2" != -* ]]; then
           UNATTENDED_MODE="$2"
           shift 2
         else
