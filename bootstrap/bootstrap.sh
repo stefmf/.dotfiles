@@ -75,14 +75,14 @@ parse_args() {
     esac
   done
   
-  # Validate boolean values
-  case "${DEBUG_MODE,,}" in
+  # Validate boolean values (use tr for bash 3.2 compatibility)
+  case "$(echo "$DEBUG_MODE" | tr '[:upper:]' '[:lower:]')" in
     true|yes|1|on) DEBUG_MODE="true" ;;
     false|no|0|off) DEBUG_MODE="false" ;;
     *) log_error "Invalid value for debug: $DEBUG_MODE (use true/false)"; exit 1 ;;
   esac
   
-  case "${UNATTENDED_MODE,,}" in
+  case "$(echo "$UNATTENDED_MODE" | tr '[:upper:]' '[:lower:]')" in
     true|yes|1|on) UNATTENDED_MODE="true" ;;
     false|no|0|off) UNATTENDED_MODE="false" ;;
     *) log_error "Invalid value for unattended: $UNATTENDED_MODE (use true/false)"; exit 1 ;;
