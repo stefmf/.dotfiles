@@ -657,9 +657,9 @@ run_xdg_cleanup() {
   if [[ -x "$xdg_script" ]]; then
     log_info "Running XDG cleanup script…"
     if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-      "$xdg_script" --unattended || log_warning "XDG cleanup script had issues"
+      "$xdg_script" --unattended --from-bootstrap || log_warning "XDG cleanup script had issues"
     else
-      "$xdg_script" || log_warning "XDG cleanup script had issues"
+      "$xdg_script" --from-bootstrap || log_warning "XDG cleanup script had issues"
     fi
   else
     log_warning "XDG cleanup script not found at $xdg_script"
