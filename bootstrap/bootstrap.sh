@@ -250,11 +250,12 @@ yesno() {
 ensure_sudo() {
   # Ensure we have sudo credentials, prompting if necessary
   if ! sudo -n true 2>/dev/null; then
-    log_info "Administrator privileges required for system operations…"
+    echo "→ Administrator privileges required for system operations…"
     if ! sudo -v; then
-      log_error "Failed to acquire sudo credentials"
+      echo "✗ Failed to acquire sudo credentials" >&2
       return 1
     fi
+    echo "✓ Administrator privileges confirmed"
   fi
 }
 
@@ -269,8 +270,12 @@ ensure_directories() {
 
 ensure_repo_writable() {
   if [[ ! -w "$DOTFILES_DIR" ]]; then
-    log_warning "Dotfiles repo not writable by $(id -un); attempting chown…"
-    sudo chown -R "$(id -un):$(id -gn)" "$DOTFILES_DIR" || log_warning "Could not chown $DOTFILES_DIR"
+    echo "⚠ Dotfiles repo not writable by $(id -un); attempting chown…" >&2
+    if sudo chown -R "$(id -un):$(id -gn)" "$DOTFILES_DIR"; then
+      echo "✓ Repository ownership fixed"
+    else
+      echo "✗ Could not chown $DOTFILES_DIR" >&2
+    fi
   fi
 }
 
@@ -307,7 +312,7 @@ macos_install_homebrew() {
 macos_install_brewfile() {
   local brewfile="$BREWFILE_MACOS"
   if [[ ! -f "$brewfile" ]]; then
-    log_warning "No Brewfile found at $brewfile; skipping brew bundle"
+    echo "⚠ No Brewfile found at $brewfile; skipping brew bundle" >&2
     return
   fi
 
@@ -364,39 +369,62 @@ macos_install_brewfile() {
   fi
 
   echo "Running brew bundle…"
-  brew bundle --file="$tmp" || log_warning "Some brew bundle items failed"
+  if brew bundle --file="$tmp"; then
+    echo "✓ Homebrew packages installed successfully"
+  else
+    echo "⚠ Some Homebrew packages failed to install" >&2
+  fi
   rm -f "$tmp"
 
   # Ensure JetBrains Mono Nerd Font (if not in filtered Brewfile)
   if ! brew list --cask font-jetbrains-mono-nerd-font >/dev/null 2>&1; then
-    brew install --cask font-jetbrains-mono-nerd-font || log_warning "Failed to install Nerd Font"
+    echo "  • Installing JetBrains Mono Nerd Font..."
+    if brew install --cask font-jetbrains-mono-nerd-font; then
+      echo "    ✓ JetBrains Mono Nerd Font installed"
+    else
+      echo "    ⚠ Failed to install Nerd Font" >&2
+    fi
   fi
 }
 
 macos_configure_dock() {
-  [[ "$INSTALL_CASKS" == "no" ]] && { log_info "Skipping Dock config (casks not installed)"; return; }
+  [[ "$INSTALL_CASKS" == "no" ]] && { echo "→ Skipping Dock config (casks not installed)"; return; }
   if [[ -f "$DOCK_CONFIG" ]]; then
-    log_info "Configuring Dock…"
-    zsh "$DOCK_CONFIG" || log_warning "Dock configuration script failed"
+    echo "→ Configuring Dock…"
+    if zsh "$DOCK_CONFIG"; then
+      echo "✓ Dock configuration completed"
+    else
+      echo "⚠ Dock configuration script failed" >&2
+    fi
   else
-    log_warning "Dock config not found at $DOCK_CONFIG"
+    echo "⚠ Dock config not found at $DOCK_CONFIG" >&2
   fi
 }
 
 macos_enable_services() {
-  [[ "$INSTALL_SERVICES" == "no" ]] && { log_info "Skipping services"; return; }
-  if ! command -v brew >/dev/null 2>&1; then return; fi
+  [[ "$INSTALL_SERVICES" == "no" ]] && { echo "→ Skipping services (user disabled)"; return; }
+  if ! command -v brew >/dev/null 2>&1; then 
+    echo "→ Brew not available, skipping service startup"
+    return
+  fi
   
+  echo "→ Starting system services (requires sudo)..."
   ensure_sudo || {
-    log_warning "Could not acquire sudo credentials, skipping service startup"
+    echo "⚠ Could not acquire sudo credentials, skipping service startup" >&2
     return
   }
   
   local svcs=(tailscale dnsmasq)
   for s in "${svcs[@]}"; do
     if brew list "$s" >/dev/null 2>&1; then
-      log_info "Starting $s as root via brew services…"
-      sudo brew services start "$s" || log_warning "Failed to start $s"
+      echo "  • Starting $s as root via brew services…"
+      if sudo brew services start "$s"; then
+        echo "    ✓ $s started successfully"
+      else
+        echo "    ⚠ Failed to start $s" >&2
+      fi
+    else
+      echo "  • $s not installed, skipping"
     fi
   done
 }
@@ -404,57 +432,65 @@ macos_enable_services() {
 macos_configure_dns() {
   # Only offer DNS configuration if dnsmasq is actually installed
   if ! command -v brew >/dev/null 2>&1 || ! brew list dnsmasq >/dev/null 2>&1; then
-    log_info "dnsmasq not installed, skipping DNS configuration"
+    echo "→ dnsmasq not installed, skipping DNS configuration"
     return
   fi
   
   if [[ "$CONFIGURE_DNS" == "ask" ]]; then
     yesno "Configure system DNS to 127.0.0.1 for dnsmasq?" default_no && CONFIGURE_DNS=yes || CONFIGURE_DNS=no
   fi
-  [[ "$CONFIGURE_DNS" != "yes" ]] && { log_info "Skipping DNS configuration"; return; }
+  [[ "$CONFIGURE_DNS" != "yes" ]] && { echo "→ Skipping DNS configuration"; return; }
 
+  echo "→ Configuring system DNS (requires sudo)..."
   ensure_sudo || {
-    log_warning "Could not acquire sudo credentials, skipping DNS configuration"
+    echo "⚠ Could not acquire sudo credentials, skipping DNS configuration" >&2
     return
   }
 
-  log_info "Setting DNS servers to 127.0.0.1 for all non‑VPN services…"
+  echo "  • Setting DNS servers to 127.0.0.1 for all non‑VPN services…"
   local svc
   while IFS= read -r svc; do
     svc="${svc#\*}"; svc="$(echo "$svc" | xargs)"
     [[ -z "$svc" || "$svc" == *VPN* || "$svc" == Tailscale* ]] && continue
-    sudo networksetup -setdnsservers "$svc" 127.0.0.1 || log_warning "Failed DNS on $svc"
+    if sudo networksetup -setdnsservers "$svc" 127.0.0.1; then
+      echo "    ✓ DNS configured for $svc"
+    else
+      echo "    ⚠ Failed DNS setup on $svc" >&2
+    fi
   done < <(networksetup -listallnetworkservices 2>/dev/null | sed '1d')
 }
 
 macos_enable_touchid() {
-  log_info "Enabling Touch ID for sudo (sudo_local)…"
+  echo "→ Enabling Touch ID for sudo (sudo_local)…"
   
   # Check if PAM directory exists (should always exist on macOS)
   if [[ ! -d /etc/pam.d ]]; then
-    log_warning "PAM directory /etc/pam.d not found, skipping Touch ID setup"
+    echo "⚠ PAM directory /etc/pam.d not found, skipping Touch ID setup" >&2
     return
   fi
 
   # Check if our dotfiles sudo_local exists
   local dotfiles_sudo_local="$DOTFILES_DIR/system/pam.d/sudo_local"
   if [[ ! -f "$dotfiles_sudo_local" ]]; then
-    log_warning "Dotfiles sudo_local not found at $dotfiles_sudo_local, skipping Touch ID setup"
+    echo "⚠ Dotfiles sudo_local not found at $dotfiles_sudo_local, skipping Touch ID setup" >&2
     return
   fi
 
+  echo "  • Touch ID setup requires sudo access..."
   ensure_sudo || {
-    log_warning "Could not acquire sudo credentials, skipping Touch ID setup"
+    echo "⚠ Could not acquire sudo credentials, skipping Touch ID setup" >&2
     return
   }
 
   # Force remove any existing sudo_local (file or symlink)
   if [[ -e /etc/pam.d/sudo_local || -L /etc/pam.d/sudo_local ]]; then
-    log_info "Removing existing sudo_local…"
-    sudo rm -f /etc/pam.d/sudo_local || {
-      log_warning "Could not remove existing sudo_local"
+    echo "  • Removing existing sudo_local…"
+    if sudo rm -f /etc/pam.d/sudo_local; then
+      echo "    ✓ Existing sudo_local removed"
+    else
+      echo "    ⚠ Could not remove existing sudo_local" >&2
       return
-    }
+    fi
   fi
 
   # Create symlink to our dotfiles version
@@ -601,7 +637,7 @@ setup_git() {
   while [[ -z "${GIT_USER_NAME:-}" ]]; do 
     read -r -p "Enter global Git user.name: " name
     if [[ -z "$name" ]]; then
-      log_warning "Name cannot be empty"
+      echo "⚠ Name cannot be empty" >&2
       continue
     fi
     
@@ -609,7 +645,7 @@ setup_git() {
     if yesno "Is this name correct?" default_yes; then
       GIT_USER_NAME="$name"
     else
-      log_info "Please enter your name again"
+      echo "→ Please enter your name again"
     fi
   done
   
@@ -617,7 +653,7 @@ setup_git() {
   while [[ -z "${GIT_USER_EMAIL:-}" ]]; do 
     read -r -p "Enter global Git user.email: " email
     if [[ -z "$email" ]]; then
-      log_warning "Email cannot be empty"
+      echo "⚠ Email cannot be empty" >&2
       continue
     fi
     
@@ -626,26 +662,41 @@ setup_git() {
       if yesno "Is this email correct?" default_yes; then
         GIT_USER_EMAIL="$email"
       else
-        log_info "Please enter your email again"
+        echo "→ Please enter your email again"
       fi
     else
-      log_warning "Invalid email format. Please enter a valid email address (e.g., user@example.com)"
+      echo "⚠ Invalid email format. Please enter a valid email address (e.g., user@example.com)" >&2
     fi
   done
   
-  git config --global user.name "$GIT_USER_NAME" || log_warning "Failed to set git user.name"
-  git config --global user.email "$GIT_USER_EMAIL" || log_warning "Failed to set git user.email"
+  if git config --global user.name "$GIT_USER_NAME"; then
+    echo "✓ Git user.name set to: $GIT_USER_NAME"
+  else
+    echo "⚠ Failed to set git user.name" >&2
+  fi
+  
+  if git config --global user.email "$GIT_USER_EMAIL"; then
+    echo "✓ Git user.email set to: $GIT_USER_EMAIL"
+  else
+    echo "⚠ Failed to set git user.email" >&2
+  fi
 }
 
 github_auth() {
   if [[ "$GITHUB_AUTH" == "ask" ]]; then
     yesno "Login with GitHub CLI now?" default_yes && GITHUB_AUTH=yes || GITHUB_AUTH=no
   fi
-  [[ "$GITHUB_AUTH" != "yes" ]] && return
+  [[ "$GITHUB_AUTH" != "yes" ]] && { echo "→ Skipping GitHub CLI authentication"; return; }
+  
   if command -v gh >/dev/null 2>&1; then
-    gh auth login --hostname github.com --git-protocol ssh || log_warning "gh auth login failed"
+    echo "→ Starting GitHub CLI authentication..."
+    if gh auth login --hostname github.com --git-protocol ssh; then
+      echo "✓ GitHub CLI authentication completed"
+    else
+      echo "⚠ GitHub CLI authentication failed" >&2
+    fi
   else
-    log_warning "gh CLI not installed; skipping GitHub login"
+    echo "⚠ GitHub CLI not installed; skipping GitHub login" >&2
   fi
 }
 
