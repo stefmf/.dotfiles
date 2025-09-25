@@ -86,10 +86,18 @@ sudo_keepalive_start() {
   if sudo -v; then
     ( while true; do sudo -n true; sleep 60; kill -0 $$ || exit; done ) &
     SUDO_KEEPALIVE_PID=$!
-    trap '[[ -n ${SUDO_KEEPALIVE_PID:-} ]] && kill "$SUDO_KEEPALIVE_PID" || true' EXIT
+    trap 'sudo_keepalive_stop' EXIT
   else
     log_error "Failed to acquire sudo credentials"
     exit 1
+  fi
+}
+
+sudo_keepalive_stop() {
+  if [[ -n ${SUDO_KEEPALIVE_PID:-} ]]; then
+    kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+    wait "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+    unset SUDO_KEEPALIVE_PID
   fi
 }
 
@@ -216,10 +224,37 @@ macos_configure_dns() {
 
 macos_enable_touchid() {
   log_info "Enabling Touch ID for sudo (sudo_local)…"
-  if [[ ! -f /etc/pam.d/sudo_local ]]; then
-    sudo cp /etc/pam.d/sudo_local.template /etc/pam.d/sudo_local || true
+  
+  # Check if PAM directory exists (should always exist on macOS)
+  if [[ ! -d /etc/pam.d ]]; then
+    log_warning "PAM directory /etc/pam.d not found, skipping Touch ID setup"
+    return
   fi
-  sudo sed -i '' -E 's/^#?(auth[[:space:]]+sufficient[[:space:]]+pam_tid\.so)/\1/' /etc/pam.d/sudo_local || true
+
+  # Handle sudo_local setup more robustly
+  if [[ ! -f /etc/pam.d/sudo_local ]]; then
+    if [[ -f /etc/pam.d/sudo_local.template ]]; then
+      sudo cp /etc/pam.d/sudo_local.template /etc/pam.d/sudo_local 2>/dev/null || {
+        log_warning "Could not copy sudo_local template, trying alternative approach"
+        # Create minimal sudo_local if template doesn't exist
+        echo "# sudo_local - created by bootstrap" | sudo tee /etc/pam.d/sudo_local >/dev/null
+        echo "auth       sufficient     pam_tid.so" | sudo tee -a /etc/pam.d/sudo_local >/dev/null
+        return
+      }
+    else
+      log_info "No sudo_local template found, creating from scratch…"
+      echo "# sudo_local - created by bootstrap" | sudo tee /etc/pam.d/sudo_local >/dev/null
+      echo "auth       sufficient     pam_tid.so" | sudo tee -a /etc/pam.d/sudo_local >/dev/null
+      return
+    fi
+  fi
+  
+  # Only run sed if the file exists and is regular
+  if [[ -f /etc/pam.d/sudo_local ]]; then
+    sudo sed -i '' -E 's/^#?(auth[[:space:]]+sufficient[[:space:]]+pam_tid\.so)/\1/' /etc/pam.d/sudo_local 2>/dev/null || {
+      log_warning "Could not modify existing sudo_local, Touch ID may not work"
+    }
+  fi
 }
 
 macos_configure_iterm2() {
@@ -305,7 +340,24 @@ linux_set_terminal_font() {
 # ----------------------------------------------------------------------------
 # Dotbot linking and git config
 # ----------------------------------------------------------------------------
+prepare_dotbot_dependencies() {
+  # Create gitconfig.local from template if it doesn't exist
+  local template="$DOTFILES_DIR/config/git/gitconfig.local.template"
+  local target="$DOTFILES_DIR/config/git/gitconfig.local"
+  if [[ -f "$template" && ! -f "$target" ]]; then
+    log_info "Creating gitconfig.local from template…"
+    cp "$template" "$target" || log_warning "Failed to create gitconfig.local"
+  fi
+
+  # Ensure XDG directories exist for zinit and other tools
+  mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/zinit"
+  mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}"
+  mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}"
+  mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}"
+}
+
 run_dotbot() {
+  prepare_dotbot_dependencies
   if [[ -x "$DOTBOT_INSTALL" ]]; then
     log_info "Running Dotbot…"
     "$DOTBOT_INSTALL" -v || log_warning "Dotbot reported issues"
@@ -344,10 +396,26 @@ maybe_change_shell() {
   [[ "$CHANGE_SHELL" != "yes" ]] && return
 
   if command -v zsh >/dev/null 2>&1; then
-    local zpath; zpath=$(command -v zsh)
+    local zpath
+    zpath=$(command -v zsh) || {
+      log_warning "Could not determine zsh path"
+      return
+    }
+    
     if [[ "$SHELL" != "$zpath" ]]; then
       log_info "Changing default shell to $zpath…"
-      chsh -s "$zpath" "${USER}" || log_warning "Could not change default shell"
+      # Temporarily disable error trapping for this operation
+      set +e
+      chsh -s "$zpath" "${USER}"
+      local chsh_result=$?
+      set -e
+      
+      if [[ $chsh_result -ne 0 ]]; then
+        log_warning "Could not change default shell (exit code: $chsh_result)"
+        log_info "You can change it manually later with: chsh -s $zpath"
+      else
+        log_info "Default shell changed successfully"
+      fi
     else
       log_info "Default shell already zsh"
     fi
@@ -397,7 +465,18 @@ main() {
   mkdir -p "$HOME/.ssh/sockets" && chmod 700 "$HOME/.ssh/sockets"
 
   maybe_change_shell
-  log_info "Bootstrap complete. Open a new shell to pick up changes."
+  
+  # Clean up sudo keepalive
+  sudo_keepalive_stop
+  
+  log_info "Bootstrap complete!"
+  log_info ""
+  log_info "IMPORTANT: Close this terminal and open a new one to:"
+  log_info "  • Pick up the new shell configuration"
+  log_info "  • Allow zinit and other tools to initialize properly"
+  log_info "  • Ensure all environment variables are set correctly"
+  log_info ""
+  log_info "If you see errors on first shell startup, simply close and reopen the terminal again."
 }
 
 main "$@"
