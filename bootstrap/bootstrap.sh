@@ -485,13 +485,29 @@ macos_enable_services() {
   }
   
   local svcs=(tailscale dnsmasq)
+  local daemon_base="/Library/LaunchDaemons"
   for s in "${svcs[@]}"; do
     if brew list "$s" >/dev/null 2>&1; then
-      echo "  • Starting $s as root via brew services…"
-      if sudo_run brew services start "$s"; then
-        echo "    ✓ $s started successfully"
+      local label="homebrew.mxcl.${s}"
+      local plist="${daemon_base}/${label}.plist"
+      echo "  • Managing $s via launchctl…"
+
+      if [[ ! -f "$plist" ]]; then
+        echo "    ⚠ LaunchDaemon not found at $plist; try 'brew services start $s' manually" >&2
+        continue
+      fi
+
+      if launchctl print "system/${label}" >/dev/null 2>&1; then
+        echo "    • $s already running; refreshing"
+        sudo_run launchctl bootout system "$plist" || true
+      fi
+
+      if sudo_run launchctl bootstrap system "$plist"; then
+        sudo_run launchctl enable "system/${label}" || true
+        sudo_run launchctl kickstart -k "system/${label}" || true
+        echo "    ✓ $s service started"
       else
-        echo "    ⚠ Failed to start $s" >&2
+        printf "    ⚠ Failed to bootstrap %s; try 'sudo launchctl bootstrap system \"%s\"' manually\n" "$s" "$plist" >&2
       fi
     else
       echo "  • $s not installed, skipping"
@@ -702,7 +718,7 @@ run_dotbot() {
   prepare_dotbot_dependencies
   if [[ -x "$DOTBOT_INSTALL" ]]; then
     echo "Running Dotbot…"
-    "$DOTBOT_INSTALL" -v || log_warning "Dotbot reported issues"
+    DOTFILES_SKIP_TOUCHID_LINK=true "$DOTBOT_INSTALL" -v || log_warning "Dotbot reported issues"
   else
     log_error "Dotbot installer not found at $DOTBOT_INSTALL"
   fi
