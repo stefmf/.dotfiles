@@ -20,7 +20,7 @@
 # - Interactive prompts can be bypassed with env flags: INSTALL_CASKS,
 #   INSTALL_MAS_APPS, INSTALL_SERVICES, INSTALL_OFFICE_TOOLS, INSTALL_SLACK, 
 #   INSTALL_PARALLELS, CONFIGURE_DNS, GITHUB_AUTH, CHANGE_SHELL, SETUP_DEV_DIR,
-#   RUN_XDG_CLEANUP, or by setting UNATTENDED_MODE=true for full automation.
+#   RUN_XDG_CLEANUP.
 # - This script is designed for iterative testing and refinement.
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -90,9 +90,6 @@ parse_args() {
       -d|--debug)
         DEBUG_MODE="true"
         ;;
-      -u|--unattended)
-        UNATTENDED_MODE="true"
-        ;;
       -h|--help)
         show_help
         exit 0
@@ -116,7 +113,6 @@ parse_args() {
   done
 
   normalize_bool_var DEBUG_MODE
-  normalize_bool_var UNATTENDED_MODE
 }
 
 show_help() {
@@ -128,18 +124,14 @@ USAGE:
 
 OPTIONS:
   -d, --debug        Enable verbose debug logging
-  -u, --unattended   Run without interactive prompts (uses safe defaults)
   -h, --help         Show this help message
 
 EXAMPLES:
   $0                    # Interactive mode with minimal logging (default)
   $0 --debug            # Interactive mode with verbose logging  
-  $0 --unattended       # Unattended mode with minimal logging
-  $0 --debug --unattended  # Unattended mode with verbose logging
-
 ENVIRONMENT VARIABLES:
   You can also set these via environment variables:
-  DEBUG_MODE=true UNATTENDED_MODE=true $0
+  DEBUG_MODE=true $0
   
   Or override specific install options:
   INSTALL_CASKS=no INSTALL_OFFICE_TOOLS=yes $0
@@ -173,7 +165,6 @@ export DOTFILES="$DOTFILES_DIR"
 
 # Default values for command-line flags
 DEBUG_MODE=${DEBUG_MODE:-false}
-UNATTENDED_MODE=${UNATTENDED_MODE:-false}
 
 # Options (can be pre-seeded via env for non-interactive runs)
 INSTALL_CASKS=${INSTALL_CASKS:-ask}
@@ -189,45 +180,7 @@ SETUP_DEV_DIR=${SETUP_DEV_DIR:-ask}
 RUN_XDG_CLEANUP=${RUN_XDG_CLEANUP:-ask}
 
 # ----------------------------------------------------------------------------
-# Unattended mode setup
 # ----------------------------------------------------------------------------
-setup_unattended_mode() {
-  # Only set defaults if unattended mode was explicitly requested
-  if [[ "${UNATTENDED_MODE}" == "true" ]]; then
-    if [[ "${DEBUG_MODE}" == "true" ]]; then
-      echo "Running in unattended mode with these defaults:"
-      echo "  • Install casks: yes"
-      echo "  • Install Mac App Store apps: no"  
-      echo "  • Install services (Tailscale, dnsmasq): yes"
-      echo "  • Install office tools: no"
-      echo "  • Install Slack: no"
-      echo "  • Install Parallels: no"
-      echo "  • Configure DNS: yes"
-      echo "  • GitHub CLI login: no"
-      echo "  • Change shell: no"
-      echo "  • Setup dev directory: no"
-      echo "  • Run XDG cleanup: yes"
-      echo "  • Git setup: skipped"
-      echo ""
-    else
-      echo "Running in unattended mode."
-    fi
-    
-    # Set defaults for unattended mode (override "ask" values)
-    [[ "$INSTALL_CASKS" == "ask" ]] && INSTALL_CASKS=yes
-    [[ "$INSTALL_MAS_APPS" == "ask" ]] && INSTALL_MAS_APPS=no
-    [[ "$INSTALL_SERVICES" == "ask" ]] && INSTALL_SERVICES=yes
-    [[ "$INSTALL_OFFICE_TOOLS" == "ask" ]] && INSTALL_OFFICE_TOOLS=no
-    [[ "$INSTALL_SLACK" == "ask" ]] && INSTALL_SLACK=no
-    [[ "$INSTALL_PARALLELS" == "ask" ]] && INSTALL_PARALLELS=no
-    [[ "$CONFIGURE_DNS" == "ask" ]] && CONFIGURE_DNS=yes
-    [[ "$GITHUB_AUTH" == "ask" ]] && GITHUB_AUTH=no
-    [[ "$CHANGE_SHELL" == "ask" ]] && CHANGE_SHELL=no
-    [[ "$SETUP_DEV_DIR" == "ask" ]] && SETUP_DEV_DIR=no
-    [[ "$RUN_XDG_CLEANUP" == "ask" ]] && RUN_XDG_CLEANUP=yes
-  fi
-}
-
 # ----------------------------------------------------------------------------
 # Helpers: prompts and sudo keep-alive
 # ----------------------------------------------------------------------------
@@ -252,15 +205,6 @@ yesno() {
   # yesno "Question?" default_no|default_yes|no_prompt -> returns 0 for yes
   local prompt default reply
   prompt="$1"; default="${2:-default_no}"
-  # In unattended mode, use defaults without prompting
-  if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-    case "$default" in
-      default_yes) return 0 ;;
-      no_prompt)   return 0 ;;
-      *)           return 1 ;;
-    esac
-  fi
-  
   while true; do
     case "$default" in
       default_yes) read -r -p "$prompt [Y/n] " reply || true ;;
@@ -291,29 +235,6 @@ yesno() {
 ensure_sudo() {
   # Ensure we have sudo credentials, prompting if necessary
   if ! sudo -n true 2>/dev/null; then
-    if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-      local wait_total=${SUDO_REFRESH_TIMEOUT:-120}
-      local wait_step=${SUDO_REFRESH_INTERVAL:-5}
-      local waited=0
-
-      echo "❌ Administrator privileges are required but no cached sudo credentials were found." >&2
-      echo "   Run 'sudo -v' in another terminal or session." >&2
-      echo "   Waiting up to ${wait_total}s for refreshed credentials…" >&2
-
-      while (( waited < wait_total )); do
-        sleep "$wait_step"
-        (( waited += wait_step ))
-        if sudo -n true 2>/dev/null; then
-          echo "   ✓ Sudo credentials refreshed; resuming." >&2
-          start_sudo_keepalive
-          return 0
-        fi
-      done
-
-      echo "   ✗ Timed out waiting for sudo credentials. Exiting." >&2
-      exit 1
-    fi
-
     echo "→ Administrator privileges required for system operations…"
     if ! sudo -v; then
       echo "✗ Failed to acquire sudo credentials" >&2
@@ -333,12 +254,6 @@ sudo_run() {
   if sudo -n "$@"; then
     start_sudo_keepalive
     return 0
-  fi
-
-  if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-    echo "❌ Unable to run 'sudo ${display_cmd}' without prompting." >&2
-    echo "   Refresh credentials with 'sudo -v' and rerun, or run interactively." >&2
-    exit 1
   fi
 
   sudo "$@"
@@ -751,15 +666,6 @@ validate_email() {
 }
 
 setup_git() {
-  # Skip git setup in unattended mode
-  if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-    echo "→ Skipping Git user configuration (unattended mode)"
-    echo "   Configure Git manually later with:"
-    echo "     git config --global user.name 'Your Name'"
-    echo "     git config --global user.email 'your.email@example.com'"
-    return
-  fi
-
   local name email
   
   # Get and verify git user name
@@ -841,11 +747,7 @@ run_xdg_cleanup() {
   local xdg_script="$DOTFILES_DIR/scripts/system/xdg-cleanup"
   if [[ -x "$xdg_script" ]]; then
     echo "→ Running XDG cleanup script…"
-    if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-      "$xdg_script" --unattended --from-bootstrap || echo "⚠ XDG cleanup script reported issues" >&2
-    else
-      "$xdg_script" --from-bootstrap || echo "⚠ XDG cleanup script reported issues" >&2
-    fi
+    "$xdg_script" --from-bootstrap || echo "⚠ XDG cleanup script reported issues" >&2
   else
     echo "⚠ XDG cleanup script not found at $xdg_script" >&2
   fi
@@ -941,20 +843,6 @@ main() {
   # Suppress potential shell startup warnings during bootstrap
   export BOOTSTRAP_MODE=1
   
-  # Setup unattended mode if requested
-  setup_unattended_mode
-  
-  # For unattended mode, ensure sudo credentials upfront without prompting
-  if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-    echo "Checking sudo credentials for unattended operations…"
-    if ensure_sudo; then
-      echo "✅ Sudo credentials verified for unattended mode."
-    else
-      echo "❌ Unable to verify sudo credentials; exiting." >&2
-      exit 1
-    fi
-  fi
-  
   announce_step "Ensuring XDG base directories exist"
   ensure_directories
 
@@ -1024,10 +912,7 @@ main() {
   echo "🎉 Bootstrap complete!"
   echo ""
   
-  if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-    echo "✅ Installation completed in unattended mode."
-    echo "ℹ  Please restart your terminal to apply all changes."
-  elif macos_is; then
+  if macos_is; then
     echo "ℹ  To apply all changes, you need to restart your terminal."
     echo ""
     if yesno "Quit terminal now to apply changes?" default_yes; then

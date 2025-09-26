@@ -10,14 +10,10 @@
 set -euo pipefail
 
 # Check for command line arguments
-UNATTENDED_MODE=false
 FROM_BOOTSTRAP=false
 
 for arg in "$@"; do
     case "$arg" in
-        --unattended)
-            UNATTENDED_MODE=true
-            ;;
         --from-bootstrap)
             FROM_BOOTSTRAP=true
             ;;
@@ -54,19 +50,14 @@ safe_remove() {
             echo -e "  Type: File ($(/bin/ls -lh "$path" 2>/dev/null | /usr/bin/awk '{print $5}') size)"
         fi
         
-        if [[ "$UNATTENDED_MODE" == "true" ]]; then
+        read -q "?  Remove this? (y/n): "
+        echo ""
+        
+        if [[ $REPLY == "y" ]]; then
             /bin/rm -rf "$path"
-            echo -e "${GREEN}✅ Removed (unattended mode)${NC}"
+            echo -e "${GREEN}✅ Removed${NC}"
         else
-            read -q "?  Remove this? (y/n): "
-            echo ""
-            
-            if [[ $REPLY == "y" ]]; then
-                /bin/rm -rf "$path"
-                echo -e "${GREEN}✅ Removed${NC}"
-            else
-                echo -e "${YELLOW}⏭️  Skipped${NC}"
-            fi
+            echo -e "${YELLOW}⏭️  Skipped${NC}"
         fi
         echo ""
     fi
@@ -105,12 +96,10 @@ echo "• Application caches: Now in ~/.cache/"
 echo "• Application data: Now in ~/.local/share/"
 echo ""
 
-# Handle shell restart in unattended vs interactive mode
-if [[ "$UNATTENDED_MODE" == "true" ]] || [[ "$FROM_BOOTSTRAP" == "true" ]]; then
+# Handle shell restart when invoked from bootstrap
+if [[ "$FROM_BOOTSTRAP" == "true" ]]; then
     echo -e "${BLUE}Cleanup completed.${NC}"
     if [[ "$FROM_BOOTSTRAP" == "true" ]]; then
-        echo -e "${YELLOW}Note: Shell restart will be handled by the bootstrap script.${NC}"
-    elif [[ "$UNATTENDED_MODE" == "true" ]]; then
         echo -e "${YELLOW}Note: Shell restart will be handled by the bootstrap script.${NC}"
     fi
     

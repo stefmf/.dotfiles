@@ -45,8 +45,6 @@ The unified script keeps interactivity light and explicit:
 Command-line flags (optional):
 
 - `--debug` — enable verbose logging for troubleshooting runs.
-- `--unattended` — accept the safe defaults documented in the script without prompting.
-- Combine them (e.g. `./bootstrap.sh --unattended --debug`) if you need both behaviors.
 
 Environment variables you can pre-set to change defaults:
 
