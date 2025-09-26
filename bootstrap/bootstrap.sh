@@ -238,8 +238,11 @@ start_sudo_keepalive() {
 
   (
     while true; do
-      sudo -n true 2>/dev/null || break
-      sleep 60
+      if ! sudo -n -v >/dev/null 2>&1; then
+        printf "\n⚠ Cached sudo credentials expired; rerun 'sudo -v' to resume privileged steps.\n" >&2
+        break
+      fi
+      sleep "${SUDO_KEEPALIVE_INTERVAL:-60}"
     done
   ) &
   SUDO_KEEPALIVE_PID=$!
@@ -289,8 +292,25 @@ ensure_sudo() {
   # Ensure we have sudo credentials, prompting if necessary
   if ! sudo -n true 2>/dev/null; then
     if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
+      local wait_total=${SUDO_REFRESH_TIMEOUT:-120}
+      local wait_step=${SUDO_REFRESH_INTERVAL:-5}
+      local waited=0
+
       echo "❌ Administrator privileges are required but no cached sudo credentials were found." >&2
-      echo "   Run 'sudo -v' to authenticate, then rerun this script with --unattended." >&2
+      echo "   Run 'sudo -v' in another terminal or session." >&2
+      echo "   Waiting up to ${wait_total}s for refreshed credentials…" >&2
+
+      while (( waited < wait_total )); do
+        sleep "$wait_step"
+        (( waited += wait_step ))
+        if sudo -n true 2>/dev/null; then
+          echo "   ✓ Sudo credentials refreshed; resuming." >&2
+          start_sudo_keepalive
+          return 0
+        fi
+      done
+
+      echo "   ✗ Timed out waiting for sudo credentials. Exiting." >&2
       exit 1
     fi
 
@@ -926,15 +946,13 @@ main() {
   
   # For unattended mode, ensure sudo credentials upfront without prompting
   if [[ "${UNATTENDED_MODE:-false}" == "true" ]]; then
-    echo "Checking sudo credentials for system operations…"
-    if ! sudo -n true 2>/dev/null; then
-      echo "❌ ERROR: Unattended mode requires pre-authenticated sudo credentials."
-      echo "Please run 'sudo -v' first to authenticate, then run this script again."
-      echo "Alternatively, run without --unattended for interactive mode."
+    echo "Checking sudo credentials for unattended operations…"
+    if ensure_sudo; then
+      echo "✅ Sudo credentials verified for unattended mode."
+    else
+      echo "❌ Unable to verify sudo credentials; exiting." >&2
       exit 1
     fi
-    echo "✅ Sudo credentials verified for unattended mode."
-    start_sudo_keepalive
   fi
   
   announce_step "Ensuring XDG base directories exist"
