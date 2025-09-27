@@ -1,172 +1,27 @@
 #!/usr/bin/env bash
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Unified Bootstrap (macOS 26 "Tahoe" and modern Linux)
-# - Respects XDG Base Directory Spec
-# - Uses Dotbot for linking
-# - Installs packages (Homebrew on macOS; apt/pacman on Linux)
-# - Preserves and improves interactive prompts
-# - Safe to run multiple times (idempotent where practical)
-#
-# Notes
-# - macOS flow is feature-complete for initial setup: CLT, Homebrew, Brewfile
-#   (optional casks/services), DNS (optional), Dock, Touch ID, iTerm2, Dotbot,
-#   Git config, optional gh auth, SSH sockets, optional shell change.
-# - Linux flow installs base packages (apt/pacman), Dotbot, Git config, optional
-#   gh auth, SSH sockets, optional GNOME Terminal font.
-# - Advanced Linux installers (Docker, kubectl, kind, Helm, Terraform, AWS CLI,
-#   Fastfetch, Oh My Posh, Nerd Fonts, bat symlink) are not yet ported here and
-#   remain in archived scripts for reference.
-# - Interactive prompts can be bypassed with env flags: INSTALL_CASKS,
-#   INSTALL_MAS_APPS, INSTALL_SERVICES, INSTALL_OFFICE_TOOLS, INSTALL_SLACK, 
-#   INSTALL_PARALLELS, CONFIGURE_DNS, GITHUB_AUTH, CONFIGURE_GIT, CHANGE_SHELL,
-#   SETUP_DEV_DIR, RUN_XDG_CLEANUP.
-# - This script is designed for iterative testing and refinement.
-# ──────────────────────────────────────────────────────────────────────────────
-
 set -euo pipefail
 
-# ----------------------------------------------------------------------------
-# Common: Colors and logging
-# ----------------------------------------------------------------------------
-_color() { command -v tput >/dev/null 2>&1 && tput setaf "$1" || true; }
-_reset() { command -v tput >/dev/null 2>&1 && tput sgr0 || true; }
-INFO=$(_color 2); WARN=$(_color 3); ERR=$(_color 1); STEP=$(_color 4); RST=$(_reset)
-log_info()    { [[ "${DEBUG_MODE:-false}" == "true" ]] && printf "%b[INFO]%b %s\n"    "$INFO" "$RST" "$*"; }
-log_warning() { printf "%b[WARNING]%b %s\n" "$WARN" "$RST" "$*"; }
-log_error()   { printf "%b[ERROR]%b %s\n"   "$ERR"  "$RST" "$*" 1>&2; }
-announce_step() {
-  if [[ -n "$STEP" && -n "$RST" ]]; then
-    printf "%b→%b %s\n" "$STEP" "$RST" "$1"
-  else
-    printf "→ %s\n" "$1"
-  fi
-}
-
-SUDO_KEEPALIVE_PID=""
-
-cleanup() {
-  if [[ -n "${SUDO_KEEPALIVE_PID:-}" ]]; then
-    kill "${SUDO_KEEPALIVE_PID}" 2>/dev/null || true
-    wait "${SUDO_KEEPALIVE_PID}" 2>/dev/null || true
-    SUDO_KEEPALIVE_PID=""
-  fi
-}
-
-trap cleanup EXIT
-
-err_trap() { log_error "Bootstrap failed at line $1"; }
-trap 'err_trap $LINENO' ERR
-
-# ----------------------------------------------------------------------------
-# Command-line argument parsing
-# ----------------------------------------------------------------------------
-normalize_bool_var() {
-  local var_name="$1"
-  local value="${!var_name:-}"
-
-  if [[ -z "$value" ]]; then
-    printf -v "$var_name" "false"
-    return
-  fi
-
-  case "$(echo "$value" | tr '[:upper:]' '[:lower:]')" in
-    true|yes|1|on)
-      printf -v "$var_name" "true"
-      ;;
-    false|no|0|off)
-      printf -v "$var_name" "false"
-      ;;
-    *)
-      log_error "Invalid value for $var_name: $value (expected true/false)"
-      exit 1
-      ;;
-  esac
-}
-
-parse_args() {
-  while [[ $# -gt 0 ]]; do
-    case $1 in
-      -d|--debug)
-        DEBUG_MODE="true"
-        ;;
-      -h|--help)
-        show_help
-        exit 0
-        ;;
-      --)
-        shift
-        break
-        ;;
-      -* )
-        log_error "Unknown option: $1"
-        show_help
-        exit 1
-        ;;
-      *)
-        log_error "Unexpected argument: $1"
-        show_help
-        exit 1
-        ;;
-    esac
-    shift
-  done
-
-  normalize_bool_var DEBUG_MODE
-}
-
-show_help() {
-  cat << EOF
-Unified Bootstrap Script for macOS and Linux
-
-USAGE:
-  $0 [OPTIONS]
-
-OPTIONS:
-  -d, --debug        Enable verbose debug logging
-  -h, --help         Show this help message
-
-EXAMPLES:
-  $0                    # Interactive mode with minimal logging (default)
-  $0 --debug            # Interactive mode with verbose logging  
-ENVIRONMENT VARIABLES:
-  You can also set these via environment variables:
-  DEBUG_MODE=true $0
-  
-  Or override specific install options:
-  INSTALL_CASKS=no INSTALL_OFFICE_TOOLS=yes $0
-
-For more details, see the script header comments.
-EOF
-}
-
-# ----------------------------------------------------------------------------
-# Common: Guards and constants
-# ----------------------------------------------------------------------------
 if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
-  log_error "Do not run as root; run as your user (we'll sudo when needed)."
+  echo "✗ Do not run as root" >&2
   exit 1
 fi
 
+# Constants
 readonly DOTFILES_DIR="$HOME/.dotfiles"
 readonly DOTBOT_INSTALL="$DOTFILES_DIR/install"
-readonly BREWFILE_MACOS="$DOTFILES_DIR/bootstrap/Brewfile"
+readonly BREWFILE="$DOTFILES_DIR/bootstrap/Brewfile"
 readonly DOCK_CONFIG="$DOTFILES_DIR/config/dock/dock_config.zsh"
 
-# XDG (export early so sub-steps can rely on it)
+# XDG directories
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
-
-# Other common dirs used by this repo
-export ZSH_SESSION_DIR="$HOME/.zsh_sessions"
 export DOTFILES="$DOTFILES_DIR"
 
-# Default values for command-line flags
-DEBUG_MODE=${DEBUG_MODE:-false}
-
-# Options (can be pre-seeded via env for non-interactive runs)
+# Configuration (override via environment variables)
+# Values can be: true, false, or ask (to prompt user)
 INSTALL_CASKS=${INSTALL_CASKS:-ask}
 INSTALL_MAS_APPS=${INSTALL_MAS_APPS:-ask}
 INSTALL_SERVICES=${INSTALL_SERVICES:-ask}
@@ -180,134 +35,80 @@ CHANGE_SHELL=${CHANGE_SHELL:-ask}
 SETUP_DEV_DIR=${SETUP_DEV_DIR:-ask}
 RUN_XDG_CLEANUP=${RUN_XDG_CLEANUP:-ask}
 
-# ----------------------------------------------------------------------------
-# ----------------------------------------------------------------------------
-# ----------------------------------------------------------------------------
-# Helpers: prompts and sudo keep-alive
-# ----------------------------------------------------------------------------
-start_sudo_keepalive() {
-  if [[ -n "${SUDO_KEEPALIVE_PID:-}" ]] && kill -0 "${SUDO_KEEPALIVE_PID}" 2>/dev/null; then
-    return
+# Logging
+info() { echo "→ $*"; }
+step() { echo ""; echo "→ $*"; }
+warn() { echo "⚠ $*" >&2; }
+error() { echo "✗ $*" >&2; }
+success() { echo "✓ $*"; }
+
+# Utilities
+is_macos() { [[ "$(uname)" == "Darwin" ]]; }
+is_linux() { [[ "$(uname)" == "Linux" ]]; }
+
+confirm() {
+  local prompt="$1" default="${2:-n}"
+  local reply
+  if [[ "$default" == "y" ]]; then
+    read -r -p "$prompt [Y/n] " reply
+    [[ -z "$reply" || "$reply" =~ ^[Yy] ]]
+  else
+    read -r -p "$prompt [y/N] " reply
+    [[ "$reply" =~ ^[Yy] ]]
   fi
-
-  (
-    while true; do
-      if ! sudo -n -v >/dev/null 2>&1; then
-        printf "\n⚠ Cached sudo credentials expired; rerun 'sudo -v' to resume privileged steps.\n" >&2
-        break
-      fi
-      sleep "${SUDO_KEEPALIVE_INTERVAL:-60}"
-    done
-  ) &
-  SUDO_KEEPALIVE_PID=$!
 }
 
-yesno() {
-  # yesno "Question?" default_no|default_yes|no_prompt -> returns 0 for yes
-  local prompt default reply
-  prompt="$1"; default="${2:-default_no}"
-  while true; do
-    case "$default" in
-      default_yes) read -r -p "$prompt [Y/n] " reply || true ;;
-      no_prompt)   reply=y ;;
-      *)           read -r -p "$prompt [y/N] " reply || true ;;
-    esac
-    
-    # Handle empty input (use default)
-    if [[ -z "$reply" ]]; then
-      case "$default" in
-        default_yes|no_prompt) return 0 ;;
-        *) return 1 ;;
-      esac
+# Convert "ask" values to true/false based on user input
+resolve_option() {
+  local var_name="$1" prompt="$2" default="${3:-n}"
+  local current_value="${!var_name}"
+  
+  if [[ "$current_value" == "ask" ]]; then
+    if confirm "$prompt" "$default"; then
+      printf -v "$var_name" "true"
+    else
+      printf -v "$var_name" "false"
     fi
-    
-    # Validate input
-    case "$(echo "$reply" | tr '[:upper:]' '[:lower:]')" in  # Convert to lowercase
-      y|yes) return 0 ;;
-      n|no)  return 1 ;;
-      *) 
-        echo "Please enter 'y' for yes or 'n' for no"
-        continue
-        ;;
-    esac
-  done
+  fi
 }
 
-ensure_sudo() {
-  # Ensure we have sudo credentials, prompting if necessary
+require_sudo() {
   if ! sudo -n true 2>/dev/null; then
-    echo "→ Administrator privileges required for system operations…"
-    if ! sudo -v; then
-      echo "✗ Failed to acquire sudo credentials" >&2
-      return 1
-    fi
-    echo "✓ Administrator privileges confirmed"
+    info "Administrator privileges required"
+    sudo -v || { error "Failed to acquire sudo credentials"; exit 1; }
   fi
-
-  start_sudo_keepalive
 }
 
-sudo_run() {
-  local display_cmd
-  display_cmd=$(printf '%q ' "$@")
-  display_cmd=${display_cmd% }
-
-  if sudo -n "$@"; then
-    start_sudo_keepalive
-    return 0
-  fi
-
-  sudo "$@"
-  local status=$?
-  if [[ $status -eq 0 ]]; then
-    start_sudo_keepalive
-  fi
-  return $status
-}
-
-# ----------------------------------------------------------------------------
-# Common: XDG directory creation and repo ownership sanity
-# ----------------------------------------------------------------------------
-ensure_directories() {
+# System setup
+setup_directories() {
   mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$XDG_STATE_HOME"
-  mkdir -p "$ZSH_SESSION_DIR" "$HOME/.ssh/sockets"
+  mkdir -p "$HOME/.zsh_sessions" "$HOME/.ssh/sockets"
   chmod 700 "$HOME/.ssh" "$HOME/.ssh/sockets" 2>/dev/null || true
 }
 
-ensure_repo_writable() {
+fix_repository_ownership() {
   if [[ ! -w "$DOTFILES_DIR" ]]; then
-    echo "⚠ Dotfiles repo not writable by $(id -un); attempting chown…" >&2
-    if sudo_run chown -R "$(id -un):$(id -gn)" "$DOTFILES_DIR"; then
-      echo "✓ Repository ownership fixed"
-    else
-      echo "✗ Could not chown $DOTFILES_DIR" >&2
-    fi
+    require_sudo
+    sudo chown -R "$(id -un):$(id -gn)" "$DOTFILES_DIR" || warn "Could not fix repository ownership"
   fi
 }
 
-# ----------------------------------------------------------------------------
-# macOS specific helpers
-# ----------------------------------------------------------------------------
-macos_is() { [[ "$(uname)" == "Darwin" ]]; }
-
-macos_require_clt() {
-  echo "Checking Xcode Command Line Tools…"
+# macOS functions
+install_xcode_clt() {
   if ! xcode-select -p >/dev/null 2>&1; then
-    xcode-select --install || true
-    echo "Waiting for CLT to be installed…"
+    info "Installing Xcode Command Line Tools"
+    xcode-select --install
     until xcode-select -p >/dev/null 2>&1; do sleep 10; done
+    success "Command Line Tools installed"
   fi
 }
 
-macos_install_homebrew() {
+install_homebrew() {
   if ! command -v brew >/dev/null 2>&1; then
-    echo "Installing Homebrew…"
+    info "Installing Homebrew"
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  else
-    echo "Homebrew already installed"
   fi
-
-  # shellenv (runtime only; permanent config handled by your zprofile)
+  
   if [[ "$(uname -m)" == "arm64" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   else
@@ -315,687 +116,355 @@ macos_install_homebrew() {
   fi
 }
 
-macos_install_brewfile() {
-  local brewfile="$BREWFILE_MACOS"
-  if [[ ! -f "$brewfile" ]]; then
-    echo "⚠ No Brewfile found at $brewfile; skipping brew bundle" >&2
-    return
-  fi
-
-  echo "Preparing Brewfile install…"
-
-  local bundle_file="$brewfile"
-  local temp_file=""
-  local install_parallels_separately=false
-
-  create_temp_copy() {
-    if [[ -z "$temp_file" ]]; then
-      temp_file=$(mktemp)
-      cp "$brewfile" "$temp_file"
-      bundle_file="$temp_file"
-    fi
-  }
-
-  # Handle optional sections
-  if [[ "$INSTALL_CASKS" == "ask" ]]; then
-    yesno "Install Homebrew cask apps?" default_yes && INSTALL_CASKS=yes || INSTALL_CASKS=no
-  fi
-  if [[ "$INSTALL_MAS_APPS" == "ask" ]]; then
-    yesno "Install Mac App Store apps?" default_no && INSTALL_MAS_APPS=yes || INSTALL_MAS_APPS=no
-  fi
-  if [[ "$INSTALL_SERVICES" == "ask" ]]; then
-    yesno "Install Tailscale and dnsmasq?" default_yes && INSTALL_SERVICES=yes || INSTALL_SERVICES=no
-  fi
-  if [[ "$INSTALL_OFFICE_TOOLS" == "ask" ]]; then
-    yesno "Install Microsoft Office tools (Excel, PowerPoint, Word, Teams)?" default_no && INSTALL_OFFICE_TOOLS=yes || INSTALL_OFFICE_TOOLS=no
-  fi
-  if [[ "$INSTALL_SLACK" == "ask" ]]; then
-    yesno "Install Slack?" default_no && INSTALL_SLACK=yes || INSTALL_SLACK=no
-  fi
-  if [[ "$INSTALL_PARALLELS" == "ask" ]]; then
-    yesno "Install Parallels virtualization software?" default_no && INSTALL_PARALLELS=yes || INSTALL_PARALLELS=no
-  fi
-
-  if [[ "$INSTALL_CASKS" == "no" ]]; then
-    create_temp_copy
-    # Keep nerd font cask installed separately later if needed; remove other casks
-    sed -i '' -e '/^cask "font-jetbrains-mono-nerd-font"/!{/^cask /d;}' "$bundle_file" || true
-  fi
-
-  if [[ "$INSTALL_MAS_APPS" == "no" ]]; then
-    create_temp_copy
-    sed -i '' -e '/^mas /d' "$bundle_file" || true
-  fi
-
-  if [[ "$INSTALL_SERVICES" == "no" ]]; then
-    create_temp_copy
-    sed -i '' -e '/brew "tailscale"/d' -e '/brew "dnsmasq"/d' "$bundle_file" || true
-  fi
-
-  if [[ "$INSTALL_OFFICE_TOOLS" == "no" ]]; then
-    create_temp_copy
-    sed -i '' -e '/cask "microsoft-teams"/d' \
-           -e '/mas "Microsoft Excel"/d' \
-           -e '/mas "Microsoft PowerPoint"/d' \
-           -e '/mas "Microsoft Word"/d' "$bundle_file" || true
-  fi
-
-  if [[ "$INSTALL_SLACK" == "no" ]]; then
-    create_temp_copy
-    sed -i '' -e '/mas "Slack"/d' "$bundle_file" || true
-  fi
-
-  if [[ "$INSTALL_PARALLELS" == "yes" ]]; then
-    install_parallels_separately=true
-  fi
-
-  if [[ "$INSTALL_PARALLELS" == "no" ]] || [[ "$install_parallels_separately" == "true" ]]; then
-    create_temp_copy
-    sed -i '' -e '/cask "parallels"/d' "$bundle_file" || true
-  fi
-
-  echo "Checking Brew bundle requirements…"
-  if brew bundle --file="$bundle_file" check >/dev/null 2>&1; then
-    echo "✓ Homebrew packages already satisfied"
+install_packages_macos() {
+  [[ ! -f "$BREWFILE" ]] && { warn "Brewfile not found at $BREWFILE"; return; }
+  
+  local temp_brewfile
+  temp_brewfile=$(mktemp)
+  cp "$BREWFILE" "$temp_brewfile"
+  
+  # Filter packages based on configuration
+  [[ "$INSTALL_CASKS" != "true" ]] && sed -i '' '/^cask /d' "$temp_brewfile"
+  [[ "$INSTALL_MAS_APPS" != "true" ]] && sed -i '' '/^mas /d' "$temp_brewfile"
+  [[ "$INSTALL_SERVICES" != "true" ]] && sed -i '' -e '/brew "tailscale"/d' -e '/brew "dnsmasq"/d' "$temp_brewfile"
+  [[ "$INSTALL_OFFICE_TOOLS" != "true" ]] && sed -i '' -e '/cask "microsoft-teams"/d' -e '/mas "Microsoft Excel"/d' -e '/mas "Microsoft PowerPoint"/d' -e '/mas "Microsoft Word"/d' "$temp_brewfile"
+  [[ "$INSTALL_SLACK" != "true" ]] && sed -i '' '/mas "Slack"/d' "$temp_brewfile"
+  [[ "$INSTALL_PARALLELS" != "true" ]] && sed -i '' '/cask "parallels"/d' "$temp_brewfile"
+  
+  if brew bundle --file="$temp_brewfile" check >/dev/null 2>&1; then
+    success "Homebrew packages already satisfied"
   else
-    echo "Running brew bundle…"
-    if brew bundle --file="$bundle_file"; then
-      echo "✓ Homebrew packages installed successfully"
-    else
-      echo "⚠ Some Homebrew packages failed to install" >&2
-    fi
-  fi
-
-  [[ -n "$temp_file" ]] && rm -f "$temp_file"
-  unset -f create_temp_copy
-
-  if [[ "$install_parallels_separately" == "true" ]]; then
-    macos_install_parallels
-  fi
-
-  # Ensure JetBrains Mono Nerd Font (if not in filtered Brewfile)
-  if ! brew list --cask font-jetbrains-mono-nerd-font >/dev/null 2>&1; then
-    echo "  • Installing JetBrains Mono Nerd Font..."
-    if brew install --cask font-jetbrains-mono-nerd-font; then
-      echo "    ✓ JetBrains Mono Nerd Font installed"
-    else
-      echo "    ⚠ Failed to install Nerd Font" >&2
-    fi
-  fi
-}
-
-macos_configure_dock() {
-  [[ "$INSTALL_CASKS" == "no" ]] && { echo "→ Skipping Dock config (casks not installed)"; return; }
-  if [[ -f "$DOCK_CONFIG" ]]; then
-    echo "→ Configuring Dock…"
-    if zsh "$DOCK_CONFIG"; then
-      echo "✓ Dock configuration completed"
-    else
-      echo "⚠ Dock configuration script failed" >&2
-    fi
-  else
-    echo "⚠ Dock config not found at $DOCK_CONFIG" >&2
-  fi
-}
-
-macos_install_parallels() {
-  if ! command -v brew >/dev/null 2>&1; then
-    echo "⚠ Homebrew not available; cannot install Parallels" >&2
-    return
-  fi
-
-  if brew list --cask parallels >/dev/null 2>&1; then
-    echo "  ✓ Parallels Desktop already installed"
-    return
-  fi
-
-  echo "→ Installing Parallels Desktop (large download)…"
-  if ! ensure_sudo; then
-    echo "⚠ Skipping Parallels Desktop install (sudo unavailable)" >&2
-    return
-  fi
-
-  if brew install --cask parallels; then
-    echo "  ✓ Parallels Desktop installed"
-  else
-    echo "  ⚠ Parallels Desktop install failed." >&2
-    echo "    Parallels often requires an interactive login to download the installer." >&2
-    echo "    Download it manually from https://www.parallels.com/products/desktop/ and install it, then rerun this script if needed." >&2
-  fi
-}
-
-macos_enable_services() {
-  [[ "$INSTALL_SERVICES" == "no" ]] && { echo "→ Skipping services (user disabled)"; return; }
-  if ! command -v brew >/dev/null 2>&1; then 
-    echo "→ Brew not available, skipping service startup"
-    return
+    info "Installing Homebrew packages"
+    brew bundle --file="$temp_brewfile" || warn "Some packages failed to install"
   fi
   
-  echo "→ Starting system services via brew services…"
-  ensure_sudo || {
-    echo "⚠ Could not acquire sudo credentials, skipping service startup" >&2
-    return
-  }
+  rm -f "$temp_brewfile"
+  
+  # Ensure Nerd Font
+  if ! brew list --cask font-jetbrains-mono-nerd-font >/dev/null 2>&1; then
+    brew install --cask font-jetbrains-mono-nerd-font || warn "Failed to install Nerd Font"
+  fi
+}
 
-  local svcs=(tailscale dnsmasq)
-  local status
-  local services_list
-  services_list=$(brew services list 2>/dev/null)
-  for s in "${svcs[@]}"; do
-    if brew list "$s" >/dev/null 2>&1; then
-      echo "  • Managing $s via brew services…"
-      status=$(awk -v svc="$s" 'NR>1 && $1==svc {print $2}' <<<"$services_list")
-      if [[ "$status" == "started" ]]; then
-        echo "    • $s already running; restarting"
-        if brew services restart "$s"; then
-          echo "    ✓ $s restarted"
-        else
-          echo "    ⚠ Failed to restart $s" >&2
-        fi
-      else
-        if brew services start "$s"; then
-          echo "    ✓ $s started"
-        else
-          echo "    ⚠ Failed to start $s" >&2
-        fi
-      fi
-    else
-      echo "  • $s not installed, skipping"
+configure_services_macos() {
+  [[ "$INSTALL_SERVICES" != "true" ]] && return
+  
+  command -v brew >/dev/null 2>&1 || return
+  require_sudo
+  
+  for service in tailscale dnsmasq; do
+    if brew list "$service" >/dev/null 2>&1; then
+      info "Starting $service"
+      brew services restart "$service" || warn "Failed to start $service"
     fi
   done
 }
 
-macos_configure_dns() {
-  # Skip DNS configuration if services were not installed
-  if [[ "$INSTALL_SERVICES" == "no" ]]; then
-    echo "→ Services not installed, skipping DNS configuration"
-    return
-  fi
+configure_dns_macos() {
+  [[ "$CONFIGURE_DNS" != "true" ]] && return
+  [[ "$INSTALL_SERVICES" != "true" ]] && return
   
-  # Only offer DNS configuration if dnsmasq is actually installed
-  if ! command -v brew >/dev/null 2>&1 || ! brew list dnsmasq >/dev/null 2>&1; then
-    echo "→ dnsmasq not installed, skipping DNS configuration"
-    return
-  fi
+  command -v brew >/dev/null 2>&1 && brew list dnsmasq >/dev/null 2>&1 || return
   
-  if [[ "$CONFIGURE_DNS" == "ask" ]]; then
-    yesno "Configure system DNS to 127.0.0.1 for dnsmasq?" default_no && CONFIGURE_DNS=yes || CONFIGURE_DNS=no
-  fi
-  [[ "$CONFIGURE_DNS" != "yes" ]] && { echo "→ Skipping DNS configuration"; return; }
-
-  echo "→ Configuring system DNS (requires sudo)..."
-  ensure_sudo || {
-    echo "⚠ Could not acquire sudo credentials, skipping DNS configuration" >&2
-    return
-  }
-
-  echo "  • Setting DNS servers to 127.0.0.1 for all non‑VPN services…"
-  local svc
-  while IFS= read -r svc; do
-    svc="${svc#\*}"; svc="$(echo "$svc" | xargs)"
-    [[ -z "$svc" || "$svc" == *VPN* || "$svc" == Tailscale* ]] && continue
-    if sudo_run networksetup -setdnsservers "$svc" 127.0.0.1; then
-      echo "    ✓ DNS configured for $svc"
-    else
-      echo "    ⚠ Failed DNS setup on $svc" >&2
-    fi
+  require_sudo
+  info "Configuring DNS to use dnsmasq"
+  
+  while IFS= read -r service; do
+    service="${service#\*}"
+    service="$(echo "$service" | xargs)"
+    [[ -z "$service" || "$service" == *VPN* || "$service" == Tailscale* ]] && continue
+    sudo networksetup -setdnsservers "$service" 127.0.0.1 || warn "Failed to set DNS for $service"
   done < <(networksetup -listallnetworkservices 2>/dev/null | sed '1d')
 }
 
-macos_enable_touchid() {
-  echo "→ Enabling Touch ID for sudo (sudo_local)…"
-  
-  # Check if PAM directory exists (should always exist on macOS)
-  if [[ ! -d /etc/pam.d ]]; then
-    echo "⚠ PAM directory /etc/pam.d not found, skipping Touch ID setup" >&2
-    return
-  fi
-
-  # Check if our dotfiles sudo_local exists
+configure_touchid_macos() {
   local dotfiles_sudo_local="$DOTFILES_DIR/system/pam.d/sudo_local"
-  if [[ ! -f "$dotfiles_sudo_local" ]]; then
-    echo "⚠ Dotfiles sudo_local not found at $dotfiles_sudo_local, skipping Touch ID setup" >&2
-    return
-  fi
-
-  echo "  • Touch ID setup requires sudo access..."
-  ensure_sudo || {
-    echo "⚠ Could not acquire sudo credentials, skipping Touch ID setup" >&2
-    return
-  }
-
-  # Force remove any existing sudo_local (file or symlink)
-  if [[ -e /etc/pam.d/sudo_local || -L /etc/pam.d/sudo_local ]]; then
-    echo "  • Removing existing sudo_local…"
-    if sudo_run rm -f /etc/pam.d/sudo_local; then
-      echo "    ✓ Existing sudo_local removed"
-    else
-      echo "    ⚠ Could not remove existing sudo_local" >&2
-      return
-    fi
-  fi
-
-  # Create symlink to our dotfiles version
-  echo "  • Creating symlink to dotfiles sudo_local…"
-  if sudo_run ln -sf "$dotfiles_sudo_local" /etc/pam.d/sudo_local; then
-    echo "    ✓ Touch ID for sudo configured successfully"
-  else
-    echo "    ⚠ Could not create symlink to dotfiles sudo_local" >&2
-    return
-  fi
+  [[ ! -f "$dotfiles_sudo_local" ]] && { warn "sudo_local config not found"; return; }
+  
+  require_sudo
+  info "Enabling Touch ID for sudo"
+  
+  sudo rm -f /etc/pam.d/sudo_local 2>/dev/null || true
+  sudo ln -sf "$dotfiles_sudo_local" /etc/pam.d/sudo_local || warn "Failed to configure Touch ID"
 }
 
-macos_configure_iterm2() {
-  echo "→ Configuring iTerm2 preferences…"
-  defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$HOME/.config/iterm2" 2>/dev/null || true
-  defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true 2>/dev/null || true
+configure_dock_macos() {
+  [[ "$INSTALL_CASKS" == "true" && -f "$DOCK_CONFIG" ]] || return
+  
+  info "Configuring Dock"
+  zsh "$DOCK_CONFIG" || warn "Dock configuration failed"
+}
+
+configure_iterm2_macos() {
+  info "Configuring iTerm2"
+  defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$HOME/.config/iterm2" 2>/dev/null
+  defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true 2>/dev/null
+  
   mkdir -p "$HOME/.config/iterm2/DynamicProfiles"
   local src="$DOTFILES_DIR/config/iterm2/DynamicProfiles/Stef.json"
   local dst="$HOME/.config/iterm2/DynamicProfiles/Stef.json"
-  if [[ -f "$src" ]]; then
-    if [[ ! -f "$dst" ]] || ! cmp -s "$src" "$dst"; then
-      cp "$src" "$dst" && echo "  ✓ Updated iTerm2 dynamic profile"
-    else
-      echo "  ✓ iTerm2 dynamic profile already up to date"
-    fi
-  else
-    echo "  ⚠ iTerm2 profile source not found at $src"
+  
+  if [[ -f "$src" ]] && ([[ ! -f "$dst" ]] || ! cmp -s "$src" "$dst"); then
+    cp "$src" "$dst"
   fi
 }
 
-# ----------------------------------------------------------------------------
-# Linux specific helpers
-# ----------------------------------------------------------------------------
-linux_is() { [[ "$(uname)" == "Linux" ]]; }
-
-linux_pkg_manager=""
-linux_detect_pkgmgr() {
+# Linux functions
+detect_package_manager() {
   if command -v apt >/dev/null 2>&1; then
-    linux_pkg_manager=apt
-    echo "  • Detected apt"
-    return
+    echo "apt"
+  elif command -v pacman >/dev/null 2>&1; then
+    echo "pacman"
+  else
+    echo "unknown"
   fi
-  if command -v pacman >/dev/null 2>&1; then
-    linux_pkg_manager=pacman
-    echo "  • Detected pacman"
-    return
-  fi
-  linux_pkg_manager=unknown
-  echo "⚠ Could not detect a supported package manager"
 }
 
-linux_update_system() {
-  case "$linux_pkg_manager" in
+update_system_linux() {
+  local pkg_manager
+  pkg_manager=$(detect_package_manager)
+  require_sudo
+  
+  case "$pkg_manager" in
     apt)
-      sudo_run apt update
-      sudo_run apt upgrade -y || true
+      sudo apt update && sudo apt upgrade -y
       ;;
     pacman)
-      sudo_run pacman -Syu --noconfirm || true
+      sudo pacman -Syu --noconfirm
       ;;
-    *) log_warning "Unknown package manager; skipping update" ;;
+    *)
+      warn "Unknown package manager, skipping system update"
+      ;;
   esac
 }
 
-linux_install_base_packages() {
-  case "$linux_pkg_manager" in
+install_packages_linux() {
+  local pkg_manager
+  pkg_manager=$(detect_package_manager)
+  require_sudo
+  
+  case "$pkg_manager" in
     apt)
-  local list="$DOTFILES_DIR/bootstrap/archive/base_packages.list"
+      local list="$DOTFILES_DIR/bootstrap/archive/base_packages.list"
       if [[ -f "$list" ]]; then
-        # filter comments/empty
-        pkgs=()
-        while IFS= read -r line; do
-          pkgs+=("$line")
-        done < <(grep -vE '^\s*#' "$list" | sed '/^\s*$/d')
-        sudo_run apt install -y "${pkgs[@]}" || log_warning "Some apt packages failed"
+        mapfile -t packages < <(grep -vE '^\s*#|^\s*$' "$list")
+        sudo apt install -y "${packages[@]}" || warn "Some packages failed to install"
       else
-        log_warning "Package list not found at $list"
+        warn "Package list not found at $list"
       fi
       ;;
     pacman)
-      # Best-effort mapping for common packages
-      local pkgs=(git zsh bat eza fzf htop nmap python screen shellcheck tldr tmux github-cli git-delta glab)
-      sudo_run pacman -S --needed --noconfirm "${pkgs[@]}" || log_warning "Some pacman packages failed"
+      local packages=(git zsh bat eza fzf htop nmap python screen shellcheck tldr tmux github-cli git-delta glab)
+      sudo pacman -S --needed --noconfirm "${packages[@]}" || warn "Some packages failed to install"
+      ;;
+    *)
+      warn "Unknown package manager, skipping package installation"
       ;;
   esac
 }
 
-linux_manual_installs() {
-  # Keep this lightweight: Docker/Kubernetes/Helm/Terraform can be added as needed
-  echo "  • No manual Linux installers defined yet"
+configure_terminal_font_linux() {
+  command -v gsettings >/dev/null 2>&1 || return
+  
+  local profile
+  profile=$(gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'")
+  [[ -n "$profile" ]] || return
+  
+  local path="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$profile/"
+  gsettings set "$path" font 'JetBrainsMono Nerd Font 14' 2>/dev/null || true
+  gsettings set "$path" use-system-font false 2>/dev/null || true
 }
 
-linux_set_terminal_font() {
-  # Optional: attempt to set Nerd Font for GNOME
-  if ! command -v gsettings >/dev/null 2>&1; then
-    echo "  • gsettings not available; skipping terminal font configuration"
-    return
-  fi
-
-  local prof
-  prof=$(gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'") || true
-  if [[ -z "$prof" ]]; then
-    echo "  • GNOME Terminal default profile not found; skipping"
-    return
-  fi
-
-  local path="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$prof/"
-  echo "  • Setting GNOME Terminal font to JetBrainsMono Nerd Font 14"
-  gsettings set "$path" font 'JetBrainsMono Nerd Font 14' || echo "⚠ Failed to set GNOME Terminal font" >&2
-  gsettings set "$path" use-system-font false || true
-}
-
-# ----------------------------------------------------------------------------
-# Dotbot linking and git config
-# ----------------------------------------------------------------------------
-prepare_dotbot_dependencies() {
-  # Create gitconfig.local from template if it doesn't exist
+# Dotfiles and Git setup
+prepare_dotbot() {
   local template="$DOTFILES_DIR/config/git/gitconfig.local.template"
   local target="$DOTFILES_DIR/config/git/gitconfig.local"
+  
   if [[ -f "$template" && ! -f "$target" ]]; then
-    log_info "Creating gitconfig.local from template…"
-    cp "$template" "$target" || log_warning "Failed to create gitconfig.local"
+    cp "$template" "$target" || warn "Failed to create gitconfig.local"
   fi
-
-  # Ensure XDG directories exist for zinit and other tools
-  mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/zinit"
-  mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}"
-  mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}"
-  mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}"
+  
+  mkdir -p "${XDG_DATA_HOME}/zinit"
 }
 
 run_dotbot() {
-  prepare_dotbot_dependencies
+  prepare_dotbot
+  
   if [[ -x "$DOTBOT_INSTALL" ]]; then
-    echo "Running Dotbot…"
-    DOTFILES_SKIP_TOUCHID_LINK=true "$DOTBOT_INSTALL" -v || log_warning "Dotbot reported issues"
+    info "Running Dotbot"
+    DOTFILES_SKIP_TOUCHID_LINK=true "$DOTBOT_INSTALL" || warn "Dotbot reported issues"
   else
-    log_error "Dotbot installer not found at $DOTBOT_INSTALL"
+    error "Dotbot installer not found at $DOTBOT_INSTALL"
+    exit 1
   fi
 }
 
-validate_email() {
-  local email="$1"
-  # Basic email validation regex
-  [[ "$email" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]
+is_valid_email() {
+  [[ "$1" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]
 }
 
-setup_git() {
+configure_git() {
+  [[ "$CONFIGURE_GIT" != "true" ]] && return
+  
   local name email
   
-  # Get and verify git user name
-  while [[ -z "${GIT_USER_NAME:-}" ]]; do 
-    read -r -p "Enter global Git user.name: " name
-    if [[ -z "$name" ]]; then
-      echo "⚠ Name cannot be empty" >&2
-      continue
-    fi
-    
-    echo "Name: $name"
-    if yesno "Is this name correct?" default_yes; then
-      GIT_USER_NAME="$name"
-    else
-      echo "→ Please enter your name again"
-    fi
+  while [[ -z "${name:-}" ]]; do
+    read -r -p "Enter Git user.name: " name
+    [[ -n "$name" ]] && confirm "Use '$name'?" y && break
+    name=""
   done
   
-  # Get and validate git user email
-  while [[ -z "${GIT_USER_EMAIL:-}" ]]; do 
-    read -r -p "Enter global Git user.email: " email
-    if [[ -z "$email" ]]; then
-      echo "⚠ Email cannot be empty" >&2
-      continue
+  while [[ -z "${email:-}" ]]; do
+    read -r -p "Enter Git user.email: " email
+    if [[ -n "$email" ]] && is_valid_email "$email" && confirm "Use '$email'?" y; then
+      break
     fi
-    
-    if validate_email "$email"; then
-      echo "Email: $email"
-      if yesno "Is this email correct?" default_yes; then
-        GIT_USER_EMAIL="$email"
-      else
-        echo "→ Please enter your email again"
-      fi
-    else
-      echo "⚠ Invalid email format. Please enter a valid email address (e.g., user@example.com)" >&2
-    fi
+    email=""
+    warn "Please enter a valid email address"
   done
   
-  if git config --global user.name "$GIT_USER_NAME"; then
-    echo "✓ Git user.name set to: $GIT_USER_NAME"
-  else
-    echo "⚠ Failed to set git user.name" >&2
-  fi
-  
-  if git config --global user.email "$GIT_USER_EMAIL"; then
-    echo "✓ Git user.email set to: $GIT_USER_EMAIL"
-  else
-    echo "⚠ Failed to set git user.email" >&2
-  fi
+  git config --global user.name "$name" || warn "Failed to set git user.name"
+  git config --global user.email "$email" || warn "Failed to set git user.email"
 }
 
-maybe_setup_git() {
-  if [[ "$CONFIGURE_GIT" == "ask" ]]; then
-    if yesno "Configure global Git user.name and user.email now?" default_yes; then
-      CONFIGURE_GIT=yes
-    else
-      CONFIGURE_GIT=no
-    fi
-  fi
-
-  if [[ "$CONFIGURE_GIT" != "yes" ]]; then
-    echo "→ Skipping global Git configuration"
-    return
-  fi
-
-  announce_step "Configuring global Git settings"
-  setup_git
-}
-
-github_auth() {
-  if [[ "$GITHUB_AUTH" == "ask" ]]; then
-    yesno "Login with GitHub CLI now?" default_yes && GITHUB_AUTH=yes || GITHUB_AUTH=no
-  fi
-  [[ "$GITHUB_AUTH" != "yes" ]] && { echo "→ Skipping GitHub CLI authentication"; return; }
+setup_github_auth() {
+  [[ "$GITHUB_AUTH" == "true" ]] || return
   
   if command -v gh >/dev/null 2>&1; then
-    echo "→ Starting GitHub CLI authentication..."
-    if gh auth login --hostname github.com --git-protocol ssh; then
-      echo "✓ GitHub CLI authentication completed"
-    else
-      echo "⚠ GitHub CLI authentication failed" >&2
-    fi
+    info "Setting up GitHub CLI authentication"
+    gh auth login --hostname github.com --git-protocol ssh || warn "GitHub authentication failed"
   else
-    echo "⚠ GitHub CLI not installed; skipping GitHub login" >&2
+    warn "GitHub CLI not installed"
   fi
 }
 
-# ----------------------------------------------------------------------------
-# Additional setup functions
-# ----------------------------------------------------------------------------
+# Additional setup
 run_xdg_cleanup() {
-  if [[ "$RUN_XDG_CLEANUP" == "ask" ]]; then
-    yesno "Run XDG cleanup to remove legacy config files?" default_yes && RUN_XDG_CLEANUP=yes || RUN_XDG_CLEANUP=no
-  fi
-  [[ "$RUN_XDG_CLEANUP" != "yes" ]] && { echo "→ Skipping XDG cleanup"; return; }
-
-  local xdg_script="$DOTFILES_DIR/scripts/system/xdg-cleanup"
-  if [[ -x "$xdg_script" ]]; then
-    echo "→ Running XDG cleanup script…"
-    "$xdg_script" --from-bootstrap || echo "⚠ XDG cleanup script reported issues" >&2
+  [[ "$RUN_XDG_CLEANUP" == "true" ]] || return
+  
+  local script="$DOTFILES_DIR/scripts/system/xdg-cleanup"
+  if [[ -x "$script" ]]; then
+    info "Running XDG cleanup"
+    "$script" --from-bootstrap || warn "XDG cleanup reported issues"
   else
-    echo "⚠ XDG cleanup script not found at $xdg_script" >&2
+    warn "XDG cleanup script not found"
   fi
 }
 
 setup_dev_directory() {
-  if [[ "$SETUP_DEV_DIR" == "ask" ]]; then
-    yesno "Set up ~/dev directory structure?" default_yes && SETUP_DEV_DIR=yes || SETUP_DEV_DIR=no
-  fi
-  [[ "$SETUP_DEV_DIR" != "yes" ]] && { echo "→ Skipping dev directory setup"; return; }
-
-  local dev_script="$DOTFILES_DIR/scripts/dev/bootstrap_dev_dir.sh"
-  if [[ -x "$dev_script" ]]; then
-    echo "→ Setting up development directory structure…"
-    "$dev_script" || echo "⚠ Dev directory setup reported issues" >&2
-    echo "→ Development directory structure ensured at ~/dev"
-  else
-    echo "⚠ Dev directory script not found at $dev_script" >&2
-  fi
-}
-
-# ----------------------------------------------------------------------------
-# Terminal management (macOS)
-# ----------------------------------------------------------------------------
-macos_quit_terminal() {
-  echo "→ Quitting Terminal.app to apply changes…"
-  osascript -e 'tell application "Terminal" to quit'
-  echo "→ Terminal.app closed"
-}
-
-# ----------------------------------------------------------------------------
-# Change login shell to zsh (optional)
-# ----------------------------------------------------------------------------
-maybe_change_shell() {
-  # Check current shell
-  local current_shell="${SHELL:-$(getent passwd "$USER" 2>/dev/null | cut -d: -f7 || echo)}"
-  current_shell="${current_shell:-/bin/bash}"  # fallback
+  [[ "$SETUP_DEV_DIR" == "true" ]] || return
   
-  echo "→ Checking default shell (current: $current_shell)"
+  local script="$DOTFILES_DIR/scripts/dev/bootstrap_dev_dir.sh"
+  if [[ -x "$script" ]]; then
+    info "Setting up development directory"
+    "$script" || warn "Dev directory setup failed"
+  else
+    warn "Dev directory script not found"
+  fi
+}
+
+configure_shell() {
+  [[ "$CHANGE_SHELL" == "true" ]] || return
+  
+  local current_shell="${SHELL:-/bin/bash}"
   
   if [[ "$current_shell" == */zsh ]]; then
-    echo "  ✓ Shell is already zsh, no change needed"
     return
   fi
-
-  if [[ "$CHANGE_SHELL" == "ask" ]]; then
-    yesno "Change your default shell to zsh?" default_yes && CHANGE_SHELL=yes || CHANGE_SHELL=no
-  fi
-  [[ "$CHANGE_SHELL" != "yes" ]] && return
-
+  
   if command -v zsh >/dev/null 2>&1; then
-    local zpath
-    zpath=$(command -v zsh) || {
-      echo "  ⚠ Could not determine zsh path" >&2
-      return
-    }
+    local zsh_path
+    zsh_path=$(command -v zsh)
     
-    if [[ "$SHELL" != "$zpath" ]]; then
-      echo "  • Changing default shell to $zpath…"
-      # Temporarily disable error trapping for this operation
-      set +e
-      chsh -s "$zpath" "${USER}"
-      local chsh_result=$?
-      set -e
-      
-      if [[ $chsh_result -ne 0 ]]; then
-        echo "    ⚠ Could not change default shell (exit code: $chsh_result)" >&2
-        echo "    ℹ You can change it manually later with: chsh -s $zpath"
-      else
-        echo "    ✓ Default shell changed successfully"
-      fi
-    else
-      echo "  ✓ Default shell is already zsh"
+    if [[ "$SHELL" != "$zsh_path" ]]; then
+      info "Changing default shell to zsh"
+      chsh -s "$zsh_path" || warn "Failed to change shell to zsh"
     fi
   else
-    echo "  ⚠ zsh not installed; cannot change default shell" >&2
+    warn "zsh not installed"
   fi
 }
 
-# ----------------------------------------------------------------------------
-# Main
-# ----------------------------------------------------------------------------
+# Main execution
+bootstrap_macos() {
+  step "macOS Bootstrap"
+  
+  install_xcode_clt
+  install_homebrew
+  install_packages_macos
+  run_dotbot
+  configure_git
+  setup_github_auth
+  configure_services_macos
+  configure_dns_macos
+  configure_touchid_macos
+  configure_dock_macos
+  configure_iterm2_macos
+}
+
+bootstrap_linux() {
+  step "Linux Bootstrap"
+  
+  update_system_linux
+  install_packages_linux
+  run_dotbot
+  configure_git
+  setup_github_auth
+  configure_terminal_font_linux
+}
+
+# Resolve user prompts for "ask" options
+resolve_user_options() {
+  if is_macos; then
+    resolve_option INSTALL_CASKS "Install Homebrew cask apps?" y
+    resolve_option INSTALL_MAS_APPS "Install Mac App Store apps?" n
+    resolve_option INSTALL_SERVICES "Install system services (Tailscale, dnsmasq)?" y
+    resolve_option INSTALL_OFFICE_TOOLS "Install Microsoft Office tools?" n
+    resolve_option INSTALL_SLACK "Install Slack?" n
+    resolve_option INSTALL_PARALLELS "Install Parallels Desktop?" n
+    resolve_option CONFIGURE_DNS "Configure DNS to use dnsmasq?" n
+  fi
+  
+  resolve_option GITHUB_AUTH "Authenticate with GitHub CLI?" y
+  resolve_option CONFIGURE_GIT "Configure Git user name/email?" y
+  resolve_option CHANGE_SHELL "Change default shell to zsh?" y
+  resolve_option SETUP_DEV_DIR "Set up ~/dev directory structure?" y
+  resolve_option RUN_XDG_CLEANUP "Run XDG cleanup to remove legacy configs?" y
+}
+
 main() {
-  # Parse command-line arguments first
-  parse_args "$@"
+  info "Starting dotfiles bootstrap"
   
-  echo "Starting unified bootstrap…"
-  
-  # Set terminal environment to minimize color/escape sequence issues
   export TERM="${TERM:-xterm-256color}"
-  export COLORTERM="${COLORTERM:-truecolor}"
-  
-  # Suppress potential shell startup warnings during bootstrap
   export BOOTSTRAP_MODE=1
   
-  announce_step "Ensuring XDG base directories exist"
-  ensure_directories
-
-  announce_step "Ensuring dotfiles repository is writable"
-  ensure_repo_writable
-
-  if macos_is; then
-    echo "Detected macOS ($(sw_vers -productVersion 2>/dev/null || echo))"
-    announce_step "Checking for Xcode Command Line Tools"
-    macos_require_clt
-    announce_step "Installing Homebrew and evaluating Brew bundle"
-    macos_install_homebrew
-    announce_step "Applying Homebrew bundle"
-    macos_install_brewfile
-    announce_step "Linking dotfiles with Dotbot"
-    run_dotbot
-  maybe_setup_git
-    announce_step "Handling GitHub CLI authentication"
-    github_auth
-    announce_step "Starting macOS background services"
-    macos_enable_services
-    announce_step "Applying Dock preferences"
-    macos_configure_dock
-    announce_step "Configuring DNS for dnsmasq"
-    macos_configure_dns
-    announce_step "Enabling Touch ID for sudo"
-    macos_enable_touchid
-    announce_step "Applying iTerm2 preferences"
-    macos_configure_iterm2
-  elif linux_is; then
-    echo "Detected Linux"
-    announce_step "Detecting package manager"
-    linux_detect_pkgmgr
-    announce_step "Updating base system packages"
-    linux_update_system
-    announce_step "Installing essential packages"
-    linux_install_base_packages
-    announce_step "Running additional Linux installers"
-    linux_manual_installs
-    announce_step "Linking dotfiles with Dotbot"
-    run_dotbot
-  maybe_setup_git
-    announce_step "Handling GitHub CLI authentication"
-    github_auth
-    announce_step "Setting terminal font preferences"
-    linux_set_terminal_font
+  resolve_user_options
+  setup_directories
+  fix_repository_ownership
+  
+  if is_macos; then
+    bootstrap_macos
+  elif is_linux; then
+    bootstrap_linux
   else
-    log_error "Unsupported OS: $(uname)"
+    error "Unsupported OS: $(uname)"
     exit 1
   fi
-
-  announce_step "Creating SSH socket directory"
-  mkdir -p "$HOME/.ssh/sockets" && chmod 700 "$HOME/.ssh/sockets"
-
-  announce_step "Evaluating default shell configuration"
-  maybe_change_shell
   
-  # Additional setup
-  announce_step "Cleaning up legacy configuration via XDG script"
+  configure_shell
   run_xdg_cleanup
-  announce_step "Bootstrapping ~/dev directory structure"
   setup_dev_directory
   
-  echo ""
-  echo "🎉 Bootstrap complete!"
-  echo ""
+  step "Bootstrap Complete"
+  success "Dotfiles bootstrap finished successfully"
   
-  if macos_is; then
-    echo "ℹ  To apply all changes, you need to restart your terminal."
-    echo ""
-    if yesno "Quit terminal now to apply changes?" default_yes; then
-      macos_quit_terminal
-    else
-      echo "ℹ  Please restart your terminal manually when ready"
+  if is_macos; then
+    info "Restart your terminal to apply all changes"
+    if confirm "Quit Terminal.app now?" y; then
+      osascript -e 'tell application "Terminal" to quit' 2>/dev/null || true
     fi
   else
-    echo "❗ IMPORTANT: Close this terminal and open a new one to:"
-    echo "  • Pick up the new shell configuration"
-    echo "  • Allow zinit and other tools to initialize properly"
-    echo "  • Ensure all environment variables are set correctly"
+    info "Open a new terminal to apply all changes"
   fi
 }
 
