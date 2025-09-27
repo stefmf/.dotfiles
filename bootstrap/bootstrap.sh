@@ -21,19 +21,31 @@ export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 export DOTFILES="$DOTFILES_DIR"
 
 # Configuration (override via environment variables)
-# Values can be: true, false, or ask (to prompt user)
-INSTALL_CASKS=${INSTALL_CASKS:-ask}
-INSTALL_MAS_APPS=${INSTALL_MAS_APPS:-ask}
-INSTALL_SERVICES=${INSTALL_SERVICES:-ask}
-INSTALL_OFFICE_TOOLS=${INSTALL_OFFICE_TOOLS:-ask}
-INSTALL_SLACK=${INSTALL_SLACK:-ask}
-INSTALL_PARALLELS=${INSTALL_PARALLELS:-ask}
-CONFIGURE_DNS=${CONFIGURE_DNS:-ask}
-GITHUB_AUTH=${GITHUB_AUTH:-ask}
-CONFIGURE_GIT=${CONFIGURE_GIT:-ask}
-CHANGE_SHELL=${CHANGE_SHELL:-ask}
-SETUP_DEV_DIR=${SETUP_DEV_DIR:-ask}
-RUN_XDG_CLEANUP=${RUN_XDG_CLEANUP:-ask}
+# Smart defaults based on platform and common usage
+if is_macos; then
+  INSTALL_CASKS=${INSTALL_CASKS:-true}
+  INSTALL_MAS_APPS=${INSTALL_MAS_APPS:-ask}
+  INSTALL_SERVICES=${INSTALL_SERVICES:-true}
+  INSTALL_OFFICE_TOOLS=${INSTALL_OFFICE_TOOLS:-ask}
+  INSTALL_SLACK=${INSTALL_SLACK:-ask}
+  INSTALL_PARALLELS=${INSTALL_PARALLELS:-ask}
+  CONFIGURE_DNS=${CONFIGURE_DNS:-ask}
+else
+  INSTALL_CASKS=false
+  INSTALL_MAS_APPS=false
+  INSTALL_SERVICES=false
+  INSTALL_OFFICE_TOOLS=false
+  INSTALL_SLACK=false
+  INSTALL_PARALLELS=false
+  CONFIGURE_DNS=false
+fi
+
+# Common defaults for all platforms
+GITHUB_AUTH=${GITHUB_AUTH:-true}
+CONFIGURE_GIT=${CONFIGURE_GIT:-true}
+CHANGE_SHELL=${CHANGE_SHELL:-auto}
+SETUP_DEV_DIR=${SETUP_DEV_DIR:-true}
+RUN_XDG_CLEANUP=${RUN_XDG_CLEANUP:-true}
 
 # Logging
 info() { echo "→ $*"; }
@@ -292,7 +304,17 @@ run_dotbot() {
   
   if [[ -x "$DOTBOT_INSTALL" ]]; then
     info "Running Dotbot"
-    DOTFILES_SKIP_TOUCHID_LINK=true "$DOTBOT_INSTALL" || warn "Dotbot reported issues"
+    # Ensure script continues even if Dotbot returns non-zero
+    set +e
+    DOTFILES_SKIP_TOUCHID_LINK=true "$DOTBOT_INSTALL"
+    local dotbot_exit=$?
+    set -e
+    
+    if [[ $dotbot_exit -eq 0 ]]; then
+      success "Dotbot completed successfully"
+    else
+      warn "Dotbot reported issues (exit code: $dotbot_exit) but continuing..."
+    fi
   else
     error "Dotbot installer not found at $DOTBOT_INSTALL"
     exit 1
@@ -364,24 +386,39 @@ setup_dev_directory() {
 }
 
 configure_shell() {
-  [[ "$CHANGE_SHELL" == "true" ]] || return
+  # Skip if explicitly disabled
+  [[ "$CHANGE_SHELL" == "false" ]] && return
   
   local current_shell="${SHELL:-/bin/bash}"
   
+  # Check if already using zsh
   if [[ "$current_shell" == */zsh ]]; then
+    success "Shell is already zsh"
     return
   fi
   
+  # On macOS 10.15+, zsh is default but user might be on older shell
+  if is_macos; then
+    local macos_version
+    macos_version=$(sw_vers -productVersion)
+    info "macOS $macos_version detected"
+  fi
+  
+  # Change shell if zsh is available and we're not already using it
   if command -v zsh >/dev/null 2>&1; then
     local zsh_path
     zsh_path=$(command -v zsh)
     
     if [[ "$SHELL" != "$zsh_path" ]]; then
-      info "Changing default shell to zsh"
-      chsh -s "$zsh_path" || warn "Failed to change shell to zsh"
+      info "Changing default shell from $current_shell to zsh"
+      if chsh -s "$zsh_path"; then
+        success "Default shell changed to zsh"
+      else
+        warn "Failed to change shell to zsh - you may need to logout/login"
+      fi
     fi
   else
-    warn "zsh not installed"
+    warn "zsh not installed, cannot change shell"
   fi
 }
 
@@ -413,23 +450,17 @@ bootstrap_linux() {
   configure_terminal_font_linux
 }
 
-# Resolve user prompts for "ask" options
+# Resolve user prompts for "ask" options (only for optional items)
 resolve_user_options() {
+  info "Configuring optional components..."
+  
   if is_macos; then
-    resolve_option INSTALL_CASKS "Install Homebrew cask apps?" y
     resolve_option INSTALL_MAS_APPS "Install Mac App Store apps?" n
-    resolve_option INSTALL_SERVICES "Install system services (Tailscale, dnsmasq)?" y
     resolve_option INSTALL_OFFICE_TOOLS "Install Microsoft Office tools?" n
     resolve_option INSTALL_SLACK "Install Slack?" n
     resolve_option INSTALL_PARALLELS "Install Parallels Desktop?" n
     resolve_option CONFIGURE_DNS "Configure DNS to use dnsmasq?" n
   fi
-  
-  resolve_option GITHUB_AUTH "Authenticate with GitHub CLI?" y
-  resolve_option CONFIGURE_GIT "Configure Git user name/email?" y
-  resolve_option CHANGE_SHELL "Change default shell to zsh?" y
-  resolve_option SETUP_DEV_DIR "Set up ~/dev directory structure?" y
-  resolve_option RUN_XDG_CLEANUP "Run XDG cleanup to remove legacy configs?" y
 }
 
 main() {
