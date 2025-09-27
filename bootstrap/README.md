@@ -9,6 +9,7 @@ Unified cross-platform bootstrap for macOS 26 "Tahoe" and modern Linux, with XDG
   - Starts sudo keepalive (non-interactive via SUDO_ASKPASS on macOS when opted-in)
   - Installs Homebrew (macOS) or base packages (Linux)
   - Optionally installs casks/services on macOS (behind prompts)
+  - Uses `brew services` to manage background daemons on macOS
   - Runs Dotbot (`./install`) to link configs and shells
   - Configures Git (global user.name/user.email)
   - Optional GitHub CLI auth
@@ -23,6 +24,7 @@ Unified cross-platform bootstrap for macOS 26 "Tahoe" and modern Linux, with XDG
 - Optional features behind prompts:
   - Install cask apps and MAS apps
   - Enable services (Tailscale, dnsmasq) and optionally set DNS via `networksetup`
+    - Install Parallels Desktop after the bundle step with manual fallback guidance
   - Configure Dock via `config/dock/dock_config.zsh`
   - iTerm2 prefs path to XDG (`~/.config/iterm2`) and Dynamic Profile `Stef.json`
   - Enable Touch ID for sudo via `/etc/pam.d/sudo_local`
@@ -132,4 +134,5 @@ If you prefer the legacy flows during testing, use the archived scripts directly
 - If Homebrew was installed but `brew` isn’t in PATH, ensure your `~/.zprofile` symlink is correct and includes the Homebrew shellenv via `shell/zsh/zprofile`.
 - DNS changes require sudo and are applied per network service; VPN/Tailscale services are skipped intentionally.
 - Dotbot links `~/.config` to `config/` in this repo; verify `config/dotbot/install.conf.yaml` for the mapping.
+- Parallels Desktop sometimes requires signing in to download the installer. If the scripted install fails, download it manually from Parallels and rerun the bootstrap to pick up the rest of the configuration.
 

@@ -322,8 +322,18 @@ macos_install_brewfile() {
   fi
 
   echo "Preparing Brewfile install…"
-  local tmp=; tmp=$(mktemp)
-  cp "$brewfile" "$tmp"
+
+  local bundle_file="$brewfile"
+  local temp_file=""
+  local install_parallels_separately=false
+
+  create_temp_copy() {
+    if [[ -z "$temp_file" ]]; then
+      temp_file=$(mktemp)
+      cp "$brewfile" "$temp_file"
+      bundle_file="$temp_file"
+    fi
+  }
 
   # Handle optional sections
   if [[ "$INSTALL_CASKS" == "ask" ]]; then
@@ -346,40 +356,61 @@ macos_install_brewfile() {
   fi
 
   if [[ "$INSTALL_CASKS" == "no" ]]; then
+    create_temp_copy
     # Keep nerd font cask installed separately later if needed; remove other casks
-    sed -i '' -e '/^cask "font-jetbrains-mono-nerd-font"/!{/^cask /d;}' "$tmp" || true
+    sed -i '' -e '/^cask "font-jetbrains-mono-nerd-font"/!{/^cask /d;}' "$bundle_file" || true
   fi
 
   if [[ "$INSTALL_MAS_APPS" == "no" ]]; then
-    sed -i '' -e '/^mas /d' "$tmp" || true
+    create_temp_copy
+    sed -i '' -e '/^mas /d' "$bundle_file" || true
   fi
 
   if [[ "$INSTALL_SERVICES" == "no" ]]; then
-    sed -i '' -e '/brew "tailscale"/d' -e '/brew "dnsmasq"/d' "$tmp" || true
+    create_temp_copy
+    sed -i '' -e '/brew "tailscale"/d' -e '/brew "dnsmasq"/d' "$bundle_file" || true
   fi
 
   if [[ "$INSTALL_OFFICE_TOOLS" == "no" ]]; then
+    create_temp_copy
     sed -i '' -e '/cask "microsoft-teams"/d' \
            -e '/mas "Microsoft Excel"/d' \
            -e '/mas "Microsoft PowerPoint"/d' \
-           -e '/mas "Microsoft Word"/d' "$tmp" || true
+           -e '/mas "Microsoft Word"/d' "$bundle_file" || true
   fi
 
   if [[ "$INSTALL_SLACK" == "no" ]]; then
-    sed -i '' -e '/mas "Slack"/d' "$tmp" || true
+    create_temp_copy
+    sed -i '' -e '/mas "Slack"/d' "$bundle_file" || true
   fi
 
-  if [[ "$INSTALL_PARALLELS" == "no" ]]; then
-    sed -i '' -e '/cask "parallels"/d' "$tmp" || true
+  if [[ "$INSTALL_PARALLELS" == "yes" ]]; then
+    install_parallels_separately=true
   fi
 
-  echo "Running brew bundle…"
-  if brew bundle --file="$tmp"; then
-    echo "✓ Homebrew packages installed successfully"
+  if [[ "$INSTALL_PARALLELS" == "no" ]] || [[ "$install_parallels_separately" == "true" ]]; then
+    create_temp_copy
+    sed -i '' -e '/cask "parallels"/d' "$bundle_file" || true
+  fi
+
+  echo "Checking Brew bundle requirements…"
+  if brew bundle --file="$bundle_file" check >/dev/null 2>&1; then
+    echo "✓ Homebrew packages already satisfied"
   else
-    echo "⚠ Some Homebrew packages failed to install" >&2
+    echo "Running brew bundle…"
+    if brew bundle --file="$bundle_file"; then
+      echo "✓ Homebrew packages installed successfully"
+    else
+      echo "⚠ Some Homebrew packages failed to install" >&2
+    fi
   fi
-  rm -f "$tmp"
+
+  [[ -n "$temp_file" ]] && rm -f "$temp_file"
+  unset -f create_temp_copy
+
+  if [[ "$install_parallels_separately" == "true" ]]; then
+    macos_install_parallels
+  fi
 
   # Ensure JetBrains Mono Nerd Font (if not in filtered Brewfile)
   if ! brew list --cask font-jetbrains-mono-nerd-font >/dev/null 2>&1; then
@@ -406,6 +437,32 @@ macos_configure_dock() {
   fi
 }
 
+macos_install_parallels() {
+  if ! command -v brew >/dev/null 2>&1; then
+    echo "⚠ Homebrew not available; cannot install Parallels" >&2
+    return
+  fi
+
+  if brew list --cask parallels >/dev/null 2>&1; then
+    echo "  ✓ Parallels Desktop already installed"
+    return
+  fi
+
+  echo "→ Installing Parallels Desktop (large download)…"
+  if ! ensure_sudo; then
+    echo "⚠ Skipping Parallels Desktop install (sudo unavailable)" >&2
+    return
+  fi
+
+  if brew install --cask parallels; then
+    echo "  ✓ Parallels Desktop installed"
+  else
+    echo "  ⚠ Parallels Desktop install failed." >&2
+    echo "    Parallels often requires an interactive login to download the installer." >&2
+    echo "    Download it manually from https://www.parallels.com/products/desktop/ and install it, then rerun this script if needed." >&2
+  fi
+}
+
 macos_enable_services() {
   [[ "$INSTALL_SERVICES" == "no" ]] && { echo "→ Skipping services (user disabled)"; return; }
   if ! command -v brew >/dev/null 2>&1; then 
@@ -413,36 +470,33 @@ macos_enable_services() {
     return
   fi
   
-  echo "→ Starting system services (requires sudo)..."
+  echo "→ Starting system services via brew services…"
   ensure_sudo || {
     echo "⚠ Could not acquire sudo credentials, skipping service startup" >&2
     return
   }
-  
+
   local svcs=(tailscale dnsmasq)
-  local daemon_base="/Library/LaunchDaemons"
+  local status
+  local services_list
+  services_list=$(brew services list 2>/dev/null)
   for s in "${svcs[@]}"; do
     if brew list "$s" >/dev/null 2>&1; then
-      local label="homebrew.mxcl.${s}"
-      local plist="${daemon_base}/${label}.plist"
-      echo "  • Managing $s via launchctl…"
-
-      if [[ ! -f "$plist" ]]; then
-        echo "    ⚠ LaunchDaemon not found at $plist; try 'brew services start $s' manually" >&2
-        continue
-      fi
-
-      if launchctl print "system/${label}" >/dev/null 2>&1; then
-        echo "    • $s already running; refreshing"
-        sudo_run launchctl bootout system "$plist" || true
-      fi
-
-      if sudo_run launchctl bootstrap system "$plist"; then
-        sudo_run launchctl enable "system/${label}" || true
-        sudo_run launchctl kickstart -k "system/${label}" || true
-        echo "    ✓ $s service started"
+      echo "  • Managing $s via brew services…"
+      status=$(awk -v svc="$s" 'NR>1 && $1==svc {print $2}' <<<"$services_list")
+      if [[ "$status" == "started" ]]; then
+        echo "    • $s already running; restarting"
+        if brew services restart "$s"; then
+          echo "    ✓ $s restarted"
+        else
+          echo "    ⚠ Failed to restart $s" >&2
+        fi
       else
-        printf "    ⚠ Failed to bootstrap %s; try 'sudo launchctl bootstrap system \"%s\"' manually\n" "$s" "$plist" >&2
+        if brew services start "$s"; then
+          echo "    ✓ $s started"
+        else
+          echo "    ⚠ Failed to start $s" >&2
+        fi
       fi
     else
       echo "  • $s not installed, skipping"
