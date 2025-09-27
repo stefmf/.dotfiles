@@ -19,8 +19,8 @@
 #   remain in archived scripts for reference.
 # - Interactive prompts can be bypassed with env flags: INSTALL_CASKS,
 #   INSTALL_MAS_APPS, INSTALL_SERVICES, INSTALL_OFFICE_TOOLS, INSTALL_SLACK, 
-#   INSTALL_PARALLELS, CONFIGURE_DNS, GITHUB_AUTH, CHANGE_SHELL, SETUP_DEV_DIR,
-#   RUN_XDG_CLEANUP.
+#   INSTALL_PARALLELS, CONFIGURE_DNS, GITHUB_AUTH, CONFIGURE_GIT, CHANGE_SHELL,
+#   SETUP_DEV_DIR, RUN_XDG_CLEANUP.
 # - This script is designed for iterative testing and refinement.
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -175,6 +175,7 @@ INSTALL_SLACK=${INSTALL_SLACK:-ask}
 INSTALL_PARALLELS=${INSTALL_PARALLELS:-ask}
 CONFIGURE_DNS=${CONFIGURE_DNS:-ask}
 GITHUB_AUTH=${GITHUB_AUTH:-ask}
+CONFIGURE_GIT=${CONFIGURE_GIT:-ask}
 CHANGE_SHELL=${CHANGE_SHELL:-ask}
 SETUP_DEV_DIR=${SETUP_DEV_DIR:-ask}
 RUN_XDG_CLEANUP=${RUN_XDG_CLEANUP:-ask}
@@ -771,6 +772,24 @@ setup_git() {
   fi
 }
 
+maybe_setup_git() {
+  if [[ "$CONFIGURE_GIT" == "ask" ]]; then
+    if yesno "Configure global Git user.name and user.email now?" default_yes; then
+      CONFIGURE_GIT=yes
+    else
+      CONFIGURE_GIT=no
+    fi
+  fi
+
+  if [[ "$CONFIGURE_GIT" != "yes" ]]; then
+    echo "→ Skipping global Git configuration"
+    return
+  fi
+
+  announce_step "Configuring global Git settings"
+  setup_git
+}
+
 github_auth() {
   if [[ "$GITHUB_AUTH" == "ask" ]]; then
     yesno "Login with GitHub CLI now?" default_yes && GITHUB_AUTH=yes || GITHUB_AUTH=no
@@ -913,8 +932,7 @@ main() {
     macos_install_brewfile
     announce_step "Linking dotfiles with Dotbot"
     run_dotbot
-    announce_step "Configuring global Git settings"
-    setup_git
+  maybe_setup_git
     announce_step "Handling GitHub CLI authentication"
     github_auth
     announce_step "Starting macOS background services"
@@ -939,8 +957,7 @@ main() {
     linux_manual_installs
     announce_step "Linking dotfiles with Dotbot"
     run_dotbot
-    announce_step "Configuring global Git settings"
-    setup_git
+  maybe_setup_git
     announce_step "Handling GitHub CLI authentication"
     github_auth
     announce_step "Setting terminal font preferences"
