@@ -359,7 +359,7 @@ main() {
     echo "Configuration Options:"
     echo "---------------------"
     
-    local install_casks install_mas install_services install_office install_parallels install_github
+    local install_casks install_mas install_services install_office install_parallels install_github install_dev_dir
     
     ask_yes_no "Install GUI applications (casks)" && install_casks="true" || install_casks="false"
     ask_yes_no "Install Mac App Store apps" && install_mas="true" || install_mas="false"
@@ -367,6 +367,7 @@ main() {
     ask_yes_no "Install Microsoft Office tools & Slack" && install_office="true" || install_office="false"
     ask_yes_no "Install Parallels Desktop" && install_parallels="true" || install_parallels="false"
     ask_yes_no "Setup GitHub authentication" && install_github="true" || install_github="false"
+    ask_yes_no "Setup development directory structure" && install_dev_dir="true" || install_dev_dir="false"
     
     # Show summary
     echo
@@ -378,6 +379,7 @@ main() {
     echo "• Office & Slack: $([ "$install_office" = "true" ] && echo "✓ Yes" || echo "✗ No")"
     echo "• Parallels: $([ "$install_parallels" = "true" ] && echo "✓ Yes" || echo "✗ No")"
     echo "• GitHub Auth: $([ "$install_github" = "true" ] && echo "✓ Yes" || echo "✗ No")"
+    echo "• Dev Directory: $([ "$install_dev_dir" = "true" ] && echo "✓ Yes" || echo "✗ No")"
     
     echo
     echo "Starting installation..."
@@ -417,7 +419,7 @@ main() {
     [[ "$install_github" == "true" ]] && setup_github_auth || log_info "Skipping GitHub authentication"
     
     log_step $step $total "Setting up development directory"; ((step++))
-    setup_dev_directory
+    [[ "$install_dev_dir" == "true" ]] && setup_dev_directory || log_info "Skipping development directory setup"
     
     log_step $step $total "Running XDG cleanup"; ((step++))
     run_xdg_cleanup

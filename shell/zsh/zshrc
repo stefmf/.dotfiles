@@ -61,11 +61,19 @@ fi
 # Download Zinit if not installed
 if [[ ! -d "$ZINIT_HOME" ]]; then
     mkdir -p "$(dirname $ZINIT_HOME)"
-    git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+    if ! git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME" 2>/dev/null; then
+        echo "⚠ Warning: Failed to install Zinit (network issue). Skipping plugin setup." >&2
+        return 0
+    fi
 fi
 
-# Source Zinit
-source "${ZINIT_HOME}/zinit.zsh"
+# Source Zinit only if successfully installed
+if [[ -f "${ZINIT_HOME}/zinit.zsh" ]]; then
+    source "${ZINIT_HOME}/zinit.zsh"
+else
+    echo "⚠ Warning: Zinit not found. Skipping plugin setup." >&2
+    return 0
+fi
 
 # Skip expensive security checks on trusted system
 # Disable Zinit's automatic compinit and handle it manually
@@ -77,30 +85,35 @@ compinit -C -d "$ZSH_COMPDUMP"
 # Zinit Plugin Loading
 #------------------------------------------------------------------------------
 
-# Load autosuggestions via zinit (configuration is set in zshenv)
-zinit load zsh-users/zsh-autosuggestions
+# Only load plugins if Zinit is available
+if command -v zinit >/dev/null 2>&1; then
+    # Load autosuggestions via zinit (configuration is set in zshenv)
+    zinit load zsh-users/zsh-autosuggestions
 
-# Load other essential plugins with async loading
-zinit lucid for \
-    blockf atpull'zinit creinstall -q .' \
-        zsh-users/zsh-completions
+    # Load other essential plugins with async loading
+    zinit lucid for \
+        blockf atpull'zinit creinstall -q .' \
+            zsh-users/zsh-completions
 
-# Load syntax highlighting LAST to avoid conflicts (using fast-syntax-highlighting for better performance)
-zinit lucid for \
-    zdharma-continuum/fast-syntax-highlighting
+    # Load syntax highlighting LAST to avoid conflicts (using fast-syntax-highlighting for better performance)
+    zinit lucid for \
+        zdharma-continuum/fast-syntax-highlighting
 
-# Apply Catppuccin Frappé theme for syntax highlighting
-fast-theme XDG:catppuccin-frappe >/dev/null 2>&1
+    # Apply Catppuccin Frappé theme for syntax highlighting
+    fast-theme XDG:catppuccin-frappe >/dev/null 2>&1
 
-# Load utility plugins
-zinit wait lucid for \
-    MichaelAquilina/zsh-you-should-use
+    # Load utility plugins
+    zinit wait lucid for \
+        MichaelAquilina/zsh-you-should-use
 
-# Load FZF if available
-zinit ice as"command" from"gh-r" \
-    atclone"./fzf --zsh > init.zsh" \
-    atpull"%atclone" src"init.zsh"
-zinit light junegunn/fzf
+    # Load FZF if available
+    zinit ice as"command" from"gh-r" \
+        atclone"./fzf --zsh > init.zsh" \
+        atpull"%atclone" src"init.zsh"
+    zinit light junegunn/fzf
+else
+    echo "✗ Zinit not available. Run: rm -rf ~/.local/share/zinit && git clone https://github.com/zdharma-continuum/zinit.git ~/.local/share/zinit/zinit.git" >&2
+fi
 
 #------------------------------------------------------------------------------
 # Completion System Configuration

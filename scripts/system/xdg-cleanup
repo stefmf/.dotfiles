@@ -50,7 +50,7 @@ safe_remove() {
             echo -e "  Type: File ($(/bin/ls -lh "$path" 2>/dev/null | /usr/bin/awk '{print $5}') size)"
         fi
         
-        read -q "?  Remove this? (y/n): "
+        read -q "?  Remove this? (Y/n): "
         echo ""
         
         if [[ $REPLY == "y" ]]; then
