@@ -154,7 +154,7 @@ install_minimal_packages() {
         gnupg
         lsb-release
         software-properties-common
-    jq
+        jq
         unzip
     )
     for pkg in "${packages[@]}"; do
@@ -179,10 +179,8 @@ setup_hashicorp_repository() {
 }
 
 setup_helm_repository() {
-    local arch
-    arch=$(dpkg --print-architecture)
-    local repo_line="deb [arch=${arch} signed-by=${APT_KEYRING_DIR}/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main"
-    add_apt_repository "helm" "$repo_line" "https://baltocdn.com/helm/signing.asc"
+    local repo_line="deb [signed-by=${APT_KEYRING_DIR}/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main"
+    add_apt_repository "helm" "$repo_line" "https://packages.buildkite.com/helm-linux/helm-debian/gpgkey"
 }
 
 setup_kubernetes_repository() {
@@ -192,10 +190,11 @@ setup_kubernetes_repository() {
     local repo_line="deb [signed-by=${key_path}] https://pkgs.k8s.io/core:/stable:/${KUBERNETES_REPO_VERSION}/deb/ /"
 
     if [[ ! -f "$key_path" ]]; then
-        if curl -fsSLo "$key_path" "https://pkgs.k8s.io/core:/stable:/${KUBERNETES_REPO_VERSION}/deb/Release.key"; then
+        if curl -fsSL "https://pkgs.k8s.io/core:/stable:/${KUBERNETES_REPO_VERSION}/deb/Release.key" | sudo gpg --dearmor -o "$key_path"; then
             sudo chmod a+r "$key_path"
         else
             log_warn "Failed to download Kubernetes apt key"
+            return
         fi
     fi
 
@@ -388,17 +387,31 @@ install_bat_extras() {
         return
     fi
 
+    local release_json
+    release_json=$(curl -fsSL https://api.github.com/repos/eth-p/bat-extras/releases/latest 2>/dev/null || true)
+    if [[ -z "$release_json" ]]; then
+        log_warn "Unable to query bat-extras release metadata"
+        return
+    fi
+
     local version
-    version=$(curl -fsSL https://api.github.com/repos/eth-p/bat-extras/releases/latest | jq -r '.tag_name' 2>/dev/null || true)
+    version=$(jq -r '.tag_name' <<<"$release_json" 2>/dev/null || true)
     if [[ -z "$version" || "$version" == null ]]; then
         log_warn "Unable to determine latest bat-extras version"
         return
     fi
 
+    local asset_url
+    asset_url=$(jq -r '.assets[]?.browser_download_url | select(test("bat-extras-.*\\.zip$"))' <<<"$release_json" 2>/dev/null | head -n1)
+    if [[ -z "$asset_url" || "$asset_url" == null ]]; then
+        log_warn "Failed to locate bat-extras release asset"
+        return
+    fi
+
     local tmp_dir
     tmp_dir=$(mktemp -d)
-    if curl -fsSL "https://github.com/eth-p/bat-extras/releases/download/${version}/bat-extras-${version#v}.tar.gz" -o "$tmp_dir/bat-extras.tar.gz" && \
-        tar -xzf "$tmp_dir/bat-extras.tar.gz" -C "$tmp_dir"; then
+    local archive="$tmp_dir/bat-extras.zip"
+    if curl -fsSL "$asset_url" -o "$archive" && unzip -q "$archive" -d "$tmp_dir"; then
         sudo install -m 0755 "$tmp_dir"/bat-extras-*/bin/* /usr/local/bin/
         log_success "bat-extras ${version} installed"
     else
@@ -418,22 +431,53 @@ install_fastfetch() {
         return
     fi
 
-    local version
-    version=$(curl -fsSL https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest | jq -r '.tag_name' 2>/dev/null || true)
-    if [[ -z "$version" || "$version" == null ]]; then
-        log_warn "Unable to determine latest fastfetch version"
-        return
-    fi
-
     local arch
     if ! arch=$(detect_binary_arch); then
         log_warn "Skipping fastfetch installation due to unsupported architecture"
         return
     fi
 
+    local release_json
+    release_json=$(curl -fsSL https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest 2>/dev/null || true)
+    if [[ -z "$release_json" ]]; then
+        log_warn "Unable to query fastfetch release metadata"
+        return
+    fi
+
+    local version
+    version=$(jq -r '.tag_name' <<<"$release_json" 2>/dev/null || true)
+    if [[ -z "$version" || "$version" == null ]]; then
+        log_warn "Unable to determine latest fastfetch version"
+        return
+    fi
+
+    local asset_arch
+    case "$arch" in
+        amd64)
+            asset_arch="amd64"
+            ;;
+        arm64)
+            asset_arch="aarch64"
+            ;;
+        *)
+            log_warn "Unsupported fastfetch architecture mapping for $arch"
+            return
+            ;;
+    esac
+
+    local asset_url
+    asset_url=$(jq -r --arg arch "$asset_arch" '.assets[]?.browser_download_url | select(test("fastfetch-linux-" + $arch + "\\.tar\\.gz$") and (contains("polyfilled") | not))' <<<"$release_json" 2>/dev/null | head -n1)
+    if [[ -z "$asset_url" ]]; then
+        asset_url=$(jq -r --arg arch "$asset_arch" '.assets[]?.browser_download_url | select(test("fastfetch-linux-" + $arch + "\\.tar\\.gz$"))' <<<"$release_json" 2>/dev/null | head -n1)
+    fi
+    if [[ -z "$asset_url" || "$asset_url" == null ]]; then
+        log_warn "Failed to locate fastfetch release asset"
+        return
+    fi
+
     local tmp_dir
     tmp_dir=$(mktemp -d)
-    if curl -fsSL "https://github.com/fastfetch-cli/fastfetch/releases/download/${version}/fastfetch-linux-${arch}.tar.gz" -o "$tmp_dir/fastfetch.tar.gz" && \
+    if curl -fsSL "$asset_url" -o "$tmp_dir/fastfetch.tar.gz" && \
         tar -xzf "$tmp_dir/fastfetch.tar.gz" -C "$tmp_dir"; then
         local binary
         binary=$(find "$tmp_dir" -type f -name fastfetch -print -quit)
