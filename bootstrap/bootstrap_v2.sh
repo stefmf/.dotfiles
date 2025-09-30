@@ -195,14 +195,19 @@ configure_services() {
     [[ "$install_services" != "true" ]] && return
     
     log_info "Starting system services"
-    require_sudo
     
-    for service in tailscale dnsmasq; do
-        if brew list "$service" >/dev/null 2>&1; then
-            log_info "Starting $service with sudo"
-            sudo brew services restart "$service" || log_warn "Failed to start $service"
-        fi
-    done
+    # Start Tailscale without sudo (uses system extensions)
+    if brew list tailscale >/dev/null 2>&1; then
+        log_info "Starting tailscale"
+        brew services restart tailscale || log_warn "Failed to start tailscale"
+    fi
+    
+    # Start dnsmasq with sudo (needs port 53 access)
+    if brew list dnsmasq >/dev/null 2>&1; then
+        log_info "Starting dnsmasq with sudo"
+        require_sudo
+        sudo brew services restart dnsmasq || log_warn "Failed to start dnsmasq"
+    fi
     
     log_success "Services configured"
 }
@@ -401,9 +406,6 @@ main() {
     log_step $step $total "Configuring services"; ((step++))
     configure_services "$install_services"
     
-    log_step $step $total "Configuring DNS"; ((step++))
-    configure_dns "$install_services"
-    
     log_step $step $total "Running Dotbot configuration"; ((step++))
     run_dotbot
     
@@ -424,6 +426,9 @@ main() {
     
     log_step $step $total "Running XDG cleanup"; ((step++))
     run_xdg_cleanup
+    
+    log_step $step $total "Configuring DNS (final step)"; ((step++))
+    configure_dns "$install_services"
     
     echo
     echo "🎉 Bootstrap Complete!"
