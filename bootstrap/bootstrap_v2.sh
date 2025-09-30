@@ -196,10 +196,11 @@ configure_services() {
     
     log_info "Starting system services"
     
-    # Start Tailscale without sudo (uses system extensions)
+    # Start Tailscale as system service (requires system extensions)
     if brew list tailscale >/dev/null 2>&1; then
-        log_info "Starting tailscale"
-        brew services restart tailscale || log_warn "Failed to start tailscale"
+        log_info "Starting tailscale as system service"
+        require_sudo
+        sudo brew services restart tailscale || log_warn "Failed to start tailscale"
     fi
     
     # Start dnsmasq with sudo (needs port 53 access)
