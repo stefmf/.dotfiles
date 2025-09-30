@@ -1,6 +1,48 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 
 set -euo pipefail
+
+# Check for help flag or invalid arguments
+if [[ $# -gt 0 ]]; then
+    case "$1" in
+        --help|-h)
+            cat << 'EOF'
+macOS Dotfiles Bootstrap v2
+
+USAGE:
+    ./bootstrap_v2.sh [--help]
+
+DESCRIPTION:
+    Bootstraps a macOS development environment with dotfiles configuration.
+    
+    This script will:
+    • Set up XDG directories
+    • Install Homebrew and Xcode Command Line Tools
+    • Install packages from Brewfile (with user prompts for optional items)
+    • Configure system services, DNS, Touch ID
+    • Set up GitHub authentication, development directory
+    • Configure Dock and iTerm2
+    • Run Dotbot configuration
+
+OPTIONS:
+    -h, --help    Show this help message and exit
+
+REQUIREMENTS:
+    • macOS (Darwin)
+    • Non-root user
+    • zsh (default on macOS 10.15+)
+    • Internet connection
+
+EOF
+            exit 0
+            ;;
+        *)
+            echo "✗ Unknown option: $1" >&2
+            echo "Use --help for usage information" >&2
+            exit 1
+            ;;
+    esac
+fi
 
 # Constants
 readonly DOTFILES_DIR="$HOME/.dotfiles"
@@ -40,8 +82,9 @@ ask_yes_no() {
     local response
     
     while true; do
-        read -r -p "$prompt (y/n): " response
-        case "${response,,}" in
+        read -r "response?$prompt (y/n): "
+        # Use zsh's native case-insensitive comparison
+        case "${(L)response}" in
             y|yes) return 0 ;;
             n|no) return 1 ;;
             *) echo "Please enter 'y' or 'n' (or 'yes'/'no')" ;;
