@@ -237,6 +237,56 @@ install_docker_suite() {
     fi
 }
 
+install_awscli() {
+    if command -v aws >/dev/null 2>&1; then
+        if aws --version 2>/dev/null | grep -q 'aws-cli/2'; then
+            log_success "AWS CLI v2 already installed"
+            return
+        fi
+        log_info "Replacing existing AWS CLI installation"
+    fi
+
+    local arch
+    if ! arch=$(detect_binary_arch); then
+        log_warn "Skipping AWS CLI installation due to unsupported architecture"
+        return
+    fi
+
+    local asset_arch
+    case "$arch" in
+        amd64)
+            asset_arch="x86_64"
+            ;;
+        arm64)
+            asset_arch="aarch64"
+            ;;
+        *)
+            log_warn "Unsupported AWS CLI architecture mapping for $arch"
+            return
+            ;;
+    esac
+
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    local zip_path="$tmp_dir/awscliv2.zip"
+
+    if curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${asset_arch}.zip" -o "$zip_path"; then
+        if unzip -q "$zip_path" -d "$tmp_dir"; then
+            if sudo "$tmp_dir/aws/install" --update; then
+                log_success "AWS CLI v2 installed"
+            else
+                log_warn "AWS CLI installer reported an error"
+            fi
+        else
+            log_warn "Failed to extract AWS CLI archive"
+        fi
+    else
+        log_warn "Failed to download AWS CLI archive"
+    fi
+
+    rm -rf "$tmp_dir"
+}
+
 install_helm() {
     if command -v helm >/dev/null 2>&1; then
         log_success "Helm already installed"

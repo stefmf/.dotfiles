@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -54,6 +54,30 @@ case "$(uname)" in
     Darwin)
         ;;
     Linux)
+        if ! command -v zsh >/dev/null 2>&1; then
+            echo "→ zsh not found; attempting installation (requires administrator access)"
+            if command -v apt-get >/dev/null 2>&1; then
+                if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+                    if ! command -v sudo >/dev/null 2>&1; then
+                        echo "✗ sudo not available; install zsh manually and re-run" >&2
+                        exit 1
+                    fi
+                    if ! sudo -v; then
+                        echo "✗ Failed to acquire sudo credentials for zsh installation" >&2
+                        exit 1
+                    fi
+                    sudo apt-get update
+                    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y zsh
+                else
+                    apt-get update
+                    DEBIAN_FRONTEND=noninteractive apt-get install -y zsh
+                fi
+                echo "✓ zsh installed"
+            else
+                echo "✗ Automatic zsh installation is unsupported on this distribution. Install zsh manually and re-run" >&2
+                exit 1
+            fi
+        fi
         linux_helper="$DOTFILES_DIR/bootstrap/helpers/linux_helper.sh"
         if [[ ! -x "$linux_helper" ]]; then
             echo "✗ Linux bootstrap helper not found at $linux_helper" >&2
@@ -90,11 +114,11 @@ ask_yes_no() {
     local response
     
     while true; do
-        read -r "response?$prompt (Y/n): "
-        # Use zsh's native case-insensitive comparison
-        case "${(L)response}" in
-            y|yes) return 0 ;;
-            n|no) return 1 ;;
+        printf "%s " "$prompt (Y/n): "
+        read -r response
+        case "$response" in
+            ""|[Yy]|[Yy][Ee][Ss]) return 0 ;;
+            [Nn]|[Nn][Oo]) return 1 ;;
             *) echo "Please enter 'y' or 'n' (or 'yes'/'no')" ;;
         esac
     done
@@ -368,7 +392,8 @@ run_dotbot() {
 #━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 main() {
-    local start_time=$(date +%s)
+    local start_time
+    start_time=$(date +%s)
     
     echo "🚀 macOS Dotfiles Bootstrap v2"
     echo "==============================="
@@ -442,10 +467,18 @@ main() {
     setup_iterm2
     
     log_step $step $total "Setting up GitHub authentication"; ((step++))
-    [[ "$install_github" == "true" ]] && setup_github_auth || log_info "Skipping GitHub authentication"
+    if [[ "$install_github" == "true" ]]; then
+        setup_github_auth
+    else
+        log_info "Skipping GitHub authentication"
+    fi
     
     log_step $step $total "Setting up development directory"; ((step++))
-    [[ "$install_dev_dir" == "true" ]] && setup_dev_directory || log_info "Skipping development directory setup"
+    if [[ "$install_dev_dir" == "true" ]]; then
+        setup_dev_directory
+    else
+        log_info "Skipping development directory setup"
+    fi
     
     log_step $step $total "Running XDG cleanup"; ((step++))
     run_xdg_cleanup
@@ -456,7 +489,8 @@ main() {
     echo
     echo "🎉 Bootstrap Complete!"
     echo "====================="
-    local end_time=$(date +%s)
+    local end_time
+    end_time=$(date +%s)
     local duration=$((end_time - start_time))
     echo "→ Total time: $((duration / 60))m $((duration % 60))s"
     echo "→ Restart your terminal to apply all changes"

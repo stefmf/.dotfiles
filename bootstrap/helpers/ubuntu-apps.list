@@ -5,7 +5,7 @@
 #   provided   -> software is installed implicitly by another entry; payload used for logging
 # Lines starting with # are ignored.
 ansible|apt|ansible
-awscli|apt|awscli
+awscli|manual|install_awscli
 bat|apt|bat
 bat-extras|manual|install_bat_extras
 btop|apt|btop
