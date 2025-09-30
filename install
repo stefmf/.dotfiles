@@ -5,7 +5,7 @@ set -euo pipefail
 # Ensure /etc/pam.d/sudo_local is linked with sudo (for Touch ID support)
 # Skip if requested to avoid sudo prompts (bootstrap handles this separately)
 if [[ "${DOTFILES_SKIP_TOUCHID_LINK:-false}" == "true" ]]; then
-  echo "[INFO] Skipping Touch ID sudo_local setup (requested by caller)."
+  echo "[INFO] Skipping Touch ID sudo_local setup."
 elif [[ ! -L /etc/pam.d/sudo_local ]] || [[ "$(readlink /etc/pam.d/sudo_local 2>/dev/null)" != "$(pwd)/system/pam.d/sudo_local" ]]; then
   echo "[INFO] Setting up Touch ID sudo_local symlink..."
   sudo ln -sf "$(pwd)/system/pam.d/sudo_local" /etc/pam.d/sudo_local

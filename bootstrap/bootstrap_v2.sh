@@ -82,7 +82,7 @@ ask_yes_no() {
     local response
     
     while true; do
-        read -r "response?$prompt (y/n): "
+        read -r "response?$prompt (Y/n): "
         # Use zsh's native case-insensitive comparison
         case "${(L)response}" in
             y|yes) return 0 ;;

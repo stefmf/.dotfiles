@@ -39,9 +39,25 @@ cd ~/.dotfiles
 
 3) Bootstrap script
 
-<!-- Bootstrap script temporarily under maintenance -->
+Run the automated bootstrap script to set up your development environment:
 
-Placeholder: The unified bootstrap is being updated. Use the manual steps you prefer for now, or check back soon.
+```bash
+cd ~/.dotfiles/bootstrap
+./bootstrap_v2.sh
+```
+
+The script will:
+- Install Xcode Command Line Tools and Homebrew
+- Set up XDG directories and run Dotbot configuration
+- Prompt you for optional components (GUI apps, services, etc.)
+- Configure Touch ID, DNS, and system preferences
+- Set up development directory and GitHub authentication
+
+After completion:
+- Restart your terminal
+- Configure Git: `git config --global user.name "Your Name"` and `git config --global user.email "you@example.com"`
+
+For help: `./bootstrap_v2.sh --help`
 
 ---
 
