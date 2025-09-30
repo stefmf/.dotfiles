@@ -206,14 +206,22 @@ configure_services() {
         sudo brew services restart tailscale || log_warn "Failed to start tailscale"
     fi
     
-    # Start dnsmasq with sudo (needs port 53 access)
-    if brew list dnsmasq >/dev/null 2>&1; then
-        log_info "Starting dnsmasq with sudo"
-        require_sudo
-        sudo brew services restart dnsmasq || log_warn "Failed to start dnsmasq"
-    fi
+    # Note: dnsmasq will be started after dotbot applies config
     
     log_success "Services configured"
+}
+
+restart_services_after_dotbot() {
+    local install_services="$1"
+    
+    [[ "$install_services" != "true" ]] && return
+    
+    # Restart dnsmasq after dotbot applies the updated config
+    if brew list dnsmasq >/dev/null 2>&1; then
+        log_info "Restarting dnsmasq with updated configuration"
+        require_sudo
+        sudo brew services restart dnsmasq || log_warn "Failed to restart dnsmasq"
+    fi
 }
 
 configure_dns() {
@@ -396,7 +404,7 @@ main() {
     echo "========================"
     
     # Execute setup tasks in order with progress
-    local step=1 total=12
+    local step=1 total=13
     
     log_step $step $total "Setting up XDG directories"; ((step++))
     setup_xdg_directories
@@ -412,6 +420,9 @@ main() {
     
     log_step $step $total "Running Dotbot configuration"; ((step++))
     run_dotbot
+    
+    log_step $step $total "Restarting services with updated config"; ((step++))
+    restart_services_after_dotbot "$install_services"
     
     log_step $step $total "Setting up Touch ID"; ((step++))
     setup_touchid
