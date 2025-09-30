@@ -199,7 +199,8 @@ configure_services() {
     
     for service in tailscale dnsmasq; do
         if brew list "$service" >/dev/null 2>&1; then
-            brew services restart "$service" || log_warn "Failed to start $service"
+            log_info "Starting $service with sudo"
+            sudo brew services restart "$service" || log_warn "Failed to start $service"
         fi
     done
     
@@ -397,14 +398,14 @@ main() {
     log_step $step $total "Installing packages"; ((step++))
     install_packages "$install_casks" "$install_mas" "$install_services" "$install_office" "$install_parallels"
     
-    log_step $step $total "Running Dotbot configuration"; ((step++))
-    run_dotbot
-    
     log_step $step $total "Configuring services"; ((step++))
     configure_services "$install_services"
     
     log_step $step $total "Configuring DNS"; ((step++))
     configure_dns "$install_services"
+    
+    log_step $step $total "Running Dotbot configuration"; ((step++))
+    run_dotbot
     
     log_step $step $total "Setting up Touch ID"; ((step++))
     setup_touchid
