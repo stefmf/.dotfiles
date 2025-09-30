@@ -164,7 +164,7 @@ alias pullbrut='git -C ~/.dotfiles pull brut:~/.dotfiles main && ~/.dotfiles/scr
     # Brewfile management
 #------------------------------------------------------------------------------
 
-    alias brewdump='brew bundle dump --force --no-vscode --file ~/.dotfiles/bootstrap/Brewfile'
+    alias brewdump='brew bundle dump --force --no-vscode --file ~/.dotfiles/bootstrap/helpers/Brewfile'
 
 #------------------------------------------------------------------------------
 # Entertainment and Visual

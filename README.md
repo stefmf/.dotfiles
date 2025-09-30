@@ -105,7 +105,7 @@ Restart dnsmasq:
 sudo brew services restart dnsmasq
 ```
 
-Homebrew bundle: `bootstrap/Brewfile` installs CLI tools, shells, fonts, apps (iTerm2, VS Code, Chrome), Docker/K8s tooling, and more.
+Homebrew bundle: `bootstrap/helpers/Brewfile` installs CLI tools, shells, fonts, apps (iTerm2, VS Code, Chrome), Docker/K8s tooling, and more.
 
 ---
 

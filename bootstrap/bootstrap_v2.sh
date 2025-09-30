@@ -7,28 +7,23 @@ if [[ $# -gt 0 ]]; then
     case "$1" in
         --help|-h)
             cat << 'EOF'
-macOS Dotfiles Bootstrap v2
+Dotfiles Bootstrap v2
 
 USAGE:
     ./bootstrap_v2.sh [--help]
 
 DESCRIPTION:
-    Bootstraps a macOS development environment with dotfiles configuration.
+    Bootstraps a macOS or Linux development environment with dotfiles configuration.
     
     This script will:
-    • Set up XDG directories
-    • Install Homebrew and Xcode Command Line Tools
-    • Install packages from Brewfile (with user prompts for optional items)
-    • Configure system services, DNS, Touch ID
-    • Set up GitHub authentication, development directory
-    • Configure Dock and iTerm2
-    • Run Dotbot configuration
+    • macOS: Install Homebrew, configure services, Dock, iTerm2, and run Dotbot
+    • Linux: Delegate to a minimal Ubuntu bootstrap helper
 
 OPTIONS:
     -h, --help    Show this help message and exit
 
 REQUIREMENTS:
-    • macOS (Darwin)
+    • macOS (Darwin) or Ubuntu (Linux)
     • Non-root user
     • zsh (default on macOS 10.15+)
     • Internet connection
@@ -46,7 +41,7 @@ fi
 
 # Constants
 readonly DOTFILES_DIR="$HOME/.dotfiles"
-readonly BREWFILE="$DOTFILES_DIR/bootstrap/Brewfile"
+readonly BREWFILE="$DOTFILES_DIR/bootstrap/helpers/Brewfile"
 
 # XDG directories
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -54,11 +49,24 @@ export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
-# Ensure we're on macOS
-if [[ "$(uname)" != "Darwin" ]]; then
-    echo "✗ This script is for macOS only" >&2
-    exit 1
-fi
+# OS dispatch
+case "$(uname)" in
+    Darwin)
+        ;;
+    Linux)
+        linux_helper="$DOTFILES_DIR/bootstrap/helpers/linux_helper.sh"
+        if [[ ! -x "$linux_helper" ]]; then
+            echo "✗ Linux bootstrap helper not found at $linux_helper" >&2
+            exit 1
+        fi
+        /usr/bin/env bash "$linux_helper" "$@"
+        exit $?
+        ;;
+    *)
+        echo "✗ Unsupported operating system: $(uname)" >&2
+        exit 1
+        ;;
+esac
 
 # Don't run as root
 if [[ ${EUID:-$(id -u)} -eq 0 ]]; then

@@ -1,0 +1,46 @@
+# tool|method|payload
+# method:
+#   apt        -> payload is one or more apt package names separated by spaces
+#   manual     -> payload is the name of a helper function defined in linux_helper.sh
+#   provided   -> software is installed implicitly by another entry; payload used for logging
+# Lines starting with # are ignored.
+ansible|apt|ansible
+awscli|apt|awscli
+bat|apt|bat
+bat-extras|manual|install_bat_extras
+btop|apt|btop
+coreutils|apt|coreutils
+diffutils|apt|diffutils
+docker|manual|install_docker_suite
+docker-compose|provided|docker suite installs the Docker Compose plugin
+duf|apt|duf
+fastfetch|manual|install_fastfetch
+fd|apt|fd-find
+fzf|apt|fzf
+git|apt|git
+git-delta|apt|git-delta
+glab|apt|glab
+go|apt|golang-go
+helm|manual|install_helm
+jq|apt|jq
+kind|manual|install_kind
+kubernetes-cli|manual|install_kubectl
+lsd|apt|lsd
+lynx|apt|lynx
+minikube|manual|install_minikube
+moreutils|apt|moreutils
+nmap|apt|nmap
+pre-commit|apt|pre-commit
+pyenv|apt|pyenv
+pylint|apt|pylint
+ripgrep|apt|ripgrep
+shellcheck|apt|shellcheck
+terraform|manual|install_terraform
+tlrc|manual|install_tlrc
+tmux|apt|tmux
+tty-clock|apt|tty-clock
+uv|manual|install_uv
+wget2|apt|wget2
+xq|manual|install_xq
+oh-my-posh|manual|install_oh_my_posh
+pipx|apt|pipx
