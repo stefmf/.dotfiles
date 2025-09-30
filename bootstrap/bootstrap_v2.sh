@@ -198,7 +198,10 @@ configure_services() {
     
     # Start Tailscale as system service (requires system extensions)
     if brew list tailscale >/dev/null 2>&1; then
-        log_info "Starting tailscale as system service"
+        log_info "Configuring tailscale service"
+        # Stop any existing user-level service first
+        brew services stop tailscale 2>/dev/null || true
+        # Start as system service with proper privileges
         require_sudo
         sudo brew services restart tailscale || log_warn "Failed to start tailscale"
     fi
