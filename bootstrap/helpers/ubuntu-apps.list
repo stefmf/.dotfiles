@@ -36,7 +36,6 @@ pylint|apt|pylint
 ripgrep|apt|ripgrep
 shellcheck|apt|shellcheck
 terraform|manual|install_terraform
-tlrc|manual|install_tlrc
 tmux|apt|tmux
 tty-clock|apt|tty-clock
 uv|manual|install_uv

@@ -25,6 +25,110 @@ export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
+declare -Ag INSTALL_RESULTS=()
+declare -a INSTALL_ORDER=()
+
+record_install_result() {
+    local tool="$1"
+    local status="$2"
+    local details="${3:-}"
+    if [[ -n "$details" ]]; then
+        INSTALL_RESULTS["$tool"]="$status - $details"
+    else
+        INSTALL_RESULTS["$tool"]="$status"
+    fi
+}
+
+detect_tool_presence() {
+    local tool="$1"
+    local method="$2"
+    local payload="$3"
+
+    case "$method" in
+        apt)
+            local pkg
+            for pkg in $payload; do
+                if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+                    return 1
+                fi
+            done
+            return 0
+            ;;
+        manual)
+            case "$tool" in
+                awscli)
+                    command -v aws >/dev/null 2>&1
+                    ;;
+                bat-extras)
+                    command -v batman >/dev/null 2>&1 || command -v batdiff >/dev/null 2>&1
+                    ;;
+                docker)
+                    command -v docker >/dev/null 2>&1
+                    ;;
+                fastfetch)
+                    command -v fastfetch >/dev/null 2>&1
+                    ;;
+                helm)
+                    command -v helm >/dev/null 2>&1
+                    ;;
+                kind)
+                    command -v kind >/dev/null 2>&1
+                    ;;
+                kubernetes-cli)
+                    command -v kubectl >/dev/null 2>&1
+                    ;;
+                minikube)
+                    command -v minikube >/dev/null 2>&1
+                    ;;
+                terraform)
+                    command -v terraform >/dev/null 2>&1
+                    ;;
+                uv)
+                    command -v uv >/dev/null 2>&1 || [[ -x "$HOME/.local/bin/uv" ]]
+                    ;;
+                xq)
+                    if command -v xq >/dev/null 2>&1; then
+                        return 0
+                    fi
+                    if command -v pipx >/dev/null 2>&1 && pipx list 2>/dev/null | grep -q '^package yq'; then
+                        return 0
+                    fi
+                    return 1
+                    ;;
+                oh-my-posh)
+                    command -v oh-my-posh >/dev/null 2>&1
+                    ;;
+                pyenv)
+                    command -v pyenv >/dev/null 2>&1 || [[ -x "${PYENV_ROOT:-$HOME/.pyenv}/bin/pyenv" ]]
+                    ;;
+                *)
+                    return 1
+                    ;;
+            esac
+            return $?
+            ;;
+        provided)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+print_install_summary() {
+    if [[ ${#INSTALL_ORDER[@]} -eq 0 ]]; then
+        return
+    fi
+
+    log_info "Tools installation summary:"
+    local tool
+    for tool in "${INSTALL_ORDER[@]}"; do
+        local result="${INSTALL_RESULTS[$tool]:-not processed}"
+        log_info "  • ${tool}: ${result}"
+    done
+}
+
 ensure_platform() {
     if [[ "$(uname)" != "Linux" ]]; then
         fail "Unsupported operating system: $(uname)"
@@ -151,7 +255,7 @@ add_apt_repository() {
     fi
 
     if [[ ! -f "$list_file" ]] || ! grep -Fqx "$repo_line" "$list_file" 2>/dev/null; then
-        echo "$repo_line" | sudo tee "$list_file" >/dev/null
+    echo "$repo_line" | sudo tee "$list_file" >/dev/null
         reset_apt_update_flag
     fi
 }
@@ -555,72 +659,6 @@ install_uv() {
     fi
 }
 
-install_tlrc() {
-    if command -v tlrc >/dev/null 2>&1; then
-        log_success "tlrc already installed"
-        return
-    fi
-
-    local release_json
-    release_json=$(curl -fsSL https://api.github.com/repos/tldr-pages/tlrc/releases/latest 2>/dev/null || true)
-    if [[ -z "$release_json" ]]; then
-        log_warn "Unable to query tlrc release metadata"
-        return
-    fi
-
-    local version
-    version=$(jq -r '.tag_name' <<<"$release_json" 2>/dev/null || true)
-    if [[ -z "$version" || "$version" == null ]]; then
-        log_warn "Unable to determine latest tlrc version"
-        return
-    fi
-
-    local arch
-    if ! arch=$(detect_binary_arch); then
-        log_warn "Skipping tlrc installation due to unsupported architecture"
-        return
-    fi
-
-    local asset_suffix
-    case "$arch" in
-        amd64)
-            asset_suffix="x86_64-unknown-linux-gnu.tar.gz"
-            ;;
-        arm64)
-            asset_suffix="aarch64-unknown-linux-gnu.tar.gz"
-            ;;
-        *)
-            log_warn "Unsupported tlrc architecture mapping for $arch"
-            return
-            ;;
-    esac
-
-    local asset_url
-    asset_url=$(jq -r --arg version "$version" --arg suffix "$asset_suffix" '.assets[]?.browser_download_url | select(contains($version) and endswith($suffix))' <<<"$release_json" 2>/dev/null | head -n1)
-
-    if [[ -z "$asset_url" || "$asset_url" == null ]]; then
-        log_warn "No tlrc release available for architecture $arch"
-        return
-    fi
-
-    local tmp_dir
-    tmp_dir=$(mktemp -d)
-    if curl -fsSL "$asset_url" -o "$tmp_dir/tlrc.tar.gz" && \
-        tar -xzf "$tmp_dir/tlrc.tar.gz" -C "$tmp_dir"; then
-        local binary
-        binary=$(find "$tmp_dir" -type f -name tlrc -print -quit)
-        if [[ -n "$binary" ]]; then
-            sudo install -m 0755 "$binary" /usr/local/bin/tlrc
-            log_success "tlrc ${version} installed"
-        else
-            log_warn "tlrc binary not found in release archive"
-        fi
-    else
-        log_warn "Failed to install tlrc"
-    fi
-    rm -rf "$tmp_dir"
-}
-
 install_oh_my_posh() {
     if command -v oh-my-posh >/dev/null 2>&1; then
         log_success "oh-my-posh already installed"
@@ -814,31 +852,61 @@ install_requested_apps() {
             continue
         fi
 
+        INSTALL_ORDER+=("$tool")
+
         case "$method" in
             apt)
                 local pkg
+                local success=true
                 for pkg in $payload; do
-                    ensure_package "$pkg"
+                    if ! ensure_package "$pkg"; then
+                        success=false
+                    fi
                 done
+                if [[ "$success" == true ]]; then
+                    if detect_tool_presence "$tool" "$method" "$payload"; then
+                        record_install_result "$tool" "available" "apt: $payload"
+                    else
+                        record_install_result "$tool" "needs attention" "apt verification failed"
+                    fi
+                else
+                    record_install_result "$tool" "failed" "apt: $payload"
+                fi
                 ;;
             manual)
                 if declare -F "$payload" >/dev/null 2>&1; then
-                    "$payload"
+                    local install_exit=0
+                    if "$payload"; then
+                        install_exit=0
+                    else
+                        install_exit=$?
+                    fi
+                    if detect_tool_presence "$tool" "$method" "$payload"; then
+                        record_install_result "$tool" "available" "manual: $payload"
+                    elif (( install_exit == 0 )); then
+                        record_install_result "$tool" "needs attention" "manual: $payload"
+                    else
+                        record_install_result "$tool" "failed" "manual: $payload"
+                    fi
                 else
                     log_warn "Installer function $payload for $tool not found"
+                    record_install_result "$tool" "skipped" "installer not defined"
                 fi
                 ;;
             provided)
                 log_success "$tool provided by ${payload:-another installer}"
+                record_install_result "$tool" "provided" "${payload:-}"
                 ;;
             *)
                 log_warn "Unknown install method '$method' for $tool"
+                record_install_result "$tool" "skipped" "unknown method $method"
                 ;;
         esac
     done < "$APPS_LIST_FILE"
 
     ensure_fd_alias
     ensure_bat_alias
+    print_install_summary
 }
 
 setup_xdg_directories() {
