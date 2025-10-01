@@ -61,7 +61,10 @@ detect_tool_presence() {
                     command -v aws >/dev/null 2>&1
                     ;;
                 bat-extras)
-                    command -v batman >/dev/null 2>&1 || command -v batdiff >/dev/null 2>&1
+                    command -v batman >/dev/null 2>&1 && command -v batdiff >/dev/null 2>&1
+                    ;;
+                btop)
+                    command -v btop >/dev/null 2>&1
                     ;;
                 docker)
                     command -v docker >/dev/null 2>&1
@@ -83,9 +86,6 @@ detect_tool_presence() {
                     ;;
                 terraform)
                     command -v terraform >/dev/null 2>&1
-                    ;;
-                uv)
-                    command -v uv >/dev/null 2>&1 || [[ -x "$HOME/.local/bin/uv" ]]
                     ;;
                 xq)
                     if command -v xq >/dev/null 2>&1; then
@@ -509,9 +509,112 @@ install_kind() {
     rm -f "$tmp_file"
 }
 
+install_btop() {
+    if command -v btop >/dev/null 2>&1; then
+        local current_version
+        current_version=$(btop --version 2>/dev/null || true)
+        log_success "btop already installed${current_version:+ ($current_version)}"
+        return
+    fi
+
+    if dpkg -s btop >/dev/null 2>&1; then
+        log_info "Removing apt-provided btop to avoid config rewrites"
+        if ! sudo apt-get remove -y btop >/dev/null 2>&1; then
+            log_warn "Failed to remove existing btop package"
+        fi
+    fi
+
+    local release_json
+    release_json=$(curl -fsSL https://api.github.com/repos/aristocratos/btop/releases/latest 2>/dev/null || true)
+    if [[ -z "$release_json" ]]; then
+        log_warn "Unable to query btop release metadata"
+        return
+    fi
+
+    local version
+    version=$(jq -r '.tag_name' <<<"$release_json" 2>/dev/null || true)
+    if [[ -z "$version" || "$version" == null ]]; then
+        log_warn "Unable to determine latest btop version"
+        return
+    fi
+
+    local arch_token
+    case "$(uname -m)" in
+        x86_64|amd64)
+            arch_token="x86_64"
+            ;;
+        arm64|aarch64)
+            arch_token="aarch64"
+            ;;
+        *)
+            log_warn "Unsupported architecture for btop: $(uname -m)"
+            return
+            ;;
+    esac
+
+    local asset_name="btop-${arch_token}-linux-musl.tbz"
+    local asset_url
+    asset_url=$(jq -r --arg name "$asset_name" '.assets[]?.browser_download_url | select(endswith($name))' <<<"$release_json" 2>/dev/null | head -n1)
+
+    if [[ -z "$asset_url" || "$asset_url" == null ]]; then
+        log_warn "Failed to locate btop release asset matching $asset_name"
+        return
+    fi
+
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    local archive="$tmp_dir/$asset_name"
+
+    if ! curl -fsSL "$asset_url" -o "$archive"; then
+        log_warn "Failed to download btop archive"
+        rm -rf "$tmp_dir"
+        return
+    fi
+
+    if ! tar -xjf "$archive" -C "$tmp_dir"; then
+        log_warn "Failed to extract btop archive"
+        rm -rf "$tmp_dir"
+        return
+    fi
+
+    local extracted_dir
+    extracted_dir=$(find "$tmp_dir" -maxdepth 1 -type d -name 'btop*' -print -quit)
+    if [[ -z "$extracted_dir" ]]; then
+        log_warn "Unable to locate extracted btop directory"
+        rm -rf "$tmp_dir"
+        return
+    fi
+
+    if [[ ! -x "$extracted_dir/bin/btop" ]]; then
+        log_warn "btop binary missing from extracted archive"
+        rm -rf "$tmp_dir"
+        return
+    fi
+
+    sudo install -m 0755 "$extracted_dir/bin/btop" /usr/local/bin/btop
+
+    if [[ -d "$extracted_dir/share/btop" ]]; then
+        sudo rm -rf /usr/local/share/btop
+        sudo install -d /usr/local/share/btop
+        sudo cp -R "$extracted_dir/share/btop/." /usr/local/share/btop/
+    fi
+
+    rm -rf "$tmp_dir"
+    log_success "btop ${version#v} installed"
+}
+
 install_bat_extras() {
-    if command -v batman >/dev/null 2>&1 || command -v batdiff >/dev/null 2>&1; then
-        log_success "bat-extras already installed"
+    local needs_install=false
+    local tool
+
+    for tool in batman batdiff; do
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            needs_install=true
+        fi
+    done
+
+    if [[ "$needs_install" == false ]]; then
+        log_success "bat-extras already installed (batman, batdiff)"
         return
     fi
 
@@ -564,8 +667,21 @@ install_bat_extras() {
     esac
 
     if [[ -n "$bin_dir" ]]; then
-        sudo install -m 0755 "$bin_dir"/* /usr/local/bin/
-        log_success "bat-extras ${version} installed"
+        local installed_any=false
+        for tool in batman batdiff; do
+            if [[ -x "$bin_dir/$tool" ]]; then
+                sudo install -m 0755 "$bin_dir/$tool" /usr/local/bin/"$tool"
+                installed_any=true
+            else
+                log_warn "bat-extras binary '$tool' not found in release"
+            fi
+        done
+
+        if [[ "$installed_any" == true ]]; then
+            log_success "bat-extras ${version} installed (batman, batdiff)"
+        else
+            log_warn "Failed to install required bat-extras tools"
+        fi
     else
         log_warn "Failed to install bat-extras"
     fi
@@ -646,20 +762,6 @@ install_fastfetch() {
     rm -rf "$tmp_dir"
 }
 
-install_uv() {
-    if command -v uv >/dev/null 2>&1; then
-        log_success "uv already installed"
-        return
-    fi
-
-    ensure_local_bin
-    if curl -LsSf https://astral.sh/uv/install.sh | sh -s --; then
-        log_success "uv installed"
-    else
-        log_warn "uv installation script failed"
-    fi
-}
-
 install_oh_my_posh() {
     if command -v oh-my-posh >/dev/null 2>&1; then
         log_success "oh-my-posh already installed"
@@ -723,8 +825,6 @@ install_pyenv() {
         libncurses-dev
         xz-utils
         tk-dev
-        curl
-        llvm
     )
 
     local dep

@@ -8,7 +8,7 @@ ansible|apt|ansible
 awscli|manual|install_awscli
 bat|apt|bat
 bat-extras|manual|install_bat_extras
-btop|apt|btop
+btop|manual|install_btop
 coreutils|apt|coreutils
 diffutils|apt|diffutils
 docker|manual|install_docker_suite
@@ -38,7 +38,6 @@ shellcheck|apt|shellcheck
 terraform|manual|install_terraform
 tmux|apt|tmux
 tty-clock|apt|tty-clock
-uv|manual|install_uv
 wget2|apt|wget2
 xq|manual|install_xq
 oh-my-posh|manual|install_oh_my_posh
