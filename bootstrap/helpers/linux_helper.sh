@@ -1242,10 +1242,6 @@ ensure_default_shell() {
 }
 
 maybe_restart_shell() {
-    if [[ "$DEFAULT_SHELL_UPDATED" != true ]]; then
-        return
-    fi
-
     local zsh_path="${DEFAULT_SHELL_TARGET:-}"
     if [[ -z "$zsh_path" ]]; then
         zsh_path=$(command -v zsh || true)
@@ -1259,17 +1255,34 @@ maybe_restart_shell() {
         return
     fi
 
+    local shell_matches=false
     if [[ "${SHELL:-}" == "$zsh_path" ]]; then
+        shell_matches=true
+    fi
+
+    if [[ "$DEFAULT_SHELL_UPDATED" != true && "$shell_matches" == true ]]; then
         return
     fi
 
     if [[ ! -t 0 || ! -t 1 ]]; then
-        log_info "Default shell changed to zsh. Start a new session or run '$zsh_path -l' to reload the environment."
+        if [[ "$DEFAULT_SHELL_UPDATED" == true ]]; then
+            log_info "Default shell changed to zsh. Start a new session or run '$zsh_path -l' to reload the environment."
+        else
+            log_info "Default shell already set to zsh ($zsh_path). Start a new session or run '$zsh_path -l' to reload the environment."
+        fi
+        return
+    fi
+
+    if [[ "$shell_matches" == true ]]; then
         return
     fi
 
     export SHELL="$zsh_path"
-    log_info "Launching a new zsh login shell ($zsh_path) to apply changes"
+    if [[ "$DEFAULT_SHELL_UPDATED" == true ]]; then
+        log_info "Launching a new zsh login shell ($zsh_path) to apply changes"
+    else
+        log_info "Switching to zsh login shell ($zsh_path) to match current default"
+    fi
     exec "$zsh_path" -l
 }
 
