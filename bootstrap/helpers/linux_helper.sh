@@ -732,7 +732,19 @@ install_pyenv() {
         ensure_package "$dep"
     done
 
-    local pyenv_root="${PYENV_ROOT:-$HOME/.pyenv}"
+    local pyenv_root="${PYENV_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/pyenv}"
+    local legacy_pyenv_root="$HOME/.pyenv"
+
+    mkdir -p "$(dirname "$pyenv_root")"
+
+    if [[ "$pyenv_root" != "$legacy_pyenv_root" && -d "$legacy_pyenv_root" && ! -e "$pyenv_root" ]]; then
+        log_info "Migrating legacy pyenv directory to $pyenv_root"
+        if mv "$legacy_pyenv_root" "$pyenv_root"; then
+            log_success "Legacy pyenv directory migrated"
+        else
+            log_warn "Failed to migrate legacy pyenv directory"
+        fi
+    fi
     if [[ -d "$pyenv_root/.git" ]]; then
         log_info "Updating pyenv repository"
         if ! git -C "$pyenv_root" pull --ff-only >/dev/null 2>&1; then
@@ -912,9 +924,15 @@ install_requested_apps() {
 
 setup_xdg_directories() {
     log_info "Ensuring XDG base directories exist"
-    mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$XDG_STATE_HOME"
-    mkdir -p "$HOME/.zsh_sessions" "$HOME/.ssh/sockets"
-    chmod 700 "$HOME/.ssh" "$HOME/.ssh/sockets" 2>/dev/null || true
+    mkdir -p \
+        "$XDG_CONFIG_HOME" \
+        "$XDG_DATA_HOME" \
+        "$XDG_CACHE_HOME" \
+        "$XDG_STATE_HOME" \
+        "$XDG_CACHE_HOME/zsh" \
+        "$XDG_STATE_HOME/zsh/sessions" \
+        "$HOME/.ssh/sockets"
+    chmod 700 "$HOME/.ssh" "$HOME/.ssh/sockets" "$XDG_STATE_HOME/zsh" "$XDG_STATE_HOME/zsh/sessions" 2>/dev/null || true
     log_success "XDG directories ready"
 }
 

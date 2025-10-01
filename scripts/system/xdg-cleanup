@@ -71,6 +71,15 @@ safe_remove "$HOME/.zsh_history" "ZSH history file (now in dotfiles/shell/zsh/)"
 safe_remove "$HOME/.zcompdump" "ZSH completion dump (now in dotfiles/shell/zsh/)"
 safe_remove "$HOME/.zcompdump.zwc" "ZSH completion dump compiled (now in dotfiles/shell/zsh/)"
 
+# Bash legacy files
+safe_remove "$HOME/.bashrc" "Bash configuration file (deprecated)"
+safe_remove "$HOME/.bash_profile" "Bash profile (deprecated)"
+safe_remove "$HOME/.bash_logout" "Bash logout script (deprecated)"
+safe_remove "$HOME/.profile" "Legacy shell profile (replaced by zsh configuration)"
+
+# Sudo marker file created by Ubuntu's installer
+safe_remove "$HOME/.sudo_as_admin_successful" "Ubuntu sudo marker file (safe to remove)"
+
 # Application cache and config files
 safe_remove "$HOME/.lesshst" "Less history file (now in ~/.cache/less/)"
 safe_remove "$HOME/.npm" "NPM cache directory (now uses ~/.cache/npm/)"
@@ -86,6 +95,9 @@ safe_remove "$HOME/.oh-my-zsh" "Oh My Zsh directory (now using Zinit + OMZ libs 
 
 # Oh My Posh cache files
 safe_remove "$HOME/.omp.cache" "Oh My Posh cache file (now uses ~/.cache/oh-my-posh/)"
+
+# Legacy pyenv installation directory
+safe_remove "$HOME/.pyenv" "pyenv installation directory (now in ~/.local/share/pyenv/)"
 
 echo -e "${GREEN}🎉 Cleanup complete!${NC}"
 echo ""

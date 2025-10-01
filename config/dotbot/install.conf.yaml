@@ -6,9 +6,10 @@
 - clean: ['~']
 
 - create:
-    - ~/.zsh_sessions
     - ~/.config
     - ~/.ssh
+  - ~/.cache/zsh
+  - ~/.local/state/zsh/sessions
 
 - link:
     # Config files
@@ -42,4 +43,4 @@
       force: false
 
 - shell:
-    - [rm -f ~/.bashrc ~/.bash_profile, Removing Bash configuration files]
+  - [rm -f ~/.bashrc ~/.bash_profile ~/.bash_logout ~/.profile ~/.sudo_as_admin_successful, Removing legacy shell files]
