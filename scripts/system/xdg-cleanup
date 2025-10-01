@@ -125,7 +125,7 @@ safe_remove "$HOME/.zcompdump.zwc" "ZSH completion dump compiled (now in dotfile
 safe_remove "$HOME/.bashrc" "Bash configuration file (deprecated)"
 safe_remove "$HOME/.bash_profile" "Bash profile (deprecated)"
 safe_remove "$HOME/.bash_logout" "Bash logout script (deprecated)"
-safe_remove "$HOME/.profile" "Legacy shell profile (replaced by zsh configuration)"
+# Note: .profile is intentionally preserved as it contains shell fallback logic
 
 # Sudo marker file created by Ubuntu's installer
 safe_remove "$HOME/.sudo_as_admin_successful" "Ubuntu sudo marker file (safe to remove)"
