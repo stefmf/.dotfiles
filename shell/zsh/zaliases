@@ -40,7 +40,9 @@ alias rl='reload'                   # Short alias for reload
 alias c="clear && printf '\e[3J'"   # Clear terminal and scrollback buffer
 
 # Editor
-alias vi='vim'                       # Ensure vi points to vim
+if command_exists vim; then
+    alias vi='vim'                   # Ensure vi points to vim when available
+fi
 
 #------------------------------------------------------------------------------
 # System Monitoring and Information

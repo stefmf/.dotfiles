@@ -1022,6 +1022,36 @@ install_requested_apps() {
     print_install_summary
 }
 
+disable_sudo_admin_flag() {
+    local sudoers_file="/etc/sudoers.d/disable_admin_flag"
+    local visudo_cmd
+    visudo_cmd=$(command -v visudo 2>/dev/null || echo /usr/sbin/visudo)
+
+    if sudo test -f "$sudoers_file" 2>/dev/null && \
+       sudo grep -Eq '^\s*Defaults\s+!admin_flag\b' "$sudoers_file" 2>/dev/null; then
+        log_success "sudo admin flag already disabled"
+        return
+    fi
+
+    local tmp_file
+    tmp_file=$(mktemp)
+    printf 'Defaults !admin_flag\n' >"$tmp_file"
+
+    if ! sudo "$visudo_cmd" -cf "$tmp_file" >/dev/null 2>&1; then
+        log_warn "Failed to validate sudoers snippet for disabling admin flag"
+        rm -f "$tmp_file"
+        return
+    fi
+
+    if sudo install -o root -g root -m 0440 "$tmp_file" "$sudoers_file"; then
+        log_success "Disabled sudo admin flag"
+    else
+        log_warn "Failed to install sudoers snippet to disable admin flag"
+    fi
+
+    rm -f "$tmp_file"
+}
+
 setup_xdg_directories() {
     log_info "Ensuring XDG base directories exist"
     mkdir -p \
@@ -1075,6 +1105,22 @@ run_xdg_cleanup() {
     log_info "Running XDG cleanup"
     "$XDG_CLEANUP_SCRIPT" --from-bootstrap || log_warn "XDG cleanup reported issues"
     log_success "XDG cleanup complete"
+}
+
+schedule_post_cleanup_pass() {
+    if [[ "${DOTFILES_SKIP_XDG_CLEANUP_SECOND_PASS:-false}" == "true" ]]; then
+        return
+    fi
+
+    if [[ ! -x "$XDG_CLEANUP_SCRIPT" ]]; then
+        return
+    fi
+
+    log_info "Scheduling follow-up XDG cleanup pass"
+    (
+        sleep 2
+        "$XDG_CLEANUP_SCRIPT" --from-bootstrap >/dev/null 2>&1 || true
+    ) &
 }
 
 ensure_default_shell() {
@@ -1155,11 +1201,13 @@ main() {
 
     install_minimal_packages
     install_requested_apps
+    disable_sudo_admin_flag
     setup_xdg_directories
     run_dotbot
     setup_dev_directory
-    run_xdg_cleanup
     ensure_default_shell
+    run_xdg_cleanup
+    schedule_post_cleanup_pass
 
     log_success "Bootstrap complete."
     maybe_restart_shell
