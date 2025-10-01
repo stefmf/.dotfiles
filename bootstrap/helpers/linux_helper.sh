@@ -28,6 +28,7 @@ export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 declare -Ag INSTALL_RESULTS=()
 declare -a INSTALL_ORDER=()
 DEFAULT_SHELL_UPDATED=false
+DEFAULT_SHELL_TARGET=""
 
 record_install_result() {
     local tool="$1"
@@ -1142,24 +1143,72 @@ ensure_shell_registered() {
     fi
 }
 
-ensure_default_shell() {
-    local zsh_path
-    zsh_path=$(command -v zsh || true)
+canonical_shell_path() {
+    local shell_path="$1"
 
-    if [[ -z "$zsh_path" ]]; then
+    if [[ -z "$shell_path" ]]; then
+        return
+    fi
+
+    if command -v readlink >/dev/null 2>&1; then
+        readlink -f "$shell_path" 2>/dev/null || echo "$shell_path"
+        return
+    fi
+
+    if command -v realpath >/dev/null 2>&1; then
+        realpath "$shell_path" 2>/dev/null || echo "$shell_path"
+        return
+    fi
+
+    echo "$shell_path"
+}
+
+ensure_default_shell() {
+    declare -A seen_paths=()
+    local -a candidates=()
+
+    if command -v zsh >/dev/null 2>&1; then
+        candidates+=("$(command -v zsh)")
+    fi
+
+    if [[ -x /usr/bin/zsh ]]; then
+        candidates+=("/usr/bin/zsh")
+    fi
+
+    if [[ -x /bin/zsh ]]; then
+        candidates+=("/bin/zsh")
+    fi
+
+    local -a unique_candidates=()
+    local candidate
+    for candidate in "${candidates[@]}"; do
+        local resolved
+        resolved="$(canonical_shell_path "$candidate")"
+        if [[ -n "$resolved" && -z "${seen_paths[$resolved]:-}" ]]; then
+            unique_candidates+=("$resolved")
+            seen_paths[$resolved]=1
+        fi
+    done
+
+    if (( ${#unique_candidates[@]} == 0 )); then
         log_warn "zsh binary not found; skipping default shell change"
         return
     fi
 
-    ensure_shell_registered "$zsh_path"
-
     local current_default
     current_default=$(getent passwd "$USER" | awk -F: '{print $7}' 2>/dev/null || echo "${SHELL:-}")
+    local current_resolved
+    current_resolved="$(canonical_shell_path "$current_default")"
 
-    if [[ "$current_default" == "$zsh_path" ]]; then
-        log_success "Default shell already set to zsh"
-        return
-    fi
+    for candidate in "${unique_candidates[@]}"; do
+        ensure_shell_registered "$candidate"
+        if [[ -n "$current_resolved" && "$current_resolved" == "$candidate" ]]; then
+            export SHELL="$candidate"
+            DEFAULT_SHELL_TARGET="$candidate"
+            log_success "Default shell already set to zsh ($candidate)"
+            return
+        fi
+    done
 
     if ! sudo -n true 2>/dev/null; then
         log_info "Revalidating sudo credentials for shell change"
@@ -1169,25 +1218,27 @@ ensure_default_shell() {
         fi
     fi
 
-    log_info "Setting default shell to zsh"
-    if sudo usermod -s "$zsh_path" "$USER" >/dev/null 2>&1; then
-        log_success "Default shell updated"
-        DEFAULT_SHELL_UPDATED=true
-        return
-    fi
+    for candidate in "${unique_candidates[@]}"; do
+        log_info "Setting default shell to $candidate"
 
-    if sudo chsh -s "$zsh_path" "$USER" >/dev/null 2>&1; then
-        log_success "Default shell updated"
-        DEFAULT_SHELL_UPDATED=true
-        return
-    fi
+        if sudo usermod -s "$candidate" "$USER" >/dev/null 2>&1 ||
+           sudo chsh -s "$candidate" "$USER" >/dev/null 2>&1 ||
+           chsh -s "$candidate" "$USER" >/dev/null 2>&1; then
+            current_default=$(getent passwd "$USER" | awk -F: '{print $7}' 2>/dev/null || true)
+            current_resolved="$(canonical_shell_path "$current_default")"
+            if [[ -n "$current_resolved" && "$current_resolved" == "$candidate" ]]; then
+                export SHELL="$candidate"
+                DEFAULT_SHELL_TARGET="$candidate"
+                DEFAULT_SHELL_UPDATED=true
+                log_success "Default shell updated to $candidate"
+                return
+            fi
+        fi
 
-    if chsh -s "$zsh_path" "$USER" >/dev/null 2>&1; then
-        log_success "Default shell updated"
-        DEFAULT_SHELL_UPDATED=true
-    fi
+        log_warn "Failed to change default shell to $candidate"
+    done
 
-    log_warn "Failed to change default shell automatically. Run 'sudo chsh -s $zsh_path $USER' manually."
+    log_warn "Failed to change default shell automatically. Run 'sudo chsh -s ${unique_candidates[0]} $USER' manually."
 }
 
 maybe_restart_shell() {
@@ -1195,8 +1246,10 @@ maybe_restart_shell() {
         return
     fi
 
-    local zsh_path
-    zsh_path=$(command -v zsh || true)
+    local zsh_path="${DEFAULT_SHELL_TARGET:-}"
+    if [[ -z "$zsh_path" ]]; then
+        zsh_path=$(command -v zsh || true)
+    fi
     if [[ -z "$zsh_path" ]]; then
         return
     fi
@@ -1215,7 +1268,8 @@ maybe_restart_shell() {
         return
     fi
 
-    log_info "Launching a new zsh login shell to apply changes"
+    export SHELL="$zsh_path"
+    log_info "Launching a new zsh login shell ($zsh_path) to apply changes"
     exec "$zsh_path" -l
 }
 

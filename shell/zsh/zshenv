@@ -15,6 +15,15 @@ if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
     export PATH
 fi
 
+# Ensure SHELL reflects the active zsh binary even when launched from another shell
+if command -v zsh >/dev/null 2>&1; then
+    __dotfiles_zsh_bin="$(command -v zsh)"
+    if [[ -n "$__dotfiles_zsh_bin" && "${SHELL:-}" != "$__dotfiles_zsh_bin" ]]; then
+        export SHELL="$__dotfiles_zsh_bin"
+    fi
+    unset __dotfiles_zsh_bin
+fi
+
 # Application-specific XDG compliance
 export LESSHISTFILE="$XDG_CACHE_HOME/less/history"
 export TLDR_CACHE_DIR="$XDG_CACHE_HOME/tldr"
@@ -66,7 +75,7 @@ fi
 # Note: GNU tools are added AFTER system tools to maintain compatibility
 if [[ "$OSTYPE" == darwin* ]]; then
     # Check for Homebrew and add GNU tools (but don't prepend PATH to avoid conflicts)
-    local brew_prefix=""
+    brew_prefix=""
     if [[ -x "/opt/homebrew/bin/brew" ]]; then
         brew_prefix="/opt/homebrew"
     elif [[ -x "/usr/local/bin/brew" ]]; then
