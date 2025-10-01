@@ -402,7 +402,7 @@ install_bat_extras() {
     fi
 
     local asset_url
-    asset_url=$(jq -r '.assets[]?.browser_download_url | select(test("bat-extras-.*\\.zip$"))' <<<"$release_json" 2>/dev/null | head -n1)
+    asset_url=$(jq -r '.assets[]?.browser_download_url | select(test("bat-extras-.*\\.tar\\.gz$"))' <<<"$release_json" 2>/dev/null | head -n1)
     if [[ -z "$asset_url" || "$asset_url" == null ]]; then
         log_warn "Failed to locate bat-extras release asset"
         return
@@ -410,9 +410,16 @@ install_bat_extras() {
 
     local tmp_dir
     tmp_dir=$(mktemp -d)
-    local archive="$tmp_dir/bat-extras.zip"
-    if curl -fsSL "$asset_url" -o "$archive" && unzip -q "$archive" -d "$tmp_dir"; then
-        sudo install -m 0755 "$tmp_dir"/bat-extras-*/bin/* /usr/local/bin/
+    local archive="$tmp_dir/bat-extras.tar.gz"
+    if curl -fsSL "$asset_url" -o "$archive" && tar -xzf "$archive" -C "$tmp_dir"; then
+        local bin_dir
+        bin_dir=$(find "$tmp_dir" -maxdepth 2 -type d -name bin -print -quit)
+        if [[ -z "$bin_dir" ]]; then
+            log_warn "bat-extras bin directory not found"
+            rm -rf "$tmp_dir"
+            return
+        fi
+        sudo install -m 0755 "$bin_dir"/* /usr/local/bin/
         log_success "bat-extras ${version} installed"
     else
         log_warn "Failed to install bat-extras"
