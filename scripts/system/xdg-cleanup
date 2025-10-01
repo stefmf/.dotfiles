@@ -157,6 +157,17 @@ safe_remove "$HOME/.zsh_sessions" "ZSH sessions directory (now managed by ~/.loc
 safe_remove "$HOME/.zcompcache" "ZSH completion cache directory (now uses ~/.cache/zsh/)"
 safe_remove "$HOME/.minikube" "Minikube directory (safe to remove if not actively used)"
 
+# Old dotfiles structure directories (pre-refactor)
+safe_remove "$HOME/.dotfiles/.config" "Old dotfiles config directory (moved to proper locations in refactor)"
+safe_remove "$HOME/.dotfiles/.zsh" "Old dotfiles zsh directory (moved to ~/.dotfiles/shell/zsh/)"
+
+# Application directories that should use XDG directories
+safe_remove "$HOME/.tldrc" "TLDR cache directory (cache data, will regenerate in ~/.cache/tldr/)"
+safe_remove "$HOME/.docker" "Docker config directory (move to ~/.config/docker via DOCKER_CONFIG env var)"
+safe_remove "$HOME/.vs_kubernetes" "VS Code Kubernetes extension data (cache/state data)"
+
+echo -e "${YELLOW}Note: ~/.colima cannot be moved (hardcoded by Colima, required by SSH config)${NC}"
+echo ""
 echo -e "${GREEN}🎉 Cleanup complete!${NC}"
 echo ""
 echo -e "${BLUE}Summary:${NC}"
@@ -164,6 +175,15 @@ echo "• ZSH files: Now in ~/.dotfiles/shell/zsh/"
 echo "• Application configs: Now in ~/.config/"
 echo "• Application caches: Now in ~/.cache/"
 echo "• Application data: Now in ~/.local/share/"
+echo "• Application state: Now in ~/.local/state/"
+echo ""
+echo -e "${BLUE}XDG Environment Variables:${NC}"
+echo "• DOCKER_CONFIG → ~/.config/docker"
+echo "• TLDR_CACHE_DIR → ~/.cache/tldr"
+echo ""
+echo -e "${YELLOW}Known Limitations:${NC}"
+echo "• ~/.colima cannot be moved (hardcoded, required by SSH config)"
+echo "• ~/.ssh must remain (SSH specification standard)"
 echo ""
 
 # Handle shell restart when invoked from bootstrap

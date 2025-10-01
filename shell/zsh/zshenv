@@ -28,6 +28,7 @@ fi
 export LESSHISTFILE="$XDG_CACHE_HOME/less/history"
 export TLDR_CACHE_DIR="$XDG_CACHE_HOME/tldr"
 export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc"
+export DOCKER_CONFIG="$XDG_CONFIG_HOME/docker"
 
 # Dotfile Management
 export DOTFILES="$HOME/.dotfiles"                           # Central location for dotfiles
