@@ -38,6 +38,7 @@ shellcheck|apt|shellcheck
 terraform|manual|install_terraform
 tmux|apt|tmux
 tty-clock|apt|tty-clock
+vim|apt|vim
 wget2|apt|wget2
 xq|manual|install_xq
 oh-my-posh|manual|install_oh_my_posh

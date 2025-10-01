@@ -1123,6 +1123,25 @@ schedule_post_cleanup_pass() {
     ) &
 }
 
+ensure_shell_registered() {
+    local shell_path="$1"
+
+    if [[ -z "$shell_path" ]]; then
+        return
+    fi
+
+    if sudo grep -Fxq "$shell_path" /etc/shells 2>/dev/null; then
+        return
+    fi
+
+    log_info "Registering $shell_path as a valid login shell"
+    if printf '%s\n' "$shell_path" | sudo tee -a /etc/shells >/dev/null; then
+        log_success "Added $shell_path to /etc/shells"
+    else
+        log_warn "Failed to register $shell_path in /etc/shells"
+    fi
+}
+
 ensure_default_shell() {
     local zsh_path
     zsh_path=$(command -v zsh || true)
@@ -1132,6 +1151,8 @@ ensure_default_shell() {
         return
     fi
 
+    ensure_shell_registered "$zsh_path"
+
     local current_default
     current_default=$(getent passwd "$USER" | awk -F: '{print $7}' 2>/dev/null || echo "${SHELL:-}")
 
@@ -1140,7 +1161,21 @@ ensure_default_shell() {
         return
     fi
 
+    if ! sudo -n true 2>/dev/null; then
+        log_info "Revalidating sudo credentials for shell change"
+        if ! sudo -v; then
+            log_warn "Unable to refresh sudo credentials; default shell unchanged"
+            return
+        fi
+    fi
+
     log_info "Setting default shell to zsh"
+    if sudo usermod -s "$zsh_path" "$USER" >/dev/null 2>&1; then
+        log_success "Default shell updated"
+        DEFAULT_SHELL_UPDATED=true
+        return
+    fi
+
     if sudo chsh -s "$zsh_path" "$USER" >/dev/null 2>&1; then
         log_success "Default shell updated"
         DEFAULT_SHELL_UPDATED=true
@@ -1150,9 +1185,9 @@ ensure_default_shell() {
     if chsh -s "$zsh_path" "$USER" >/dev/null 2>&1; then
         log_success "Default shell updated"
         DEFAULT_SHELL_UPDATED=true
-    else
-        log_warn "Failed to change default shell automatically. Run 'chsh -s $zsh_path' manually."
     fi
+
+    log_warn "Failed to change default shell automatically. Run 'sudo chsh -s $zsh_path $USER' manually."
 }
 
 maybe_restart_shell() {

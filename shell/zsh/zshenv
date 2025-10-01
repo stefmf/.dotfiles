@@ -8,6 +8,13 @@ export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_STATE_HOME="$HOME/.local/state"
 
+# Ensure user-local binaries are on PATH for all shells
+if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+    mkdir -p "$HOME/.local/bin" 2>/dev/null || true
+    path=("$HOME/.local/bin" $path)
+    export PATH
+fi
+
 # Application-specific XDG compliance
 export LESSHISTFILE="$XDG_CACHE_HOME/less/history"
 export TLDR_CACHE_DIR="$XDG_CACHE_HOME/tldr"
