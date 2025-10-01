@@ -214,7 +214,7 @@ setup_helm_repository() {
     remove_repo_file "/etc/apt/sources.list.d/helm-stable-debian.list"
 
     local repo_line="deb [signed-by=${APT_KEYRING_DIR}/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main"
-    add_apt_repository "helm" "$repo_line" "https://packages.buildkite.com/helm-linux/helm-debian/gpgkey" true "" "/etc/apt/sources.list.d/helm.list"
+    add_apt_repository "helm" "$repo_line" "https://packages.buildkite.com/helm-linux/helm-debian/gpgkey" true "" "/etc/apt/sources.list.d/helm-stable-debian.list"
 }
 
 setup_kubernetes_repository() {
@@ -308,12 +308,13 @@ install_awscli() {
 }
 
 install_helm() {
+    setup_helm_repository
+
     if command -v helm >/dev/null 2>&1; then
         log_success "Helm already installed"
         return
     fi
 
-    setup_helm_repository
     if ensure_package helm; then
         log_success "Helm installed"
     else
@@ -322,12 +323,13 @@ install_helm() {
 }
 
 install_kubectl() {
+    setup_kubernetes_repository
+
     if command -v kubectl >/dev/null 2>&1; then
         log_success "kubectl already installed"
         return
     fi
 
-    setup_kubernetes_repository
     if ensure_package kubectl; then
         log_success "kubectl installed"
     else
@@ -546,7 +548,7 @@ install_uv() {
     fi
 
     ensure_local_bin
-    if curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --yes; then
+    if curl -LsSf https://astral.sh/uv/install.sh | sh -s --; then
         log_success "uv installed"
     else
         log_warn "uv installation script failed"
@@ -559,8 +561,15 @@ install_tlrc() {
         return
     fi
 
+    local release_json
+    release_json=$(curl -fsSL https://api.github.com/repos/tldr-pages/tlrc/releases/latest 2>/dev/null || true)
+    if [[ -z "$release_json" ]]; then
+        log_warn "Unable to query tlrc release metadata"
+        return
+    fi
+
     local version
-    version=$(curl -fsSL https://api.github.com/repos/tldr-pages/tlrc/releases/latest | jq -r '.tag_name' 2>/dev/null || true)
+    version=$(jq -r '.tag_name' <<<"$release_json" 2>/dev/null || true)
     if [[ -z "$version" || "$version" == null ]]; then
         log_warn "Unable to determine latest tlrc version"
         return
@@ -572,13 +581,13 @@ install_tlrc() {
         return
     fi
 
-    local asset_arch
+    local asset_suffix
     case "$arch" in
         amd64)
-            asset_arch="x86_64-unknown-linux-gnu"
+            asset_suffix="x86_64-unknown-linux-gnu.tar.gz"
             ;;
         arm64)
-            asset_arch="aarch64-unknown-linux-gnu"
+            asset_suffix="aarch64-unknown-linux-gnu.tar.gz"
             ;;
         *)
             log_warn "Unsupported tlrc architecture mapping for $arch"
@@ -586,9 +595,17 @@ install_tlrc() {
             ;;
     esac
 
+    local asset_url
+    asset_url=$(jq -r --arg version "$version" --arg suffix "$asset_suffix" '.assets[]?.browser_download_url | select(contains($version) and endswith($suffix))' <<<"$release_json" 2>/dev/null | head -n1)
+
+    if [[ -z "$asset_url" || "$asset_url" == null ]]; then
+        log_warn "No tlrc release available for architecture $arch"
+        return
+    fi
+
     local tmp_dir
     tmp_dir=$(mktemp -d)
-    if curl -fsSL "https://github.com/tldr-pages/tlrc/releases/download/${version}/tlrc-${asset_arch}.tar.gz" -o "$tmp_dir/tlrc.tar.gz" && \
+    if curl -fsSL "$asset_url" -o "$tmp_dir/tlrc.tar.gz" && \
         tar -xzf "$tmp_dir/tlrc.tar.gz" -C "$tmp_dir"; then
         local binary
         binary=$(find "$tmp_dir" -type f -name tlrc -print -quit)
@@ -888,7 +905,7 @@ ensure_default_shell() {
     fi
 
     log_info "Setting default shell to zsh"
-    if chsh -s "$zsh_path" "$USER" >/dev/null 2>&1; then
+    if sudo -n true 2>/dev/null && sudo chsh -s "$zsh_path" "$USER" >/dev/null 2>&1; then
         log_success "Default shell updated"
     else
         log_warn "Failed to change default shell automatically. Run 'chsh -s $zsh_path' manually."
@@ -906,6 +923,9 @@ main() {
 
     log_info "Requesting sudo credentials"
     sudo -v || fail "Failed to acquire sudo credentials"
+
+    setup_helm_repository
+    setup_kubernetes_repository
 
     install_minimal_packages
     install_requested_apps
