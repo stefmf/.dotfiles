@@ -1227,6 +1227,14 @@ ensure_default_shell() {
             current_default=$(getent passwd "$USER" | awk -F: '{print $7}' 2>/dev/null || true)
             current_resolved="$(canonical_shell_path "$current_default")"
             if [[ -n "$current_resolved" && "$current_resolved" == "$candidate" ]]; then
+                # Invalidate NSS caches so SSH logins use the new shell immediately
+                if command -v nscd >/dev/null 2>&1 && pgrep nscd >/dev/null 2>&1; then
+                    sudo nscd -i passwd >/dev/null 2>&1 || true
+                fi
+                if systemctl is-active --quiet sssd 2>/dev/null; then
+                    sudo systemctl restart sssd >/dev/null 2>&1 || true
+                fi
+                
                 export SHELL="$candidate"
                 DEFAULT_SHELL_TARGET="$candidate"
                 DEFAULT_SHELL_UPDATED=true
@@ -1270,10 +1278,6 @@ maybe_restart_shell() {
         else
             log_info "Default shell already set to zsh ($zsh_path). Start a new session or run '$zsh_path -l' to reload the environment."
         fi
-        return
-    fi
-
-    if [[ "$shell_matches" == true ]]; then
         return
     fi
 
