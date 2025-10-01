@@ -499,11 +499,54 @@ main() {
     end_time=$(date +%s)
     local duration=$((end_time - start_time))
     echo "→ Total time: $((duration / 60))m $((duration % 60))s"
-    echo "→ Restart your terminal to apply all changes"
     echo "→ Run 'git config --global user.name \"Your Name\"' and 'git config --global user.email \"you@example.com\"' to configure Git"
+    echo ""
     
-    if ask_yes_no "Quit Terminal.app now"; then
-        osascript -e 'tell application "Terminal" to quit' 2>/dev/null || true
+    # Sophisticated terminal detection and restart logic
+    echo "To apply all configuration changes, your terminal session needs to restart."
+    echo ""
+    
+    if ask_yes_no "Would you like to restart your terminal now"; then
+        log_info "Restarting terminal session..."
+        
+        # Detect terminal environment and handle accordingly
+        if [[ -n "${VSCODE_INJECTION:-}" ]] || [[ "${TERM_PROGRAM:-}" == "vscode" ]] || [[ -n "${VSCODE_PID:-}" ]]; then
+            # VS Code integrated terminal
+            log_info "VS Code detected: Restarting shell session..."
+            exec zsh
+            
+        elif [[ "${TERM_PROGRAM:-}" == "iTerm.app" ]]; then
+            # iTerm2 - quit the application
+            log_info "iTerm2 detected: Quitting application..."
+            osascript -e 'tell application "iTerm2" to quit' 2>/dev/null || true
+            
+        elif [[ "${TERM_PROGRAM:-}" == "Apple_Terminal" ]]; then
+            # Terminal.app - quit the application
+            log_info "Terminal.app detected: Quitting application..."
+            osascript -e 'tell application "Terminal" to quit' 2>/dev/null || true
+            
+        elif [[ -n "${SSH_CONNECTION:-}" ]] || [[ -n "${SSH_CLIENT:-}" ]] || [[ -n "${SSH_TTY:-}" ]]; then
+            # SSH session - restart shell
+            log_info "SSH session detected: Restarting shell..."
+            exec zsh
+            
+        else
+            # Fallback for other integrated terminals or unknown environments
+            log_info "Attempting to restart shell..."
+            if command -v zsh >/dev/null 2>&1; then
+                exec zsh
+            else
+                log_warn "Shell restart failed. Please manually restart your terminal."
+                exit 0
+            fi
+        fi
+    else
+        echo ""
+        log_info "Skipping terminal restart."
+        echo "To apply changes manually:"
+        echo "  • In VS Code: Close terminal and open new one"
+        echo "  • In iTerm2/Terminal: Quit and reopen application"
+        echo "  • In any terminal: Run 'exec zsh'"
     fi
 }
 

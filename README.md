@@ -144,7 +144,8 @@ This repo is organized for clarity and XDG compliance. Highlights:
 ├── system/                     # System-level configuration
 │   ├── dnsmasq/dnsmasq.conf
 │   ├── pam.d/sudo_local
-│   └── ssh/config
+│   └── ssh/
+│       └── config
 └── tools/
     └── dotbot/                 # Dotbot (vendored) for managing symlinks
 ```

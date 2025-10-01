@@ -5,7 +5,7 @@ This dotfiles repository supports machine-specific configurations through `.loca
 ## 📁 Supported Local Files
 
 ### SSH Configuration
-**File**: `config/ssh/config.local`
+**File**: `system/ssh/config.local`
 ```bash
 # Machine-specific SSH hosts
 Host work-server
@@ -74,7 +74,7 @@ alias logs='tail -f /var/log/app.log'
 
 ### Integration Examples
 
-**SSH** (`config/ssh/config`):
+**SSH** (`system/ssh/config`):
 ```bash
 # Main config includes local config
 Include config.local
@@ -101,7 +101,7 @@ Include config.local
 ### 1. Create your local files:
 ```bash
 # SSH config
-cp config/ssh/config.local.template config/ssh/config.local
+cp system/ssh/config.local.template system/ssh/config.local
 # Edit with your SSH hosts
 
 # Git config  

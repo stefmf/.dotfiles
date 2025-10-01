@@ -39,11 +39,8 @@
     # Global EditorConfig file
     ~/.editorconfig: config/.editorconfig
 
-    # Special case: only link ~/.ssh/config if it doesn't already exist
-    ~/.ssh/config:
-      path: system/ssh/config
-      relink: false
-      force: false
+    # SSH configuration (machine-specific config goes in ~/.ssh/config.local)
+    ~/.ssh/config: system/ssh/config
 
 - shell:
   - [rm -f ~/.bashrc ~/.bash_profile ~/.bash_logout ~/.sudo_as_admin_successful, Removing legacy shell files]

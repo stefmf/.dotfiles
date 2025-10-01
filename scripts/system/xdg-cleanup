@@ -149,6 +149,14 @@ safe_remove "$HOME/.omp.cache" "Oh My Posh cache file (now uses ~/.cache/oh-my-p
 # Legacy pyenv installation directory
 safe_remove "$HOME/.pyenv" "pyenv installation directory (now in ~/.local/share/pyenv/)"
 
+# Old dotbot installation path (moved to tools/dotbot)
+safe_remove "$HOME/.dotfiles/dotbot" "Old Dotbot directory (now in ~/.dotfiles/tools/dotbot/)"
+
+# Legacy ZSH and development directories
+safe_remove "$HOME/.zsh_sessions" "ZSH sessions directory (now managed by ~/.local/state/zsh/sessions/)"
+safe_remove "$HOME/.zcompcache" "ZSH completion cache directory (now uses ~/.cache/zsh/)"
+safe_remove "$HOME/.minikube" "Minikube directory (safe to remove if not actively used)"
+
 echo -e "${GREEN}🎉 Cleanup complete!${NC}"
 echo ""
 echo -e "${BLUE}Summary:${NC}"
