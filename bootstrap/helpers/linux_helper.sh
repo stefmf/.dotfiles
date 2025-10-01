@@ -1228,17 +1228,42 @@ ensure_default_shell() {
             current_resolved="$(canonical_shell_path "$current_default")"
             if [[ -n "$current_resolved" && "$current_resolved" == "$candidate" ]]; then
                 # Invalidate NSS caches so SSH logins use the new shell immediately
+                local cache_cleared=false
                 if command -v nscd >/dev/null 2>&1 && pgrep nscd >/dev/null 2>&1; then
-                    sudo nscd -i passwd >/dev/null 2>&1 || true
+                    if sudo nscd -i passwd >/dev/null 2>&1; then
+                        cache_cleared=true
+                        log_info "Cleared nscd passwd cache"
+                    fi
                 fi
                 if systemctl is-active --quiet sssd 2>/dev/null; then
-                    sudo systemctl restart sssd >/dev/null 2>&1 || true
+                    if sudo systemctl restart sssd >/dev/null 2>&1; then
+                        cache_cleared=true
+                        log_info "Restarted sssd service"
+                    fi
+                fi
+                
+                # Try to flush systemd login manager
+                if command -v loginctl >/dev/null 2>&1; then
+                    loginctl flush-caches >/dev/null 2>&1 || true
+                fi
+                
+                # Restart systemd-logind to ensure it picks up the new shell
+                if systemctl is-active --quiet systemd-logind 2>/dev/null; then
+                    if sudo systemctl restart systemd-logind >/dev/null 2>&1; then
+                        cache_cleared=true
+                        log_info "Restarted systemd-logind service"
+                    fi
+                fi
+                
+                if [[ "$cache_cleared" == false ]]; then
+                    log_info "No user database caches detected (nscd/sssd not active)"
                 fi
                 
                 export SHELL="$candidate"
                 DEFAULT_SHELL_TARGET="$candidate"
                 DEFAULT_SHELL_UPDATED=true
                 log_success "Default shell updated to $candidate"
+                log_info "Note: Existing login sessions may need to be fully closed and reopened"
                 return
             fi
         fi

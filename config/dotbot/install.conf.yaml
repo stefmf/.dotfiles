@@ -23,6 +23,9 @@
     ~/.zshrc: shell/zsh/zshrc
     ~/.hushlogin: shell/zsh/hushlogin
 
+    # Fallback profile for non-zsh login shells
+    ~/.profile: shell/profile
+
     # Git configuration files
     ~/.gitconfig: config/git/gitconfig
     ~/.gitconfig.local: config/git/gitconfig.local
