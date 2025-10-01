@@ -31,7 +31,7 @@ minikube|manual|install_minikube
 moreutils|apt|moreutils
 nmap|apt|nmap
 pre-commit|apt|pre-commit
-pyenv|apt|pyenv
+pyenv|manual|install_pyenv
 pylint|apt|pylint
 ripgrep|apt|ripgrep
 shellcheck|apt|shellcheck

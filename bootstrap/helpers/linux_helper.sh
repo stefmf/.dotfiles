@@ -97,6 +97,15 @@ remove_repo_file_if_contains() {
     fi
 }
 
+remove_repo_file() {
+    local file_path="$1"
+
+    if [[ -f "$file_path" ]]; then
+        sudo rm -f "$file_path"
+        reset_apt_update_flag
+    fi
+}
+
 ensure_keyring_directory() {
     sudo install -m 0755 -d "$APT_KEYRING_DIR"
 }
@@ -201,9 +210,11 @@ setup_hashicorp_repository() {
 setup_helm_repository() {
     remove_repo_file_if_contains "/etc/apt/sources.list.d/helm.list" "baltocdn.com/helm"
     remove_repo_file_if_contains "/etc/apt/sources.list.d/helm-stable-debian.list" "baltocdn.com/helm"
+    remove_repo_file "/etc/apt/sources.list.d/helm.list"
+    remove_repo_file "/etc/apt/sources.list.d/helm-stable-debian.list"
 
     local repo_line="deb [signed-by=${APT_KEYRING_DIR}/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main"
-    add_apt_repository "helm" "$repo_line" "https://packages.buildkite.com/helm-linux/helm-debian/gpgkey" true "" "/etc/apt/sources.list.d/helm-stable-debian.list"
+    add_apt_repository "helm" "$repo_line" "https://packages.buildkite.com/helm-linux/helm-debian/gpgkey" true "" "/etc/apt/sources.list.d/helm.list"
 }
 
 setup_kubernetes_repository() {
@@ -635,6 +646,57 @@ install_oh_my_posh() {
         log_warn "Failed to install oh-my-posh"
     fi
     rm -rf "$tmp_dir"
+}
+
+install_pyenv() {
+    if command -v pyenv >/dev/null 2>&1; then
+        log_success "pyenv already installed"
+        return
+    fi
+
+    local build_deps=(
+        make
+        build-essential
+        libssl-dev
+        zlib1g-dev
+        libbz2-dev
+        libreadline-dev
+        libsqlite3-dev
+        libffi-dev
+        liblzma-dev
+        libncurses-dev
+        xz-utils
+        tk-dev
+        curl
+        llvm
+    )
+
+    local dep
+    for dep in "${build_deps[@]}"; do
+        ensure_package "$dep"
+    done
+
+    local pyenv_root="${PYENV_ROOT:-$HOME/.pyenv}"
+    if [[ -d "$pyenv_root/.git" ]]; then
+        log_info "Updating pyenv repository"
+        if ! git -C "$pyenv_root" pull --ff-only >/dev/null 2>&1; then
+            log_warn "Failed to update pyenv repository"
+        fi
+    else
+        log_info "Cloning pyenv"
+        if ! git clone https://github.com/pyenv/pyenv.git "$pyenv_root" >/dev/null 2>&1; then
+            log_warn "Failed to clone pyenv"
+            return
+        fi
+    fi
+
+    if [[ -x "$pyenv_root/bin/pyenv" ]]; then
+        ensure_local_bin
+        ln -sf "$pyenv_root/bin/pyenv" "$HOME/.local/bin/pyenv"
+        log_success "pyenv installed"
+    else
+        log_warn "pyenv binary not found after installation"
+    fi
 }
 
 ensure_pipx_ready() {
