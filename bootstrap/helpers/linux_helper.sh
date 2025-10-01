@@ -18,7 +18,7 @@ DEV_BOOTSTRAP_SCRIPT="$DOTFILES_DIR/scripts/dev/bootstrap_dev_dir.sh"
 XDG_CLEANUP_SCRIPT="$DOTFILES_DIR/scripts/system/xdg-cleanup"
 APPS_LIST_FILE="$DOTFILES_DIR/bootstrap/helpers/ubuntu-apps.list"
 APT_KEYRING_DIR="/etc/apt/keyrings"
-KUBERNETES_REPO_VERSION="${KUBERNETES_REPO_VERSION:-v1.30}"
+KUBERNETES_REPO_VERSION="${KUBERNETES_REPO_VERSION:-v1.34}"
 
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
@@ -87,6 +87,16 @@ ensure_package() {
     return 1
 }
 
+remove_repo_file_if_contains() {
+    local file_path="$1"
+    local pattern="$2"
+
+    if [[ -f "$file_path" ]] && grep -Fq "$pattern" "$file_path" 2>/dev/null; then
+        sudo rm -f "$file_path"
+        reset_apt_update_flag
+    fi
+}
+
 ensure_keyring_directory() {
     sudo install -m 0755 -d "$APT_KEYRING_DIR"
 }
@@ -106,18 +116,28 @@ ensure_ubuntu_codename() {
 add_apt_repository() {
     local name="$1"
     local repo_line="$2"
-    local key_url="$3"
+    local key_url="${3:-}"
+    local force_key="${4:-false}"
+    local custom_key_path="${5:-}"
+    local custom_list_file="${6:-}"
 
     ensure_keyring_directory
 
-    local key_path="$APT_KEYRING_DIR/${name}.gpg"
-    local list_file="/etc/apt/sources.list.d/${name}.list"
+    local key_path
+    key_path="${custom_key_path:-$APT_KEYRING_DIR/${name}.gpg}"
+    local list_file
+    list_file="${custom_list_file:-/etc/apt/sources.list.d/${name}.list}"
 
-    if [[ -n "$key_url" && ! -f "$key_path" ]]; then
-        if curl -fsSL "$key_url" | sudo gpg --dearmor -o "$key_path"; then
-            sudo chmod a+r "$key_path"
-        else
-            log_warn "Failed to download GPG key for $name repositories"
+    if [[ -n "$key_url" ]]; then
+        if [[ "$force_key" == "true" ]]; then
+            sudo rm -f "$key_path"
+        fi
+        if [[ ! -f "$key_path" ]]; then
+            if curl -fsSL "$key_url" | gpg --dearmor 2>/dev/null | sudo tee "$key_path" >/dev/null; then
+                sudo chmod a+r "$key_path"
+            else
+                log_warn "Failed to download GPG key for $name repositories"
+            fi
         fi
     fi
 
@@ -179,29 +199,19 @@ setup_hashicorp_repository() {
 }
 
 setup_helm_repository() {
+    remove_repo_file_if_contains "/etc/apt/sources.list.d/helm.list" "baltocdn.com/helm"
+    remove_repo_file_if_contains "/etc/apt/sources.list.d/helm-stable-debian.list" "baltocdn.com/helm"
+
     local repo_line="deb [signed-by=${APT_KEYRING_DIR}/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main"
-    add_apt_repository "helm" "$repo_line" "https://packages.buildkite.com/helm-linux/helm-debian/gpgkey"
+    add_apt_repository "helm" "$repo_line" "https://packages.buildkite.com/helm-linux/helm-debian/gpgkey" true "" "/etc/apt/sources.list.d/helm-stable-debian.list"
 }
 
 setup_kubernetes_repository() {
-    ensure_keyring_directory
-    local key_path="${APT_KEYRING_DIR}/kubernetes.gpg"
-    local repo_path="/etc/apt/sources.list.d/kubernetes.list"
+    remove_repo_file_if_contains "/etc/apt/sources.list.d/kubernetes.list" "apt.kubernetes.io"
+
+    local key_path="${APT_KEYRING_DIR}/kubernetes-apt-keyring.gpg"
     local repo_line="deb [signed-by=${key_path}] https://pkgs.k8s.io/core:/stable:/${KUBERNETES_REPO_VERSION}/deb/ /"
-
-    if [[ ! -f "$key_path" ]]; then
-        if curl -fsSL "https://pkgs.k8s.io/core:/stable:/${KUBERNETES_REPO_VERSION}/deb/Release.key" | sudo gpg --dearmor -o "$key_path"; then
-            sudo chmod a+r "$key_path"
-        else
-            log_warn "Failed to download Kubernetes apt key"
-            return
-        fi
-    fi
-
-    if [[ ! -f "$repo_path" ]] || ! grep -Fqx "$repo_line" "$repo_path" 2>/dev/null; then
-        echo "$repo_line" | sudo tee "$repo_path" >/dev/null
-        reset_apt_update_flag
-    fi
+    add_apt_repository "kubernetes" "$repo_line" "https://pkgs.k8s.io/core:/stable:/${KUBERNETES_REPO_VERSION}/deb/Release.key" true "$key_path" "/etc/apt/sources.list.d/kubernetes.list"
 }
 
 install_docker_suite() {
@@ -402,28 +412,46 @@ install_bat_extras() {
     fi
 
     local asset_url
-    asset_url=$(jq -r '.assets[]?.browser_download_url | select(test("bat-extras-.*\\.tar\\.gz$"))' <<<"$release_json" 2>/dev/null | head -n1)
-    if [[ -z "$asset_url" || "$asset_url" == null ]]; then
-        log_warn "Failed to locate bat-extras release asset"
-        return
+    local asset_type
+    asset_url=$(jq -r '.assets[]?.browser_download_url | select(test("bat-extras-.*\\.zip$"))' <<<"$release_json" 2>/dev/null | head -n1)
+    if [[ -n "$asset_url" && "$asset_url" != null ]]; then
+        asset_type="zip"
+    else
+        asset_url=$(jq -r '.assets[]?.browser_download_url | select(test("bat-extras-.*\\.tar\\.gz$"))' <<<"$release_json" 2>/dev/null | head -n1)
+        if [[ -n "$asset_url" && "$asset_url" != null ]]; then
+            asset_type="tar"
+        else
+            log_warn "Failed to locate bat-extras release asset"
+            return
+        fi
     fi
 
     local tmp_dir
     tmp_dir=$(mktemp -d)
-    local archive="$tmp_dir/bat-extras.tar.gz"
-    if curl -fsSL "$asset_url" -o "$archive" && tar -xzf "$archive" -C "$tmp_dir"; then
-        local bin_dir
-        bin_dir=$(find "$tmp_dir" -maxdepth 2 -type d -name bin -print -quit)
-        if [[ -z "$bin_dir" ]]; then
-            log_warn "bat-extras bin directory not found"
-            rm -rf "$tmp_dir"
-            return
-        fi
+    local bin_dir=""
+
+    case "$asset_type" in
+        zip)
+            local archive_zip="$tmp_dir/bat-extras.zip"
+            if curl -fsSL "$asset_url" -o "$archive_zip" && unzip -q "$archive_zip" -d "$tmp_dir"; then
+                bin_dir=$(find "$tmp_dir" -maxdepth 2 -type d -name bin -print -quit)
+            fi
+            ;;
+        tar)
+            local archive_tar="$tmp_dir/bat-extras.tar.gz"
+            if curl -fsSL "$asset_url" -o "$archive_tar" && tar -xzf "$archive_tar" -C "$tmp_dir"; then
+                bin_dir=$(find "$tmp_dir" -maxdepth 2 -type d -name bin -print -quit)
+            fi
+            ;;
+    esac
+
+    if [[ -n "$bin_dir" ]]; then
         sudo install -m 0755 "$bin_dir"/* /usr/local/bin/
         log_success "bat-extras ${version} installed"
     else
         log_warn "Failed to install bat-extras"
     fi
+
     rm -rf "$tmp_dir"
 }
 
