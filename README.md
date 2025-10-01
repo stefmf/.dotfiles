@@ -117,24 +117,30 @@ This repo is organized for clarity and XDG compliance. Highlights:
 ~/.dotfiles/
 ├── install                      # Main installation entry point
 ├── bootstrap/
-│   ├── bootstrap.sh            # Unified bootstrap (macOS/Linux)
-│   ├── Brewfile                # Homebrew bundle (macOS)
-│   └── archive/                # Legacy scripts (macOS/Linux)
+│   ├── bootstrap_v2.sh         # Primary bootstrap script (macOS/Linux)
+│   └── helpers/
+│       ├── Brewfile            # Homebrew bundle (macOS)
+│       ├── linux_helper.sh     # Ubuntu/Linux bootstrap logic
+│       └── ubuntu-apps.list    # Linux tool installation manifest
 ├── config/                     # App configs (symlinked into ~/.config)
-│   ├── bat/ | btop/ | fastfetch/ | fsh/ | fzf/ | git/ | iterm2/
-│   ├── lsd/ | npm/ | nvim/ | ohmyposh/ | sublime/ | tldr/ | tmux/ | vim/
+│   ├── bat/ | btop/ | dock/ | fastfetch/ | fsh/ | fzf/ | git/
+│   ├── iterm2/ | lsd/ | npm/ | nvim/ | ohmyposh/ | sublime/
+│   ├── tldr/ | tmux/ | vim/
 │   └── dotbot/install.conf.yaml
-├── docs/                       # Additional docs
+├── docs/                       # Additional documentation
 │   └── LOCAL_CONFIG.md
 ├── scripts/                    # Utility scripts
 │   ├── dev/bootstrap_dev_dir.sh
 │   ├── dotfiles/{dotall,dotpost,dotup}
-│   ├── shell/{nuke,source_functions,sudo-toggle}
+│   ├── shell/{load_shell_extensions,nuke,sudo-toggle}
 │   └── system/{setup_gnu_aliases,update,xdg-cleanup}
-├── shell/zsh/                  # Shell configuration
-│   ├── zshrc | zshenv | zprofile | zaliases | zlogin | zlogout | hushlogin
-│   ├── functions/              # Custom zsh functions
-│   └── completions/            # Shell completions
+├── shell/                      # Shell configuration
+│   ├── profile                 # POSIX shell fallback (auto-switches to zsh)
+│   └── zsh/                    # ZSH configuration
+│       ├── zshrc | zshenv | zprofile | zaliases | zlogin | zlogout
+│       ├── hushlogin
+│       ├── functions/          # Custom zsh functions
+│       └── completions/        # Shell completions
 ├── system/                     # System-level configuration
 │   ├── dnsmasq/dnsmasq.conf
 │   ├── pam.d/sudo_local
