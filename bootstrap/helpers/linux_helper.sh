@@ -27,6 +27,7 @@ export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
 declare -Ag INSTALL_RESULTS=()
 declare -a INSTALL_ORDER=()
+DEFAULT_SHELL_UPDATED=false
 
 record_install_result() {
     local tool="$1"
@@ -967,17 +968,56 @@ ensure_default_shell() {
         return
     fi
 
-    if [[ "${SHELL:-}" == "$zsh_path" ]]; then
+    local current_default
+    current_default=$(getent passwd "$USER" | awk -F: '{print $7}' 2>/dev/null || echo "${SHELL:-}")
+
+    if [[ "$current_default" == "$zsh_path" ]]; then
         log_success "Default shell already set to zsh"
         return
     fi
 
     log_info "Setting default shell to zsh"
-    if sudo -n true 2>/dev/null && sudo chsh -s "$zsh_path" "$USER" >/dev/null 2>&1; then
+    if sudo chsh -s "$zsh_path" "$USER" >/dev/null 2>&1; then
         log_success "Default shell updated"
+        DEFAULT_SHELL_UPDATED=true
+        return
+    fi
+
+    if chsh -s "$zsh_path" "$USER" >/dev/null 2>&1; then
+        log_success "Default shell updated"
+        DEFAULT_SHELL_UPDATED=true
     else
         log_warn "Failed to change default shell automatically. Run 'chsh -s $zsh_path' manually."
     fi
+}
+
+maybe_restart_shell() {
+    if [[ "$DEFAULT_SHELL_UPDATED" != true ]]; then
+        return
+    fi
+
+    local zsh_path
+    zsh_path=$(command -v zsh || true)
+    if [[ -z "$zsh_path" ]]; then
+        return
+    fi
+
+    if [[ "${DOTFILES_SKIP_SHELL_RESTART:-false}" == "true" ]]; then
+        log_info "Skipping automatic shell restart (DOTFILES_SKIP_SHELL_RESTART=true)."
+        return
+    fi
+
+    if [[ "${SHELL:-}" == "$zsh_path" ]]; then
+        return
+    fi
+
+    if [[ ! -t 0 || ! -t 1 ]]; then
+        log_info "Default shell changed to zsh. Start a new session or run '$zsh_path -l' to reload the environment."
+        return
+    fi
+
+    log_info "Launching a new zsh login shell to apply changes"
+    exec "$zsh_path" -l
 }
 
 main() {
@@ -1003,7 +1043,8 @@ main() {
     run_xdg_cleanup
     ensure_default_shell
 
-    log_success "Bootstrap complete. Restart your shell to load the new configuration."
+    log_success "Bootstrap complete."
+    maybe_restart_shell
 }
 
 main "$@"
