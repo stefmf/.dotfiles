@@ -14,13 +14,13 @@
     # Config files
     ~/.config: config
 
-    # Zsh configuration files
-    ~/.zlogout: shell/zsh/zlogout
-    ~/.zlogin: shell/zsh/zlogin
-    ~/.zshenv: shell/zsh/zshenv
-    ~/.zprofile: shell/zsh/zprofile
-    ~/.zshrc: shell/zsh/zshrc
-    ~/.hushlogin: shell/zsh/hushlogin
+        # Zsh configuration files
+        ~/.zlogout: shell/zsh/zlogout
+        ~/.zlogin: shell/zsh/zlogin
+        ~/.zshenv: shell/zsh/zshenv
+        ~/.zprofile: shell/zsh/zprofile
+        ~/.zshrc: shell/zsh/zshrc
+        ~/.hushlogin: shell/zsh/hushlogin
 
         # Git configuration files
         ~/.gitconfig: config/git/gitconfig
