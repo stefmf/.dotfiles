@@ -6,8 +6,8 @@
 - clean: ['~']
 
 - create:
-    - ~/.config
-    - ~/.ssh
+  - ~/.config
+  - ~/.ssh
   - ~/.cache/zsh
   - ~/.local/state/zsh/sessions
 
