@@ -164,7 +164,17 @@ safe_remove "$HOME/.dotfiles/.zsh" "Old dotfiles zsh directory (moved to ~/.dotf
 # Application directories that should use XDG directories
 safe_remove "$HOME/.tldrc" "TLDR cache directory (cache data, will regenerate in ~/.cache/tldr/)"
 safe_remove "$HOME/.docker" "Docker config directory (move to ~/.config/docker via DOCKER_CONFIG env var)"
-safe_remove "$HOME/.vs_kubernetes" "VS Code Kubernetes extension data (cache/state data)"
+
+# Check for VS Code Kubernetes extension cache (but don't auto-remove - it's large and might be actively used)
+if [[ -d "$HOME/.vs-kubernetes" ]]; then
+    echo -e "${YELLOW}Found:${NC} VS Code Kubernetes extension tools cache"
+    echo -e "  Location: $HOME/.vs-kubernetes"
+    echo -e "  Size: $(du -sh "$HOME/.vs-kubernetes" 2>/dev/null | /usr/bin/cut -f1)"
+    echo -e "  ${BLUE}Note: This contains downloaded Kubernetes tools (kubectl, minikube, etc.)${NC}"
+    echo -e "  ${BLUE}Only remove if you're not actively using the VS Code Kubernetes extension${NC}"
+    echo -e "  ${YELLOW}Manual removal: rm -rf ~/.vs-kubernetes${NC}"
+    echo ""
+fi
 
 echo -e "${YELLOW}Note: ~/.colima cannot be moved (hardcoded by Colima, required by SSH config)${NC}"
 echo ""

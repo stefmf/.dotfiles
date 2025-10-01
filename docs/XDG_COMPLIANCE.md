@@ -47,10 +47,12 @@ These applications do not support XDG directories and use hardcoded paths:
   - Moving would break SSH connectivity to Colima VMs
 - **Action**: Leave in place, exclude from cleanup
 
-### ~/.vs_kubernetes (VS Code Kubernetes Extension)
+### ~/.vs-kubernetes (VS Code Kubernetes Extension)
 - **Status**: Hardcoded by VS Code extension
-- **Reason**: VS Code extensions often use `~/.vs_*` or `~/.vscode-*` paths
-- **Action**: Remove during cleanup (cache/state data, regenerates)
+- **Reason**: VS Code extensions often use `~/.vs-*` or `~/.vscode-*` paths
+- **Size**: Can be 100MB+ (downloads minikube, kubectl, and other tool binaries)
+- **Action**: Warning only (not auto-removed, may be actively used)
+- **Manual cleanup**: `rm -rf ~/.vs-kubernetes` (regenerates on demand if needed)
 
 ### ~/.ssh
 - **Status**: Hardcoded by SSH specification
