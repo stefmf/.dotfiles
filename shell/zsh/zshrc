@@ -78,8 +78,12 @@ fi
 # Skip expensive security checks on trusted system
 # Disable Zinit's automatic compinit and handle it manually
 skip_global_compinit=1
+typeset -g zcompdump="$ZSH_COMPDUMP"
 autoload -Uz compinit
-compinit -C -d "$ZSH_COMPDUMP"
+compinit -C -d "$zcompdump"
+
+# Ensure any legacy compdump artifacts are cleaned up
+[[ -e "$HOME/.zcompdump" || -e "$HOME/.zcompdump.zwc" ]] && rm -f "$HOME/.zcompdump" "$HOME/.zcompdump.zwc"
 
 #------------------------------------------------------------------------------
 # Zinit Plugin Loading

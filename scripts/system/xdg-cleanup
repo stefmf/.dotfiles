@@ -11,11 +11,16 @@ set -euo pipefail
 
 # Check for command line arguments
 FROM_BOOTSTRAP=false
+ASSUME_YES=false
 
 for arg in "$@"; do
     case "$arg" in
         --from-bootstrap)
             FROM_BOOTSTRAP=true
+            ASSUME_YES=true
+            ;;
+        --assume-yes|--yes|-y)
+            ASSUME_YES=true
             ;;
     esac
 done
@@ -34,6 +39,50 @@ echo "This script will remove old configuration files from legacy locations."
 echo "These files are now managed in XDG-compliant directories."
 echo ""
 
+prompt_yes_no() {
+    local prompt="$1"
+    local default_response="${2:-}"
+    local answer suffix
+
+    while true; do
+        case "$default_response" in
+            y|Y) suffix="(Y/n)" ;;
+            n|N) suffix="(y/N)" ;;
+            *)   suffix="(y/n)" ;;
+        esac
+
+        printf "%s %s " "$prompt" "$suffix"
+        if ! IFS= read -r answer; then
+            answer=""
+        fi
+
+        answer="${answer:l}"
+
+        if [[ -z "$answer" ]]; then
+            if [[ "$default_response" == [yY] || "$default_response" == [nN] ]]; then
+                answer="${default_response:l}"
+            else
+                echo -e "${YELLOW}Please enter 'y' or 'n'.${NC}"
+                continue
+            fi
+        fi
+
+        case "$answer" in
+            y)
+                REPLY="y"
+                return 0
+                ;;
+            n)
+                REPLY="n"
+                return 1
+                ;;
+            *)
+                echo -e "${YELLOW}Please enter 'y' or 'n'.${NC}"
+                ;;
+        esac
+    done
+}
+
 # Function to safely remove a file or directory
 safe_remove() {
     local path="$1"
@@ -50,10 +99,11 @@ safe_remove() {
             echo -e "  Type: File ($(/bin/ls -lh "$path" 2>/dev/null | /usr/bin/awk '{print $5}') size)"
         fi
         
-        read -q "?  Remove this? (Y/n): "
-        echo ""
-        
-        if [[ $REPLY == "y" ]]; then
+        if [[ "$ASSUME_YES" == true ]]; then
+            echo -e "  ${BLUE}Removing automatically (non-interactive mode).${NC}"
+            /bin/rm -rf "$path"
+            echo -e "${GREEN}✅ Removed${NC}"
+        elif prompt_yes_no "  Remove this?" "y"; then
             /bin/rm -rf "$path"
             echo -e "${GREEN}✅ Removed${NC}"
         else
@@ -123,10 +173,7 @@ else
     # Ask if user wants to apply changes immediately
     echo -e "${YELLOW}To apply all ZSH configuration changes, you should restart your shell session.${NC}"
     echo ""
-    read -q "?Would you like to apply the changes now? (y/n): "
-    echo ""
-
-    if [[ $REPLY == "y" ]]; then
+    if prompt_yes_no "Would you like to apply the changes now?"; then
     echo -e "${BLUE}Applying configuration changes...${NC}"
     
     # Detect terminal environment and handle accordingly
