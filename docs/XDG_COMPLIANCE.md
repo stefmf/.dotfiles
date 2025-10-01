@@ -16,6 +16,7 @@ These applications natively support XDG directories:
 | Application | Config Location | Data Location | Cache Location |
 |------------|----------------|---------------|----------------|
 | Zsh | `$XDG_CONFIG_HOME/zsh/` | `$DOTFILES/shell/zsh/` | `$XDG_CACHE_HOME/zsh/` |
+| Vim | `$XDG_CONFIG_HOME/vim/` | - | - |
 | Git | `$XDG_CONFIG_HOME/git/` | - | - |
 | npm | `$XDG_CONFIG_HOME/npm/` | `$XDG_DATA_HOME/npm/` | `$XDG_CACHE_HOME/npm/` |
 | bat | `$XDG_CONFIG_HOME/bat/` | - | - |
@@ -79,6 +80,10 @@ The following directories were removed during XDG migration:
 - `~/.zsh_history` → Now in `~/.dotfiles/shell/zsh/.zsh_history`
 - `~/.zcompdump*` → Now in `~/.cache/zsh/`
 - `~/.bash*` → Removed (not using Bash)
+- `~/.vimrc` → Legacy symlink (vim has native XDG support, automatically uses `$XDG_CONFIG_HOME/vim/vimrc`)
+
+### Legacy macOS Files
+- `~/.CFUserTextEncoding` → Legacy macOS encoding file (pre-Mac OS X 10.4, no longer used)
 
 ## Environment Variables
 

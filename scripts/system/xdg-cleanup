@@ -127,8 +127,14 @@ safe_remove "$HOME/.bash_profile" "Bash profile (deprecated)"
 safe_remove "$HOME/.bash_logout" "Bash logout script (deprecated)"
 # Note: .profile is intentionally preserved as it contains shell fallback logic
 
+# Legacy vim symlink (vim has native XDG support, uses $XDG_CONFIG_HOME/vim/vimrc automatically)
+safe_remove "$HOME/.vimrc" "Legacy vim symlink (vim natively supports XDG: ~/.config/vim/vimrc)"
+
 # Sudo marker file created by Ubuntu's installer
 safe_remove "$HOME/.sudo_as_admin_successful" "Ubuntu sudo marker file (safe to remove)"
+
+# Legacy macOS files
+safe_remove "$HOME/.CFUserTextEncoding" "Legacy macOS text encoding file (pre-Mac OS X 10.4)"
 
 # Application cache and config files
 safe_remove "$HOME/.lesshst" "Less history file (now in ~/.cache/less/)"
