@@ -1,0 +1,261 @@
+#==============================================================================
+# ZSH Configuration File
+#==============================================================================
+
+# Source environment variables first from zshenv to override system /etc/zshrc settings
+source "$HOME/.dotfiles/shell/zsh/zshenv"
+
+#------------------------------------------------------------------------------
+# Core Shell Options
+#------------------------------------------------------------------------------
+
+# History configuration
+setopt append_history          # Append to history file
+setopt hist_ignore_dups        # Don't record duplicates
+setopt hist_reduce_blanks      # Remove superfluous blanks
+setopt share_history           # Share history between sessions
+setopt hist_verify             # Show command with history expansion to user before running it
+setopt hist_expire_dups_first  # Delete duplicates first when HISTFILE size exceeds HISTSIZE
+setopt hist_ignore_space       # Don't record commands that start with space
+setopt extended_history        # Record timestamp of command
+setopt hist_save_no_dups       # Don't write duplicates to the history file
+setopt hist_ignore_all_dups    # Remove older duplicate entries
+setopt hist_find_no_dups       # Don't show duplicates when searching history
+
+# Completion and correction
+setopt correct                 # Correct mistyped commands
+setopt auto_param_slash        # Add trailing slash to directory completions
+setopt always_to_end           # Move cursor to end of word after completion
+setopt complete_in_word        # Allow completion from within a word
+unsetopt flow_control          # Disable flow control (Ctrl-S/Ctrl-Q)
+
+# Globbing
+setopt no_case_glob            # Case insensitive globbing
+setopt no_case_match           # Case insensitive pattern matching
+setopt extended_glob           # Extended globbing features
+setopt dot_glob                # Include dotfiles in glob patterns
+setopt glob_dots               # Include dotfiles in filename generation
+setopt numeric_glob_sort       # Sort filenames numerically when possible
+
+# Interactive and general options
+setopt interactive_comments    # Allow comments in interactive shell
+setopt pushd_ignore_dups       # Don't push duplicates onto directory stack
+setopt pushd_silent            # Don't print directory stack after pushd/popd
+
+#------------------------------------------------------------------------------
+# SSH Detection for Root Sessions
+#------------------------------------------------------------------------------
+
+# Only for root without SSH_CONNECTION
+if [[ $EUID -eq 0 ]] && [[ -z "$SSH_CONNECTION" ]]; then
+    # Check if who am i shows an IP address (indicates SSH)
+    if who am i 2>/dev/null | grep -qE '\([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\)'; then
+        export SSH_CONNECTION="detected"
+    fi
+fi
+
+#------------------------------------------------------------------------------
+# Zinit Plugin Manager Setup
+#------------------------------------------------------------------------------
+
+# Download Zinit if not installed
+if [[ ! -d "$ZINIT_HOME" ]]; then
+    mkdir -p "$(dirname $ZINIT_HOME)"
+    if ! git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME" 2>/dev/null; then
+        echo "⚠ Warning: Failed to install Zinit (network issue). Skipping plugin setup." >&2
+        return 0
+    fi
+fi
+
+# Source Zinit only if successfully installed
+if [[ -f "${ZINIT_HOME}/zinit.zsh" ]]; then
+    source "${ZINIT_HOME}/zinit.zsh"
+else
+    echo "⚠ Warning: Zinit not found. Skipping plugin setup." >&2
+    return 0
+fi
+
+# Skip expensive security checks on trusted system
+# Disable Zinit's automatic compinit and handle it manually
+skip_global_compinit=1
+typeset -g zcompdump="$ZSH_COMPDUMP"
+autoload -Uz compinit
+compinit -C -d "$zcompdump"
+
+# Ensure any legacy compdump artifacts are cleaned up
+[[ -e "$HOME/.zcompdump" || -e "$HOME/.zcompdump.zwc" ]] && rm -f "$HOME/.zcompdump" "$HOME/.zcompdump.zwc"
+
+#------------------------------------------------------------------------------
+# Zinit Plugin Loading
+#------------------------------------------------------------------------------
+
+# Only load plugins if Zinit is available
+if command -v zinit >/dev/null 2>&1; then
+    # Load autosuggestions via zinit (configuration is set in zshenv)
+    zinit load zsh-users/zsh-autosuggestions
+
+    # Load other essential plugins with async loading
+    zinit lucid for \
+        blockf atpull'zinit creinstall -q .' \
+            zsh-users/zsh-completions
+
+    # Load syntax highlighting LAST to avoid conflicts (using fast-syntax-highlighting for better performance)
+    zinit lucid for \
+        zdharma-continuum/fast-syntax-highlighting
+
+    # Apply Catppuccin Frappé theme for syntax highlighting
+    fast-theme XDG:catppuccin-frappe >/dev/null 2>&1
+
+    # Load utility plugins
+    zinit wait lucid for \
+        MichaelAquilina/zsh-you-should-use
+
+    # Load FZF if available
+    zinit ice as"command" from"gh-r" \
+        atclone"./fzf --zsh > init.zsh" \
+        atpull"%atclone" src"init.zsh"
+    zinit light junegunn/fzf
+else
+    echo "✗ Zinit not available. Run: rm -rf ~/.local/share/zinit && git clone https://github.com/zdharma-continuum/zinit.git ~/.local/share/zinit/zinit.git" >&2
+fi
+
+#------------------------------------------------------------------------------
+# Completion System Configuration
+#------------------------------------------------------------------------------
+
+# Add custom completion paths
+fpath=("$HOME/.dotfiles/shell/zsh/completions" $fpath)
+
+# Simple completion styling (WORDCHARS is set in zshenv)
+zstyle ':completion:*' menu select                        # Enable menu selection
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}     # Colored menu
+zstyle ':completion:*' squeeze-slashes true               # Remove extra slashes
+zstyle ':completion:*' special-dirs true                  # Complete . and ..
+
+# Case-insensitive matching with fuzzy matching
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+
+# Speed up completions
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "$XDG_CACHE_HOME/zsh/cache"
+
+# Enable incremental completion search
+zstyle ':completion:*:*:*:*:*' menu select search
+
+#------------------------------------------------------------------------------
+# Key Bindings
+#------------------------------------------------------------------------------
+
+# Use emacs key bindings
+bindkey -e
+
+# ─── Navigation and Editing ──────────────────────────────────────────────────
+
+# Word navigation (⌥ ← / ⌥ →)
+bindkey '\eb'        backward-word     # ESC b (iTerm "Left Option = Esc+")
+bindkey '\ef'        forward-word      # ESC f
+bindkey '\e[1;3D'    backward-word     # iTerm Alt‑Left when not Esc+
+bindkey '\e[1;3C'    forward-word      # iTerm Alt‑Right when not Esc+
+
+# Line navigation (⌘ ← / ⌘ →)
+bindkey '^A'         beginning-of-line # Ctrl-A or Hex 01
+bindkey '^E'         end-of-line       # Ctrl-E or Hex 05
+bindkey '\e[H'       beginning-of-line # Home key
+bindkey '\e[F'       end-of-line       # End key
+
+# Delete and backspace
+bindkey '^[[3~'      delete-char       # Delete key
+bindkey '^?'         backward-delete-char # Backspace
+
+# ─── Autosuggestion Navigation ───────────────────────────────────────────────
+
+# Right‑arrow → accept next token (/‑delimited path segment or word)
+bindkey '^[[C'       forward-word      # CSI C (most terminals)
+bindkey '\e[C'       forward-word      # xterm normal mode
+bindkey '\eOC'       forward-word      # application cursor mode
+if [[ -n ${terminfo[kRIT]} ]]; then
+  bindkey "${terminfo[kRIT]}" forward-word  # terminfo right arrow
+fi
+
+# Ctrl‑Right → accept the entire suggestion
+bindkey '\e[1;2C'    autosuggest-accept
+
+# ─── History Search ──────────────────────────────────────────────────────────
+
+bindkey '^R'         history-incremental-search-backward
+bindkey '^S'         history-incremental-search-forward
+
+# ─── Completion Menu Navigation ──────────────────────────────────────────────
+
+# Load menuselect for advanced menu features
+zmodload zsh/complist
+
+# Enable incremental search in menu with '/'
+bindkey -M menuselect '/' history-incremental-search-forward
+bindkey -M menuselect '?' history-incremental-search-backward
+
+# Accept completion with Enter and stay in menu for more completions
+bindkey -M menuselect '^M' .accept-line
+
+# Cancel completion with Escape
+bindkey -M menuselect '^[' send-break
+
+# ─── Custom Functions ────────────────────────────────────────────────────────
+
+# Load sudo toggle function
+[[ -f "$HOME/.dotfiles/scripts/shell/sudo-toggle" ]] && source "$HOME/.dotfiles/scripts/shell/sudo-toggle"
+
+# Double-ESC to toggle sudo
+bindkey '\e\e' sudo-command-line
+
+#------------------------------------------------------------------------------
+# Plugin Configuration
+#------------------------------------------------------------------------------
+
+# You-Should-Use Configuration (plugin paths are set in zshenv)
+for ysu_plugin in "${YSU_PLUGIN_PATHS[@]}"; do
+    if [ -f "$ysu_plugin" ]; then
+        source "$ysu_plugin"
+        break
+    fi
+done
+
+# YSU behavior and color configuration is set in zshenv
+
+# Enhanced FZF-Tab configuration
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'lsd -1 --color=always $realpath'
+zstyle ':fzf-tab:complete:ls:*' fzf-preview 'lsd -1 --color=always $realpath'
+zstyle ':fzf-tab:complete:cat:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath'
+zstyle ':fzf-tab:complete:less:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath'
+zstyle ':fzf-tab:complete:vim:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath'
+zstyle ':fzf-tab:complete:nvim:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath'
+zstyle ':fzf-tab:complete:*:*' fzf-preview 'echo $realpath'
+zstyle ':fzf-tab:*' fzf-flags --height=60% --layout=reverse
+zstyle ':fzf-tab:*' fzf-command ftb-tmux-popup
+
+# Load external FZF config if available
+[[ -f "$HOME/.config/fzf/config.fzf" ]] && source "$HOME/.config/fzf/config.fzf"
+
+#------------------------------------------------------------------------------
+# Terminal UI and Appearance
+#------------------------------------------------------------------------------
+
+# Oh My Posh initialization
+if [[ "$TERM" != "linux" ]] && command -v oh-my-posh >/dev/null 2>&1; then
+    eval "$(oh-my-posh init zsh --config ~/.dotfiles/config/ohmyposh/prompt.json)"
+fi
+
+# Terminal screensaver configuration
+TRAPALRM() {
+    if command -v tty-clock >/dev/null 2>&1; then
+        tty-clock -S -c -B < /dev/tty > /dev/tty
+    fi
+    zle reset-prompt 2>/dev/null || true
+}
+
+#------------------------------------------------------------------------------
+# Load Shell Extensions
+#------------------------------------------------------------------------------
+
+# Load all custom functions, aliases, and interactive scripts
+[[ -f "$HOME/.dotfiles/scripts/shell/load_shell_extensions" ]] && source "$HOME/.dotfiles/scripts/shell/load_shell_extensions"

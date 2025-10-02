@@ -1,0 +1,45 @@
+[include]
+    # Include machine-specific configuration (user name, email, etc.)
+    # This file should be created locally and not committed to git
+    path = ~/.gitconfig.local
+
+[diff]
+    tool = vscode
+
+[difftool "vscode"]
+    cmd = code --diff \"$LOCAL\" \"$REMOTE\"
+
+[core]
+    editor = code --wait
+    autocrlf = input
+    excludesfile = ~/.gitignore_global
+
+[push]
+    default = simple
+    followTags = true
+
+[pull]
+    rebase = false
+
+[init]
+    defaultBranch = main
+
+[color]
+    ui = auto
+
+# Catppuccin Frappe colors for git output
+[color "branch"]
+    current = "#a6d189 bold"     # Green (current branch)
+    local = "#e5c890"           # Yellow (local branches)
+    remote = "#81c8be"          # Teal (remote branches)
+
+[color "diff"]
+    meta = "#ca9ee6 bold"       # Mauve (file headers)
+    frag = "#8caaee bold"       # Blue (hunk headers)
+    old = "#e78284 bold"        # Red (deletions)
+    new = "#a6d189 bold"        # Green (additions)
+
+[color "status"]
+    added = "#a6d189"           # Green (staged files)
+    changed = "#e5c890"         # Yellow (modified files)
+    untracked = "#81c8be"       # Teal (untracked files)

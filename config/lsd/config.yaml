@@ -1,0 +1,85 @@
+# LSD Configuration - Based on official documentation
+# https://github.com/lsd-rs/lsd
+
+# == Classic ==
+# This is a shorthand to override some of the options to be backwards compatible
+# with `ls`. It affects the "color"->"when", "sorting"->"dir-grouping", "date"
+# and "icons"->"when" options.
+classic: false
+
+# == Blocks ==
+# This specifies the columns and their order when using the long and the tree layout.
+# Possible values: permission, user, group, context, size, date, name, inode, links, git
+blocks:
+  - permission
+  - user
+  - size
+  - date
+  - name
+  - git
+
+# == Color ==
+color:
+  # When to colorize the output.
+  # Possible values: never, auto, always
+  when: always
+  # How to colorize the output.
+  # Possible values: default, custom
+  theme: custom
+
+# == Date ==
+# This specifies the date format for the date column.
+# Possible values: date, locale, relative, '+<date_format>'
+# == Date ==
+# This specifies the date format for the date column.
+# Possible values: date, locale, relative, '+<date_format>'
+date: '+%b %d %y %H:%M '
+
+# == Display ==
+# What items to display. Do not specify this for the default behavior.
+# Possible values: all, almost-all, directory-only
+display: almost-all
+
+# == Icons ==
+icons:
+  # When to use icons.
+  # Possible values: always, auto, never
+  when: always
+  # Which icon theme to use.
+  # Possible values: fancy, unicode
+  theme: fancy
+  # Separator between icon and the name
+  separator: " "
+
+# == Indicators ==
+# Whether to add indicator characters to certain listed files.
+indicators: true
+
+# == Layout ==
+# Which layout to use. Possible values: tree, oneline
+layout: oneline
+
+# == Size ==
+# Specifies the format of the size column.
+# Possible values: default, short, bytes
+size: short
+
+# == Sorting ==
+sorting:
+  # Specify what to sort by.
+  # Possible values: extension, name, time, size, version
+  column: time
+  # Whether to reverse the sorting.
+  reverse: true
+  # Whether to group directories together and where.
+  # Possible values: first, last, none
+  dir-grouping: first
+
+# == Hyperlink ==
+# Attach hyperlink to filenames
+# Possible values: always, auto, never
+hyperlink: auto
+
+# == Header ==
+# Whether to display block headers.
+header: true

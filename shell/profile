@@ -1,0 +1,38 @@
+#!/bin/sh
+# .profile - POSIX-compliant login shell configuration
+# This file is sourced by login shells (bash, sh, etc.) when zsh isn't the login shell
+
+# If we're in an interactive shell and not already in zsh, switch to zsh
+if [ -n "$PS1" ] && [ -z "$ZSH_VERSION" ]; then
+    # Check if zsh is available and is our default shell
+    if command -v zsh >/dev/null 2>&1; then
+        # Verify zsh is actually our default shell in passwd
+        user_shell=$(getent passwd "$USER" 2>/dev/null | cut -d: -f7)
+        case "$user_shell" in
+            */zsh)
+                # Only switch if we're not already in a subshell loop
+                if [ -z "$PROFILE_ZSH_EXEC" ]; then
+                    export PROFILE_ZSH_EXEC=1
+                    exec zsh -l
+                fi
+                ;;
+        esac
+    fi
+fi
+
+# If we reach here, either zsh isn't available or something prevented the switch
+# Set up minimal environment for the fallback shell
+
+# XDG Base Directory Specification
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+
+# Add user binaries to PATH if not already present
+case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
+export PATH

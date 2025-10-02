@@ -1,0 +1,25 @@
+#!/usr/bin/env zsh
+
+#==============================================================================
+# Sudo Toggle Function
+#==============================================================================
+# Description: Toggle sudo at the beginning of the current command line
+# Usage: Bind to a key combination (typically double-ESC)
+#==============================================================================
+
+sudo-command-line() {
+    # If line is empty, get the last run command from history
+    [[ -z $BUFFER ]] && LBUFFER="$(fc -ln -1)"
+    
+    # Toggle sudo prefix on and off
+    case "$BUFFER" in
+        sudo\ *) LBUFFER="${LBUFFER#sudo }" ;;  # Remove sudo if present
+        *) LBUFFER="sudo $LBUFFER" ;;            # Add sudo if not present
+    esac
+    
+    # Redisplay the command line
+    zle && zle redisplay
+}
+
+# Register the function as a ZLE widget
+zle -N sudo-command-line

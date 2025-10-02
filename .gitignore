@@ -1,3 +1,5 @@
+# Ignore all .local files
+*.local
 # macOS
 .DS_Store
 
@@ -7,6 +9,9 @@
 
 # GitHub CLI
 .config/gh/
+
+# AWS CLI (contains credentials and sensitive config)
+config/aws/
 
 # iTerm2
 .config/iterm2/*
@@ -18,13 +23,12 @@
 
 # Synced by Application
 .vscode/
-.config/raycast/
 
 # Zsh Generated Files
-.zsh/.zcompdump
-.zsh/.zsh_history
-.zsh/.zsh_sessions/
-.zsh/.zshplugins/
+shell/zsh/.zcompdump
+shell/zsh/.zsh_history  
+shell/zsh/.zsh_sessions/
+shell/zsh/.zshplugins/
 
 # Zsh compiled files
 **/*.zwc

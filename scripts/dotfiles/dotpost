@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[dotpost] reloading every interactive zsh…"
+pkill -USR1 -x zsh || true           # zsh reloads ~/.zshrc on SIGUSR1

@@ -1,0 +1,56 @@
+#!/usr/bin/env zsh
+
+# System update function with platform detection
+update() {
+    case "$OSTYPE" in
+        darwin*)
+            # macOS - Homebrew updates
+            echo "🍺 Updating Homebrew..."
+            brew update
+            
+            # Capture outdated packages before upgrade
+            local outdated_before=$(brew outdated)
+            brew upgrade
+            
+            # Handle specific service restarts
+            if echo "$outdated_before" | grep -q '^tailscale$'; then
+                echo "🔄 Restarting Tailscale brew service..."
+                brew services restart tailscale
+            fi
+            
+            echo "✅ macOS system update complete"
+            ;;
+            
+        linux-gnu*|linux-musl*)
+            # Linux - detect package manager and update
+            if command -v apt >/dev/null 2>&1; then
+                echo "📦 Updating APT packages..."
+                sudo apt update && sudo apt upgrade -y
+            elif command -v dnf >/dev/null 2>&1; then
+                echo "📦 Updating DNF packages..."
+                sudo dnf upgrade -y
+            elif command -v yum >/dev/null 2>&1; then
+                echo "📦 Updating YUM packages..."
+                sudo yum update -y
+            elif command -v pacman >/dev/null 2>&1; then
+                echo "📦 Updating Pacman packages..."
+                sudo pacman -Syu
+            else
+                echo "❌ No supported package manager found"
+                return 1
+            fi
+            
+            echo "✅ Linux system update complete"
+            ;;
+            
+        *)
+            echo "❌ Unsupported operating system: $OSTYPE"
+            return 1
+            ;;
+    esac
+}
+
+# If called directly (not sourced), execute the function
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    update "$@"
+fi

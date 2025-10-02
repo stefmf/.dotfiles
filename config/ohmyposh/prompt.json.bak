@@ -1,0 +1,129 @@
+{
+  "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
+  "secondary_prompt": {
+    "template": "{{ if .Root }}❯❯{{ else }}❯❯{{ end }} ",
+    "foreground_templates": ["{{ if .Root }}#e5c890{{ else }}#8caaee{{ end }}"],
+    "background": "transparent"
+  },
+  "transient_prompt": {
+    "template": "❯ ",
+    "background": "transparent",
+    "foreground_templates": [
+      "{{ if gt .Code 0 }}#e78284{{ end }}",
+      "{{ if and (eq .Code 0) .Root }}#e5c890{{ end }}",
+      "{{ if and (eq .Code 0) (not .Root) }}#8caaee{{ end }}"
+    ]
+  },
+  "upgrade": {
+    "source": "cdn",
+    "interval": "168h",
+    "auto": false,
+    "notice": false
+  },
+  "console_title_template": "Terminal",
+  "blocks": [
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "type": "text",
+          "style": "plain",
+          "template": "{{ if lt (atoi .Env.COLUMNS) 70 }}{{ .UserName }}<#a5adce>@</>{{ .HostName }} <#8caaee>{{ $pwd := .PWD }}{{ $home := .Env.HOME }}{{ if eq $pwd $home }}~{{ else if hasPrefix $pwd (print $home \"/\") }}{{ $rel := trimPrefix (print $home \"/\") $pwd }}{{ $parts := splitList \"/\" $rel }}{{ $len := len $parts }}{{ if ge $len 2 }}~/{{ index $parts (sub $len 2) }}/{{ index $parts (sub $len 1) }}{{ else }}~/{{ $rel }}{{ end }}{{ else }}{{ $parts := splitList \"/\" $pwd }}{{ $len := len $parts }}{{ if ge $len 3 }}…/{{ index $parts (sub $len 2) }}/{{ index $parts (sub $len 1) }}{{ else }}{{ $pwd }}{{ end }}{{ end }}</> <#a5adce>{{ if .Root }}#{{ else }}%{{ end }}</>{{ end }}",
+          "foreground_templates": [
+            "{{ if .Root }}#e78284{{ else }}#8caaee{{ end }}"
+          ],
+          "background": "transparent"
+        },
+        {
+          "type": "session",
+          "style": "plain",
+          "template": "{{ if ge (atoi .Env.COLUMNS) 70 }} {{ .UserName }}{{ end }}",
+          "foreground_templates": [
+            "{{ if .Root }}#e78284{{ else }}#8caaee{{ end }}"
+          ],
+          "background": "transparent"
+        },
+        {
+          "type": "session",
+          "style": "plain",
+          "template": "{{ if ge (atoi .Env.COLUMNS) 70 }}<#a5adce> ❘ </>󰇄 {{ .HostName }}<#a5adce> ❘ </>{{ end }}",
+          "foreground": "#8caaee",
+          "background": "transparent"
+        },
+        {
+          "type": "path",
+          "style": "plain",
+          "properties": {
+            "style": "agnoster",
+            "max_width": "{{ max 8 (sub (atoi .Env.COLUMNS) 45) }}",
+            "folder_icon": "…"
+          },
+          "template": "{{ if ge (atoi .Env.COLUMNS) 70 }} {{ .Path }}{{ end }}",
+          "foreground": "#8caaee",
+          "background": "transparent"
+        },
+        {
+          "type": "git",
+          "style": "plain",
+          "properties": {
+            "branch_icon": "\uf408 \ue0a0 ",
+            "commit_icon": "@",
+            "fetch_status": true
+          },
+          "template": "{{ if ge (atoi .Env.COLUMNS) 70 }} {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <#a6d189>{{ if gt .Behind 0 }}\u21e3{{ end }}{{ if gt .Ahead 0 }}\u21e1{{ end }}</>{{ end }}",
+          "foreground": "#a5adce",
+          "background": "transparent"
+        },
+        {
+          "type": "executiontime",
+          "style": "plain",
+          "template": "{{ if ge (atoi .Env.COLUMNS) 85 }} <#e5c890>⏱</> {{ .FormattedMs }}{{ end }}",
+          "properties": {
+            "threshold": 5000,
+            "style": "round"
+          },
+          "foreground": "#e5c890",
+          "background": "transparent"
+        }
+      ]
+    },
+    {
+      "type": "prompt",
+      "alignment": "right",
+      "newline": false,
+      "filler": " ",
+      "overflow": "hide",
+      "segments": [
+        {
+          "type": "time",
+          "style": "plain",
+          "template": "{{ if ge (atoi .Env.COLUMNS) 85 }}{{ .CurrentDate | date \"Jan 2 15:04\" }}{{ end }}",
+          "properties": {
+            "time_format": "Jan 2 15:04"
+          },
+          "foreground": "#a5adce",
+          "background": "transparent"
+        }
+      ]
+    },
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "template": "{{ if ge (atoi .Env.COLUMNS) 70 }}❯{{ end }}",
+          "background": "transparent",
+          "type": "text",
+          "style": "plain",
+          "foreground_templates": [
+            "{{ if .Root }}#e5c890{{ else }}#8caaee{{ end }}"
+          ]
+        }
+      ],
+      "newline": true
+    }
+  ],
+  "version": 4,
+  "final_space": true
+}
