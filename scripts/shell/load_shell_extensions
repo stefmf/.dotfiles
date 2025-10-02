@@ -1,0 +1,61 @@
+#!/usr/bin/env zsh
+
+# Load all shell extensions, functions, and scripts for interactive use
+
+DOTFILES="$HOME/.dotfiles"
+
+#------------------------------------------------------------------------------
+# Load Custom Functions
+#------------------------------------------------------------------------------
+
+# Load all function files from functions directory
+if [[ -d "$DOTFILES/shell/zsh/functions" ]]; then
+    for func_file in "$DOTFILES/shell/zsh/functions"/*.zsh; do
+        [[ -f "$func_file" ]] && source "$func_file"
+    done
+fi
+
+#------------------------------------------------------------------------------
+# Load Custom Aliases
+#------------------------------------------------------------------------------
+
+# Load custom aliases
+[[ -f "$DOTFILES/shell/zsh/zaliases" ]] && source "$DOTFILES/shell/zsh/zaliases"
+
+#------------------------------------------------------------------------------
+# Load Interactive Scripts
+#------------------------------------------------------------------------------
+
+# List of scripts that provide functions for interactive use
+INTERACTIVE_SCRIPTS=(
+    "system/update"
+    "dotfiles/dotall" 
+    "shell/nuke"
+    "system/setup_gnu_aliases"
+)
+
+# Source each script to make functions available
+for script in "${INTERACTIVE_SCRIPTS[@]}"; do
+    if [[ -f "$DOTFILES/scripts/$script" ]]; then
+        source "$DOTFILES/scripts/$script"
+    fi
+done
+
+#------------------------------------------------------------------------------
+# Platform-specific Extensions
+#------------------------------------------------------------------------------
+
+case "$OSTYPE" in
+    darwin*)
+        # Source and execute GNU utilities setup
+        [[ -f "$DOTFILES/scripts/system/setup_gnu_aliases" ]] && \
+            source "$DOTFILES/scripts/system/setup_gnu_aliases" && \
+            setup_gnu_aliases
+        ;;
+    linux-gnu*|linux-musl*)
+        # Linux-specific configurations can go here
+        ;;
+esac
+
+# Clean up variables
+unset DOTFILES INTERACTIVE_SCRIPTS script func_file

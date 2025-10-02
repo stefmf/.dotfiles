@@ -1,0 +1,46 @@
+- defaults:
+    link:
+      relink: true
+      force: true
+
+- clean: ['~']
+
+- create:
+  - ~/.config
+  - ~/.ssh
+  - ~/.cache/zsh
+  - ~/.local/state/zsh/sessions
+
+- link:
+    # Config files
+    ~/.config: config
+
+    # Zsh configuration files
+    ~/.zlogout: shell/zsh/zlogout
+    ~/.zlogin: shell/zsh/zlogin
+    ~/.zshenv: shell/zsh/zshenv
+    ~/.zprofile: shell/zsh/zprofile
+    ~/.zshrc: shell/zsh/zshrc
+    ~/.hushlogin: shell/zsh/hushlogin
+
+    # Fallback profile for non-zsh login shells
+    ~/.profile: shell/profile
+
+    # Git configuration files
+    ~/.gitconfig: config/git/gitconfig
+    ~/.gitconfig.local: config/git/gitconfig.local
+    ~/.gitignore_global: config/git/gitignore_global
+
+    # System configuration files
+    /opt/homebrew/etc/dnsmasq.conf:
+      path: system/dnsmasq/dnsmasq.conf
+      if: '[ "$(uname)" = "Darwin" ]'
+
+    # Global EditorConfig file
+    ~/.editorconfig: config/.editorconfig
+
+    # SSH configuration (machine-specific config goes in ~/.ssh/config.local)
+    ~/.ssh/config: system/ssh/config
+
+- shell:
+  - [rm -f ~/.bashrc ~/.bash_profile ~/.bash_logout ~/.sudo_as_admin_successful, Removing legacy shell files]

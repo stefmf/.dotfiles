@@ -1,0 +1,58 @@
+# LSD Configuration - Compact Version for Narrow Terminals (<70 columns)
+# https://github.com/lsd-rs/lsd
+
+# == Classic ==
+classic: false
+
+# == Blocks ==
+# Minimal blocks for compact display: no permissions, but include user, size, date, name
+blocks:
+  - user
+  - size
+  - date
+  - name
+
+# == Color ==
+color:
+  # Keep colors for visual distinction
+  when: always
+  theme: custom
+
+# == Date ==
+# Simplified date format for narrow terminals
+date: '+%m/%d %H:%M'
+
+# == Display ==
+# Show almost all files (hidden files but not . and ..)
+display: almost-all
+
+# == Icons ==
+icons:
+  # No icons for compact display
+  when: never
+
+# == Indicators ==
+# Keep indicators for file types (helps distinguish without icons)
+indicators: true
+
+# == Layout ==
+layout: oneline
+
+# == Size ==
+# Human readable sizes
+size: short
+
+# == Sorting ==
+sorting:
+  # Sort by modification time (newest first) - same as other configs
+  column: time
+  reverse: true
+  # Group directories first - same as other configs
+  dir-grouping: first
+
+# == Hyperlink ==
+hyperlink: auto
+
+# == Header ==
+# No headers for compact display
+header: false

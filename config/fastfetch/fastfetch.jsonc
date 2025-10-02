@@ -1,0 +1,44 @@
+{
+    "logo": {
+        "type": "none"
+    },
+    "display": {
+        "separator": ": ",
+        "color": {
+            "keys": "#8caaee",
+            "title": "#99d1db",
+            "output": "#c6d0f5"
+        },
+        "brightColor": true,
+        "disableLinewrap": true,
+        "hideCursor": true
+    },
+    "modules": [
+        {
+            "type": "command",
+            "shell": "/bin/bash",
+            "text": "EMOJIS=('💻' '🛠️' '🚀'); COLORS=(32 35 31); RANDOM_EMOJI=${EMOJIS[$RANDOM % ${#EMOJIS[@]}]}; RANDOM_COLOR_CODE=${COLORS[$RANDOM % ${#COLORS[@]}]}; USERNAME=$(whoami); CAPITALIZED_USERNAME=$(echo $USERNAME | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}'); if [ \"$USERNAME\" = 'user' ]; then MESSAGE=\"Welcome to your Terminal! $RANDOM_EMOJI\"; else MESSAGE=\"Welcome to your Terminal $CAPITALIZED_USERNAME! $RANDOM_EMOJI\"; fi; echo -e \"\\033[1;${RANDOM_COLOR_CODE}m$MESSAGE\\033[0m\"",
+            "key": " "
+        },
+        {
+            "type": "localip",
+            "key": "Local IP"
+        },
+        {
+            "type": "command",
+            "shell": "/bin/bash",
+            "text": "tailscale ip -4",
+            "key": "Tailscale IP"
+        },
+        {
+            "type": "command",
+            "shell": "/bin/bash",
+            "text": "if [ -n \"$SSH_CONNECTION\" ] || [ -n \"$SSH_CLIENT\" ]; then echo $SSH_CONNECTION | awk '{print $1}'; fi",
+            "key": "Active SSH Connection From"
+        },
+        {
+            "type": "memory",
+            "key": "Memory Usage"
+        }
+    ]
+}

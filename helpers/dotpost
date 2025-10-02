@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-echo "[dotpost] reloading every interactive zsh…"
-pkill -USR1 -x zsh || true           # zsh reloads ~/.zshrc on SIGUSR1
-
-# ── future post-pull commands go below ──
-# e.g. brew bundle --file="$HOME/.Brewfile"

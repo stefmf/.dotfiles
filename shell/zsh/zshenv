@@ -1,0 +1,254 @@
+#------------------------------------------------------------------------------
+# Environment Variables and Core Settings
+#------------------------------------------------------------------------------
+
+# XDG Base Directory Specification
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share" 
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_STATE_HOME="$HOME/.local/state"
+
+# Ensure user-local binaries are on PATH for all shells
+if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+    mkdir -p "$HOME/.local/bin" 2>/dev/null || true
+    path=("$HOME/.local/bin" $path)
+    export PATH
+fi
+
+# Ensure SHELL reflects the active zsh binary even when launched from another shell
+if command -v zsh >/dev/null 2>&1; then
+    __dotfiles_zsh_bin="$(command -v zsh)"
+    if [[ -n "$__dotfiles_zsh_bin" && "${SHELL:-}" != "$__dotfiles_zsh_bin" ]]; then
+        export SHELL="$__dotfiles_zsh_bin"
+    fi
+    unset __dotfiles_zsh_bin
+fi
+
+# Application-specific XDG compliance
+export LESSHISTFILE="$XDG_CACHE_HOME/less/history"
+export TLDR_CACHE_DIR="$XDG_CACHE_HOME/tldr"
+export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc"
+export DOCKER_CONFIG="$XDG_CONFIG_HOME/docker"
+export AWS_CONFIG_FILE="$XDG_CONFIG_HOME/aws/config"
+export AWS_SHARED_CREDENTIALS_FILE="$XDG_CONFIG_HOME/aws/credentials"
+
+# Dotfile Management
+export DOTFILES="$HOME/.dotfiles"                           # Central location for dotfiles
+: "${HOST:=$(hostname -s 2>/dev/null || hostname 2>/dev/null || uname -n)}"
+export ZSH_COMPDUMP="$XDG_CACHE_HOME/zsh/zcompdump-${HOST}"        # Completion cache
+export ZSH_CUSTOM="$DOTFILES/shell/zsh/plugins"            # Custom plugin directory
+export HISTFILE="$DOTFILES/shell/zsh/.zsh_history"         # History file
+export ZSH_SESSION_DIR="$XDG_STATE_HOME/zsh/sessions"      # Session management
+export PYENV_ROOT="${PYENV_ROOT:-$XDG_DATA_HOME/pyenv}"    # pyenv installation root
+
+# ZSH completion cache directory (for systems that use this variable)
+export ZSH_CACHE_DIR="$XDG_CACHE_HOME/zsh"
+
+# Ensure directories exist for Zsh caches and sessions
+mkdir -p "${ZSH_COMPDUMP:h}" "$ZSH_SESSION_DIR" "$(dirname "$PYENV_ROOT")" 2>/dev/null || true
+
+# History Configuration
+export HISTSIZE=50000                 # Increased history size
+export SAVEHIST=50000                 # Increased save history size
+
+# Zinit Plugin Manager
+export ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+
+# Terminal timeout (screensaver)
+export TMOUT=18000
+
+# Default Applications & Editor Setup
+# Check for VS Code in common locations (using full paths to avoid alias conflicts)
+if /usr/bin/which code >/dev/null 2>&1; then
+    export VISUAL=code
+    export EDITOR=code
+elif [[ -f "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" ]]; then
+    export PATH="/Applications/Visual Studio Code.app/Contents/Resources/app/bin:$PATH"
+    export VISUAL=code
+    export EDITOR=code
+elif [[ -f "/usr/local/bin/code" ]]; then
+    export VISUAL=code
+    export EDITOR=code
+else
+    export VISUAL=vim
+    export EDITOR=vim
+fi
+
+# Development Tools Configuration  
+# Note: GNU tools are added AFTER system tools to maintain compatibility
+if [[ "$OSTYPE" == darwin* ]]; then
+    # Check for Homebrew and add GNU tools (but don't prepend PATH to avoid conflicts)
+    brew_prefix=""
+    if [[ -x "/opt/homebrew/bin/brew" ]]; then
+        brew_prefix="/opt/homebrew"
+    elif [[ -x "/usr/local/bin/brew" ]]; then
+        brew_prefix="/usr/local"
+    fi
+    
+    if [[ -n "$brew_prefix" ]]; then
+        # Add GNU tools to end of PATH to maintain system command priority
+        gnu_tools=(
+            "$brew_prefix/opt/coreutils/libexec/gnubin"
+            "$brew_prefix/opt/findutils/libexec/gnubin" 
+            "$brew_prefix/opt/gnu-sed/libexec/gnubin"
+            "$brew_prefix/opt/grep/libexec/gnubin"
+        )
+        
+        for gnu_path in "${gnu_tools[@]}"; do
+            [[ -d "$gnu_path" ]] && export PATH="$PATH:$gnu_path"
+        done
+        unset gnu_tools gnu_path brew_prefix
+    fi
+fi
+
+# FZF Core Settings (these should be available to scripts)
+export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+
+# Lazy-load version managers (performance optimization)
+__pyenv_lazy_load() {
+    if command -v pyenv >/dev/null 2>&1; then
+        [[ -d "$PYENV_ROOT/bin" ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)"
+    fi
+}
+
+__nvm_lazy_load() {
+    if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+    fi
+}
+
+__cargo_lazy_load() {
+    if [[ -s "$HOME/.cargo/env" ]]; then
+        . "$HOME/.cargo/env"
+    fi
+}
+
+# Only load version managers on first use to improve shell startup
+node() {
+    unfunction node 2>/dev/null || true
+    __nvm_lazy_load
+    command node "$@"
+}
+
+python() {
+    unfunction python 2>/dev/null || true
+    __pyenv_lazy_load
+    command python "$@"
+}
+
+cargo() {
+    unfunction cargo 2>/dev/null || true
+    __cargo_lazy_load
+    command cargo "$@"
+}
+
+# Go environment (always available since it's lightweight)
+if command -v go >/dev/null 2>&1; then
+    export GOPATH="$HOME/go"
+    export GOBIN="$GOPATH/bin"
+    [[ -d "$GOBIN" ]] && export PATH="$GOBIN:$PATH"
+fi
+
+# Optional: Set to any value to clear screen on logout
+export CLEAR_ON_LOGOUT=1
+
+# Note: PATH deduplication happens at the end of this file to clean up any duplicates
+
+#------------------------------------------------------------------------------
+# Machine-Specific AWS Profile Configuration
+#------------------------------------------------------------------------------
+
+# Set AWS profile based on machine (using hostname directly)
+case "$(hostname -s 2>/dev/null || echo "unknown")" in
+  "Mac-WD77LWRW")
+    export AWS_PROFILE=swa
+    ;;
+  # Add other machines as needed
+  # "other-machine")
+  #   export AWS_PROFILE=personal
+  #   ;;
+esac
+
+# Java Setup (conditional - only if directory exists)
+if [[ -d "/opt/homebrew/opt/openjdk" ]]; then
+    export JAVA_HOME="/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home"
+    export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+fi
+
+# Cleanup temporary functions and variables
+unset -f __pyenv_lazy_load __nvm_lazy_load __cargo_lazy_load
+unset HOST_SHORTNAME
+
+# PATH deduplication (run at the very end to clean up any duplicates)
+__dedupe_path() {
+    local new_path=""
+    local dir
+    local -a dirs
+    dirs=(${(s[:])PATH})
+    for dir in "${dirs[@]}"; do
+        if [[ -n "$dir" && ":$new_path:" != *":$dir:"* ]]; then
+            new_path="${new_path:+$new_path:}$dir"
+        fi
+    done
+    export PATH="$new_path"
+}
+
+# Only deduplicate if we have duplicates (to avoid unnecessary work)
+if [[ "$PATH" == *"::"* ]] || [[ $(echo "$PATH" | tr ':' '\n' | sort | uniq -d | wc -l) -gt 0 ]]; then
+    __dedupe_path
+fi
+unset -f __dedupe_path
+
+#------------------------------------------------------------------------------
+# Tool-Specific Configuration
+#------------------------------------------------------------------------------
+
+# FZF (Fuzzy Finder) configuration
+if command -v fd >/dev/null 2>&1; then
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+fi
+export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+
+#------------------------------------------------------------------------------
+# YSU (You Should Use) Configuration
+#------------------------------------------------------------------------------
+
+# YSU behavior settings
+export YSU_MESSAGE_POSITION="after"  # Show alias message after command
+export YSU_MODE="ALL"                # Show all matching aliases
+
+# Custom YSU message format with Catppuccin Frappe colors
+# Blue (#8caaee) for main text, Yellow (#e5c890) for alias type, Green (#a6d189) for alias
+export YSU_MESSAGE_FORMAT="$(tput setaf 75)Found existing $(tput setaf 222)%alias_type$(tput setaf 75) for \"$(tput setaf 255)%command$(tput setaf 75)\". You should use: \"$(tput setaf 150)%alias$(tput setaf 75)\"$(tput sgr0)"
+
+#------------------------------------------------------------------------------
+# ZSH Plugin Configuration
+#------------------------------------------------------------------------------
+
+# ZSH Autosuggestions Configuration
+export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+export ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
+export ZSH_AUTOSUGGEST_USE_ASYNC=true
+export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#808080'
+export ZSH_AUTOSUGGEST_ACCEPT_WIDGETS=(end-of-line)
+export ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS=(forward-word vi-forward-word)
+
+# Word boundary characters (affects completion and navigation)
+export WORDCHARS='*?_-.[]~=&;!#$%^(){}<>'
+
+# YSU plugin search paths
+export YSU_PLUGIN_PATHS=(
+    "${ZINIT_HOME}/plugins/MichaelAquilina---zsh-you-should-use/you-should-use.plugin.zsh"
+    "$HOME/.dotfiles/shell/zsh/plugins/zsh-you-should-use/you-should-use.plugin.zsh"
+    "/usr/share/zsh-you-should-use/zsh-you-should-use.plugin.zsh"
+    "$(brew --prefix 2>/dev/null)/share/zsh-you-should-use/you-should-use.plugin.zsh"
+)
+
+# Export COLUMNS for Oh My Posh dynamic path shortening (only in interactive shells)
+if [[ -o interactive ]]; then
+    precmd() { export COLUMNS; }
+fi

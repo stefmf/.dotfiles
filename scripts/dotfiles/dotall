@@ -1,0 +1,61 @@
+#!/usr/bin/env zsh
+
+# Multi-host dotfiles deployment with SSH key fallback
+# Supports both regular LAN hosts and air-gapped network hosts
+
+# Host configuration
+# Normal LAN hosts (reachable from anywhere)
+typeset -a DOT_HOSTS=(lucky dreams draco swavesec)
+
+# Air-gapped network hosts; only brut can reach them
+typeset -a DOT_HOSTS_AIR=(bubbles)
+
+dotall() {
+    emulate -L zsh
+    local self=$(hostname -s)
+
+    # ── Build target list ────────────────────────────────────────────────
+    local targets=("${DOT_HOSTS[@]}")
+    [[ $self == brut ]] && targets+=("${DOT_HOSTS_AIR[@]}")
+
+    # ── SSH option bundles ───────────────────────────────────────────────
+    local SSH_KEY_OPTS=(
+        -o BatchMode=yes
+        -o ConnectTimeout=15
+        -o ConnectionAttempts=2
+        -o StrictHostKeyChecking=accept-new
+    )
+    local SSH_INT_OPTS=(
+        -o ConnectTimeout=15
+        -o ConnectionAttempts=1   # allow password/TouchID prompt
+    )
+
+    for h in "${targets[@]}"; do
+        [[ $h == $self ]] && continue
+        print -P "%F{cyan}[dotall]%f → $h"
+
+        # ── 1. Try key‑only (silent) ────────────────────────────────────
+        if ssh "${SSH_KEY_OPTS[@]}" "$h" true 2>/dev/null; then
+            ssh "${SSH_KEY_OPTS[@]}" "$h" '~/.dotfiles/scripts/dotfiles/dotup' \
+                | sed -u "s/^/[$h] /"
+            print -P "%F{green}[dotall]%f ← $h OK"
+            continue
+        fi
+
+        # ── 2. Key failed → always prompt (uses your ProxyJump) ────────
+        print -P "%F{yellow}[dotall]%f no key for $h — prompting…"
+        if ssh "${SSH_INT_OPTS[@]}" "$h" '~/.dotfiles/scripts/dotfiles/dotup' \
+             | sed -u "s/^/[$h] /"; then
+            print -P "%F{green}[dotall]%f ← $h OK (interactive)"
+        else
+            print -P "%F{red}[dotall]%f ← $h FAILED (interactive)"
+        fi
+    done
+
+    print -P "%F{cyan}[dotall]%f complete."
+}
+
+# If called directly (not sourced), execute the function
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    dotall "$@"
+fi
