@@ -10,6 +10,9 @@
 # GitHub CLI
 .config/gh/
 
+# AWS CLI (contains credentials and sensitive config)
+config/aws/
+
 # iTerm2
 .config/iterm2/*
 !.config/iterm2/com.googlecode.iterm2.plist

@@ -73,16 +73,14 @@ readonly HOST_ID=$(hostname -s 2>/dev/null || echo "unknown")
 # Define SSH keys per machine
 declare -a SSH_KEYS=("id_personal")
 
-# Machine-specific configuration
+# Machine-specific SSH key configuration
 case "$HOST_ID" in
   "Mac-WD77LWRW")
     SSH_KEYS+=(id_work)
-    awswork
     ;;
   # Add other machines as needed
   # "other-machine")
   #   SSH_KEYS+=(id_other)
-  #   awspersonal
   #   ;;
 esac
 

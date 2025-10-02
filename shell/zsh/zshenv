@@ -29,6 +29,8 @@ export LESSHISTFILE="$XDG_CACHE_HOME/less/history"
 export TLDR_CACHE_DIR="$XDG_CACHE_HOME/tldr"
 export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc"
 export DOCKER_CONFIG="$XDG_CONFIG_HOME/docker"
+export AWS_CONFIG_FILE="$XDG_CONFIG_HOME/aws/config"
+export AWS_SHARED_CREDENTIALS_FILE="$XDG_CONFIG_HOME/aws/credentials"
 
 # Dotfile Management
 export DOTFILES="$HOME/.dotfiles"                           # Central location for dotfiles
@@ -155,6 +157,21 @@ fi
 export CLEAR_ON_LOGOUT=1
 
 # Note: PATH deduplication happens at the end of this file to clean up any duplicates
+
+#------------------------------------------------------------------------------
+# Machine-Specific AWS Profile Configuration
+#------------------------------------------------------------------------------
+
+# Set AWS profile based on machine (using hostname directly)
+case "$(hostname -s 2>/dev/null || echo "unknown")" in
+  "Mac-WD77LWRW")
+    export AWS_PROFILE=swa
+    ;;
+  # Add other machines as needed
+  # "other-machine")
+  #   export AWS_PROFILE=personal
+  #   ;;
+esac
 
 # Java Setup (conditional - only if directory exists)
 if [[ -d "/opt/homebrew/opt/openjdk" ]]; then
