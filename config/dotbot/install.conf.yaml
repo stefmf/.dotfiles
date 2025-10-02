@@ -10,6 +10,8 @@
   - ~/.ssh
   - ~/.cache/zsh
   - ~/.local/state/zsh/sessions
+  - "~/Library/Application Support/Sublime Text/Packages/User"
+  - "~/Library/Application Support/Sublime Text/Installed Packages"
 
 - link:
     # Config files
@@ -41,6 +43,10 @@
 
     # SSH configuration (machine-specific config goes in ~/.ssh/config.local)
     ~/.ssh/config: system/ssh/config
+
+    # Sublime Text configuration
+    "~/Library/Application Support/Sublime Text/Packages/User": config/sublime/User
+    "~/Library/Application Support/Sublime Text/Installed Packages": config/sublime/Installed Packages
 
 - shell:
   - [rm -f ~/.bashrc ~/.bash_profile ~/.bash_logout ~/.sudo_as_admin_successful, Removing legacy shell files]
