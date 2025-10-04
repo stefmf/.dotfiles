@@ -13,6 +13,72 @@
   - "~/Library/Application Support/Sublime Text/Packages/User"
   - "~/Library/Application Support/Sublime Text/Installed Packages"
 
+- shell:
+  - 
+    description: Setup SSH authorized_keys with local public key
+    command: |
+      AUTH_KEYS="$HOME/.ssh/authorized_keys"
+      PUB_KEY="$HOME/.ssh/id_personal.pub"
+      
+      # Ensure .ssh directory exists with correct permissions
+      mkdir -p "$HOME/.ssh"
+      chmod 700 "$HOME/.ssh"
+      
+      # Skip if public key doesn't exist
+      if [ ! -f "$PUB_KEY" ]; then
+        echo "[INFO] No public key found at $PUB_KEY, skipping authorized_keys setup"
+        exit 0
+      fi
+      
+      # Create authorized_keys if it doesn't exist
+      touch "$AUTH_KEYS"
+      chmod 600 "$AUTH_KEYS"
+      
+      # Add public key if not already present
+      if ! grep -qF "$(cat "$PUB_KEY")" "$AUTH_KEYS" 2>/dev/null; then
+        echo "[INFO] Adding local public key to authorized_keys..."
+        cat "$PUB_KEY" >> "$AUTH_KEYS"
+        echo "[INFO] ✓ Public key added to authorized_keys"
+      else
+        echo "[INFO] Public key already in authorized_keys"
+      fi
+    stdin: true
+    stdout: true
+    stderr: true
+  
+  - 
+    description: Setup sshd_config symlink (key-only authentication)
+    command: |
+      SSHD_TARGET="/etc/ssh/sshd_config"
+      SSHD_SOURCE="$HOME/.dotfiles/system/ssh/sshd_config"
+      
+      # Skip on unsupported platforms
+      if [ "$(uname)" != "Darwin" ] && [ "$(uname)" != "Linux" ]; then
+        echo "[INFO] Skipping sshd_config setup on $(uname)"
+        exit 0
+      fi
+      
+      # If already correctly symlinked, skip
+      if [ -L "$SSHD_TARGET" ] && [ "$(readlink "$SSHD_TARGET")" = "$SSHD_SOURCE" ]; then
+        echo "[INFO] sshd_config already correctly symlinked"
+        exit 0
+      fi
+      
+      # Backup and remove existing file/symlink
+      if [ -f "$SSHD_TARGET" ] || [ -L "$SSHD_TARGET" ]; then
+        echo "[INFO] Backing up existing sshd_config..."
+        sudo cp -pL "$SSHD_TARGET" "${SSHD_TARGET}.backup.$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
+        sudo rm -f "$SSHD_TARGET"
+      fi
+      
+      # Create symlink
+      echo "[INFO] Creating sshd_config symlink..."
+      sudo ln -s "$SSHD_SOURCE" "$SSHD_TARGET"
+      echo "[INFO] ✓ sshd_config linked successfully"
+    stdin: true
+    stdout: true
+    stderr: true
+
 - link:
     # Config files
     ~/.config: config
@@ -43,6 +109,7 @@
 
     # SSH configuration (machine-specific config goes in ~/.ssh/config.local)
     ~/.ssh/config: system/ssh/config
+    # Note: sshd_config linking is handled in the shell task above (requires sudo)
 
     # Sublime Text configuration
     "~/Library/Application Support/Sublime Text/Packages/User": config/sublime/User

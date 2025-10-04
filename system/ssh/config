@@ -24,17 +24,30 @@ Host swavesec
     User e195761
     IdentityFile ~/.ssh/id_work
 
-# Default SSH settings for all connections
+# =====================================================================
+# Global defaults for all SSH connections
+# =====================================================================
 Host *
     User stef
     Port 22
     IdentityFile ~/.ssh/id_personal
     AddKeysToAgent yes
     UseKeychain yes
+    PreferredAuthentications publickey
+    PasswordAuthentication no
+
+    # Connection behavior
     ServerAliveInterval 60
     ServerAliveCountMax 10
     TCPKeepAlive yes
     Compression yes
+
+    # Connection multiplexing
     ControlMaster auto
     ControlPersist 10m
     ControlPath ~/.ssh/sockets/%r@%h:%p
+
+    # Security settings
+    GSSAPIAuthentication no       # Skip Kerberos auth (faster)
+    HashKnownHosts yes            # Obfuscate known_hosts entries
+    StrictHostKeyChecking ask     # Prompt before trusting new hosts
