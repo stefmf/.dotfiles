@@ -1061,9 +1061,8 @@ setup_xdg_directories() {
         "$XDG_CACHE_HOME" \
         "$XDG_STATE_HOME" \
         "$XDG_CACHE_HOME/zsh" \
-        "$XDG_STATE_HOME/zsh/sessions" \
-        "$HOME/.ssh/sockets"
-    chmod 700 "$HOME/.ssh" "$HOME/.ssh/sockets" "$XDG_STATE_HOME/zsh" "$XDG_STATE_HOME/zsh/sessions" 2>/dev/null || true
+        "$XDG_STATE_HOME/zsh/sessions"
+    chmod 700 "$HOME/.ssh" "$XDG_STATE_HOME/zsh" "$XDG_STATE_HOME/zsh/sessions" 2>/dev/null || true
     log_success "XDG directories ready"
 }
 

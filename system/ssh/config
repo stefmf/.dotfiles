@@ -42,11 +42,6 @@ Host *
     TCPKeepAlive yes
     Compression yes
 
-    # Connection multiplexing
-    ControlMaster auto
-    ControlPersist 2m
-    ControlPath ~/.ssh/sockets/%r@%h:%p
-
     # Security settings
     GSSAPIAuthentication no       # Skip Kerberos auth (faster)
     HashKnownHosts yes            # Obfuscate known_hosts entries

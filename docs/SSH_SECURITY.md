@@ -58,9 +58,9 @@ Based on the standard OpenSSH default config with these security hardening chang
 
 The SSH agent is configured in `shell/zsh/zprofile`:
 
-- **Persistent socket:** `~/.ssh/sockets/ssh_auth_sock`
+- **Persistent socket:** `~/.ssh/ssh_auth_sock`
 - **Auto-start:** Agent starts on login if not running
-- **Auto-load keys:** Keys are loaded with 1-hour timeout
+- **Auto-load keys:** Keys are automatically loaded from macOS Keychain
 - **macOS Keychain:** Keys are registered with `--apple-use-keychain` for Touch ID support
 
 ### Machine-Specific Keys

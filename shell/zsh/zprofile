@@ -36,10 +36,9 @@ fi
 
 # Create SSH directory structure if needed
 [[ -d "$HOME/.ssh" ]] || mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
-[[ -d "$HOME/.ssh/sockets" ]] || mkdir -p "$HOME/.ssh/sockets" && chmod 700 "$HOME/.ssh/sockets"
 
 # Configure SSH agent socket
-readonly SOCKET="$HOME/.ssh/sockets/ssh_auth_sock"
+readonly SOCKET="$HOME/.ssh/ssh_auth_sock"
 unset SSH_AUTH_SOCK
 
 # Function to start SSH agent
