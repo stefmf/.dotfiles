@@ -44,7 +44,7 @@ Host *
 
     # Connection multiplexing
     ControlMaster auto
-    ControlPersist 10m
+    ControlPersist 2m
     ControlPath ~/.ssh/sockets/%r@%h:%p
 
     # Security settings

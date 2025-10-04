@@ -126,11 +126,22 @@ load_ssh_key() {
   fi
   
   # Load the key
-  local add_args=(-t 3600)  # 1 hour timeout
-  [[ "$OSTYPE" == "darwin"* ]] && add_args+=(--apple-use-keychain)
+  local add_args=()
+  
+  # On macOS, use Keychain (no timeout needed - Keychain handles persistence)
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    add_args+=(--apple-use-keychain)
+  else
+    # On Linux, use timeout
+    add_args+=(-t 3600)
+  fi
   
   if ssh-add "${add_args[@]}" "$key_path" >/dev/null 2>&1; then
-    debug_log "Loaded $key (1h timeout)"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      debug_log "Loaded $key from Keychain"
+    else
+      debug_log "Loaded $key (1h timeout)"
+    fi
     return 0
   else
     error_log "Failed to load SSH key: $key"
