@@ -136,7 +136,9 @@ load_ssh_key() {
     add_args+=(-t 3600)
   fi
   
-  if ssh-add "${add_args[@]}" "$key_path" >/dev/null 2>&1; then
+  # Try to add the key non-interactively
+  # Redirect all output and use stdin from /dev/null to prevent any prompts
+  if ssh-add "${add_args[@]}" "$key_path" </dev/null >/dev/null 2>&1; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
       debug_log "Loaded $key from Keychain"
     else
@@ -144,7 +146,8 @@ load_ssh_key() {
     fi
     return 0
   else
-    error_log "Failed to load SSH key: $key"
+    # If key loading fails (e.g., not in Keychain), silently skip
+    debug_log "Skipped $key (not in Keychain or requires passphrase)"
     return 1
   fi
 }
@@ -153,7 +156,7 @@ load_ssh_key() {
 if [[ -n "$SSH_AUTH_SOCK" ]]; then
   # First, try to load keys from Keychain (macOS only)
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    ssh-add --apple-load-keychain 2>/dev/null
+    ssh-add --apple-load-keychain </dev/null >/dev/null 2>&1
   fi
   
   # Then load any keys that aren't already loaded
@@ -161,7 +164,7 @@ if [[ -n "$SSH_AUTH_SOCK" ]]; then
     load_ssh_key "$key"
   done
 else
-  error_log "SSH agent not available - keys not loaded"
+  debug_log "SSH agent not available - keys not loaded"
 fi
 
 #------------------------------------------------------------------------------
