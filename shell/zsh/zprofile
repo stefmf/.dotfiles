@@ -151,6 +151,12 @@ load_ssh_key() {
 
 # Load all configured SSH keys
 if [[ -n "$SSH_AUTH_SOCK" ]]; then
+  # First, try to load keys from Keychain (macOS only)
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    ssh-add --apple-load-keychain 2>/dev/null
+  fi
+  
+  # Then load any keys that aren't already loaded
   for key in "${SSH_KEYS[@]}"; do
     load_ssh_key "$key"
   done
