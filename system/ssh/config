@@ -1,32 +1,43 @@
 # Include Colima SSH configuration if it exists
 Include ~/.colima/ssh_config
 
-# Include local SSH configuration
+# Work-machine local overrides
 Include ~/.ssh/config.local
 
-# Personal machines on Tailscale
+# ─────────────────────────────────────────────────────────────
+# Personal machines on Tailscale (MagicDNS names)
 Host lucky
     HostName lucky
+    IdentitiesOnly yes
+    IdentityFile ~/.ssh/id_personal
 
 Host dreams
     HostName dreams
+    IdentitiesOnly yes
+    IdentityFile ~/.ssh/id_personal
 
 Host draco
     HostName draco
+    IdentitiesOnly yes
+    IdentityFile ~/.ssh/id_personal
 
-# Personal machines NOT on Tailscale
+# Non-Tailscale personal box
 Host mini-serv
     HostName 192.168.0.19
+    # Allow password fallback ONLY here (client side)
+    PreferredAuthentications publickey,password
+    PasswordAuthentication yes
+    IdentitiesOnly no
 
-# Work machine
+# Work machine (now on Tailscale)
 Host swavesec
-    HostName 192.168.0.156
+    HostName swavesec
     User e195761
+    IdentitiesOnly yes
     IdentityFile ~/.ssh/id_work
 
-# =====================================================================
-# Global defaults for all SSH connections
-# =====================================================================
+# ─────────────────────────────────────────────────────────────
+# Global defaults for all SSH connections (safe, fast)
 Host *
     User stef
     Port 22
@@ -36,7 +47,7 @@ Host *
     PreferredAuthentications publickey
     PasswordAuthentication no
 
-    # Connection behavior
+    # Reliability
     ServerAliveInterval 60
     ServerAliveCountMax 10
     TCPKeepAlive yes
@@ -46,3 +57,4 @@ Host *
     GSSAPIAuthentication no       # Skip Kerberos auth (faster)
     HashKnownHosts yes            # Obfuscate known_hosts entries
     StrictHostKeyChecking ask     # Prompt before trusting new hosts
+    UpdateHostKeys yes            # Auto-update host keys when legitimately changed
