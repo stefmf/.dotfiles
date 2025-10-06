@@ -23,7 +23,6 @@ setopt hist_ignore_all_dups    # Remove older duplicate entries
 setopt hist_find_no_dups       # Don't show duplicates when searching history
 
 # Completion and correction
-setopt correct                 # Correct mistyped commands
 setopt auto_param_slash        # Add trailing slash to directory completions
 setopt always_to_end           # Move cursor to end of word after completion
 setopt complete_in_word        # Allow completion from within a word
