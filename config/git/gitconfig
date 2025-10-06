@@ -18,9 +18,6 @@
     default = simple
     followTags = true
 
-[pull]
-    rebase = false
-
 [init]
     defaultBranch = main
 
