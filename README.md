@@ -71,25 +71,36 @@ Tip: Run any `sudo` command and tap your sensor instead of typing a password. If
 
 ## 🌐 DNS & MagicDNS
 
-Tailscale’s MagicDNS is used with a local `dnsmasq` resolver:
+Tailscale's MagicDNS is configured using macOS native resolver:
 
-- System DNS is set to 127.0.0.1 for all interfaces.
-- `dnsmasq` forwards:
-  - `*.ts.net` to 100.100.100.100 (Tailscale MagicDNS)
-  - Everything else to 8.8.8.8 (or your preferred upstream)
+- A resolver file at `/etc/resolver/tail969ae0.ts.net` directs `*.tail969ae0.ts.net` queries to 100.100.100.100 (MagicDNS)
+- Search domain `tail969ae0.ts.net` is added to all network interfaces for short name resolution
+
+This allows you to use both short names (e.g., `ssh lucky`) and fully qualified names (e.g., `ssh lucky.tail969ae0.ts.net`).
 
 Verify:
 
 ```bash
-scutil --dns | grep nameserver
-sudo lsof -i :53
+scutil --dns | grep tail969ae0
+networksetup -getsearchdomains Wi-Fi
 ```
 
-Revert DNS to default:
+Manual setup (if needed):
 
 ```bash
-sudo networksetup -setdnsservers "Wi-Fi" Empty
-sudo networksetup -setdnsservers "Ethernet" Empty
+# Create resolver file
+sudo mkdir -p /etc/resolver
+echo "nameserver 100.100.100.100" | sudo tee /etc/resolver/tail969ae0.ts.net
+
+# Set search domain (replace Wi-Fi with your interface)
+sudo networksetup -setsearchdomains Wi-Fi tail969ae0.ts.net
+```
+
+Revert to default:
+
+```bash
+sudo rm /etc/resolver/tail969ae0.ts.net
+sudo networksetup -setsearchdomains Wi-Fi Empty
 ```
 
 ---
@@ -97,12 +108,12 @@ sudo networksetup -setdnsservers "Ethernet" Empty
 ## 🛡️ Services & tools
 
 - Tailscale VPN: runs as a system daemon (`tailscaled`). Authenticate once with `tailscale up`.
-- dnsmasq: managed via Homebrew services. Config at `~/.config/dnsmasq/dnsmasq.conf`.
+- MagicDNS: configured via native macOS resolver (no additional services required).
 
-Restart dnsmasq:
+Check Tailscale status:
 
 ```bash
-sudo brew services restart dnsmasq
+tailscale status
 ```
 
 Homebrew bundle: `bootstrap/helpers/Brewfile` installs CLI tools, shells, fonts, apps (iTerm2, VS Code, Chrome), Docker/K8s tooling, and more.
@@ -142,10 +153,10 @@ This repo is organized for clarity and XDG compliance. Highlights:
 │       ├── functions/          # Custom zsh functions
 │       └── completions/        # Shell completions
 ├── system/                     # System-level configuration
-│   ├── dnsmasq/dnsmasq.conf
 │   ├── pam.d/sudo_local
 │   └── ssh/
-│       └── config
+│       ├── config
+│       └── sshd_config
 └── tools/
     └── dotbot/                 # Dotbot (vendored) for managing symlinks
 ```
@@ -165,18 +176,17 @@ Notes:
   tailscale up
   ```
 
-- Check services:
+- Check Tailscale status:
 
   ```bash
-  brew services list   # dnsmasq
-  tailscale status     # Tailscale
+  tailscale status
   ```
 
-- Troubleshoot DNS:
-  1) Confirm `dnsmasq` is listening on port 53.
-  2) Check `127.0.0.1` appears in `scutil --dns`.
-  3) Ensure Tailscale is connected for `*.ts.net` resolution.
-  4) Review logs: `/opt/homebrew/var/log/dnsmasq.log`.
+- Troubleshoot MagicDNS:
+  1) Confirm resolver file exists: `cat /etc/resolver/tail969ae0.ts.net`
+  2) Check search domains: `scutil --dns | grep tail969ae0`
+  3) Ensure Tailscale is connected: `tailscale status`
+  4) Test resolution: `ping lucky.tail969ae0.ts.net` (replace with your device name)
 
 ---
 

@@ -99,11 +99,6 @@
     ~/.gitconfig.local: config/git/gitconfig.local
     ~/.gitignore_global: config/git/gitignore_global
 
-    # System configuration files
-    /opt/homebrew/etc/dnsmasq.conf:
-      path: system/dnsmasq/dnsmasq.conf
-      if: '[ "$(uname)" = "Darwin" ]'
-
     # Global EditorConfig file
     ~/.editorconfig: config/.editorconfig
 

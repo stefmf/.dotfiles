@@ -205,7 +205,7 @@ install_packages() {
     # Remove unwanted packages based on user choices
     [[ "$install_casks" != "true" ]] && sed -i '' '/^cask /d' "$temp_brewfile"
     [[ "$install_mas" != "true" ]] && sed -i '' '/^mas /d' "$temp_brewfile"
-    [[ "$install_services" != "true" ]] && sed -i '' -e '/brew "tailscale"/d' -e '/brew "dnsmasq"/d' "$temp_brewfile"
+    [[ "$install_services" != "true" ]] && sed -i '' '/brew "tailscale"/d' "$temp_brewfile"
     [[ "$install_office" != "true" ]] && sed -i '' -e '/cask "microsoft-teams"/d' -e '/mas "Microsoft Excel"/d' -e '/mas "Microsoft PowerPoint"/d' -e '/mas "Microsoft Word"/d' -e '/mas "Slack"/d' "$temp_brewfile"
     [[ "$install_parallels" != "true" ]] && sed -i '' '/cask "parallels"/d' "$temp_brewfile"
     
@@ -243,45 +243,31 @@ configure_services() {
         sudo brew services restart tailscale || log_warn "Failed to start tailscale"
     fi
     
-    # Note: dnsmasq will be started after dotbot applies config
-    
     log_success "Services configured"
 }
 
-restart_services_after_dotbot() {
+configure_magicdns_resolver() {
     local install_services="$1"
+    local tailnet_domain="tail969ae0.ts.net"
     
     [[ "$install_services" != "true" ]] && return
     
-    # Restart dnsmasq after dotbot applies the updated config
-    if brew list dnsmasq >/dev/null 2>&1; then
-        log_info "Restarting dnsmasq with updated configuration"
-        require_sudo
-        sudo brew services restart dnsmasq || log_warn "Failed to restart dnsmasq"
-    fi
-}
-
-configure_dns() {
-    local install_services="$1"
-    
-    [[ "$install_services" != "true" ]] && return
-    
-    if ! brew list dnsmasq >/dev/null 2>&1; then
-        log_warn "dnsmasq not installed, skipping DNS configuration"
-        return
-    fi
-    
-    log_info "Configuring DNS to use dnsmasq"
+    log_info "Configuring MagicDNS resolver for Tailscale"
     require_sudo
     
+    # Create resolver directory and file for Tailscale domain
+    sudo mkdir -p /etc/resolver
+    echo "nameserver 100.100.100.100" | sudo tee "/etc/resolver/${tailnet_domain}" >/dev/null
+    
+    # Set search domain for all active network interfaces
     while IFS= read -r service; do
         service="${service#\*}"
         service="$(echo "$service" | xargs)"
         [[ -z "$service" || "$service" == *VPN* || "$service" == Tailscale* ]] && continue
-        sudo networksetup -setdnsservers "$service" 127.0.0.1 || log_warn "Failed to set DNS for $service"
+        sudo networksetup -setsearchdomains "$service" "$tailnet_domain" || log_warn "Failed to set search domain for $service"
     done < <(networksetup -listallnetworkservices 2>/dev/null | sed '1d')
     
-    log_success "DNS configured"
+    log_success "MagicDNS resolver configured"
 }
 
 setup_github_auth() {
@@ -419,7 +405,7 @@ main() {
     
     ask_yes_no "Install GUI applications (casks)" && install_casks="true" || install_casks="false"
     ask_yes_no "Install Mac App Store apps" && install_mas="true" || install_mas="false"
-    ask_yes_no "Install and start services (Tailscale, dnsmasq)" && install_services="true" || install_services="false"
+    ask_yes_no "Install and configure Tailscale with MagicDNS" && install_services="true" || install_services="false"
     ask_yes_no "Install Microsoft Office tools & Slack" && install_office="true" || install_office="false"
     ask_yes_no "Install Parallels Desktop" && install_parallels="true" || install_parallels="false"
     ask_yes_no "Setup GitHub authentication" && install_github="true" || install_github="false"
@@ -442,7 +428,7 @@ main() {
     echo "========================"
     
     # Execute setup tasks in order with progress
-    local step=1 total=13
+    local step=1 total=12
     
     log_step $step $total "Setting up XDG directories"; ((step++))
     setup_xdg_directories
@@ -459,8 +445,8 @@ main() {
     log_step $step $total "Running Dotbot configuration"; ((step++))
     run_dotbot
     
-    log_step $step $total "Restarting services with updated config"; ((step++))
-    restart_services_after_dotbot "$install_services"
+    log_step $step $total "Configuring MagicDNS resolver"; ((step++))
+    configure_magicdns_resolver "$install_services"
     
     log_step $step $total "Setting up Touch ID"; ((step++))
     setup_touchid
@@ -487,9 +473,6 @@ main() {
     
     log_step $step $total "Running XDG cleanup"; ((step++))
     run_xdg_cleanup
-    
-    log_step $step $total "Configuring DNS (final step)"; ((step++))
-    configure_dns "$install_services"
     
     echo
     echo "🎉 Bootstrap Complete!"
