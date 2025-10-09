@@ -16,7 +16,7 @@ DESCRIPTION:
     Bootstraps a macOS or Linux development environment with dotfiles configuration.
     
     This script will:
-    • macOS: Install Homebrew, configure services, Dock, iTerm2, and run Dotbot
+    • macOS: Install Homebrew, configure services, Dock, and run Dotbot
     • Linux: Delegate to a minimal Ubuntu bootstrap helper
 
 OPTIONS:
@@ -335,25 +335,6 @@ configure_dock() {
     log_success "Dock configured"
 }
 
-setup_iterm2() {
-    log_info "Configuring iTerm2"
-    
-    # Set iTerm2 preferences location
-    defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$HOME/.config/iterm2" 2>/dev/null
-    defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true 2>/dev/null
-    
-    # Copy dynamic profile
-    mkdir -p "$HOME/.config/iterm2/DynamicProfiles"
-    local src="$DOTFILES_DIR/config/iterm2/DynamicProfiles/Stef.json"
-    local dst="$HOME/.config/iterm2/DynamicProfiles/Stef.json"
-    
-    if [[ -f "$src" ]] && ([[ ! -f "$dst" ]] || ! cmp -s "$src" "$dst"); then
-        cp "$src" "$dst"
-    fi
-    
-    log_success "iTerm2 configured"
-}
-
 run_dotbot() {
     local dotbot_install="$DOTFILES_DIR/install"
     
@@ -428,7 +409,7 @@ main() {
     echo "========================"
     
     # Execute setup tasks in order with progress
-    local step=1 total=12
+    local step=1 total=11
     
     log_step $step $total "Setting up XDG directories"; ((step++))
     setup_xdg_directories
@@ -453,9 +434,6 @@ main() {
     
     log_step $step $total "Configuring Dock"; ((step++))
     configure_dock "$install_casks"
-    
-    log_step $step $total "Setting up iTerm2"; ((step++))
-    setup_iterm2
     
     log_step $step $total "Setting up GitHub authentication"; ((step++))
     if [[ "$install_github" == "true" ]]; then
@@ -497,10 +475,10 @@ main() {
             log_info "VS Code detected: Restarting shell session..."
             exec zsh
             
-        elif [[ "${TERM_PROGRAM:-}" == "iTerm.app" ]]; then
-            # iTerm2 - quit the application
-            log_info "iTerm2 detected: Quitting application..."
-            osascript -e 'tell application "iTerm2" to quit' 2>/dev/null || true
+        elif [[ "${TERM_PROGRAM:-}" == "ghostty" ]]; then
+            # Ghostty - quit the application
+            log_info "Ghostty detected: Quitting application..."
+            osascript -e 'tell application "Ghostty" to quit' 2>/dev/null || true
             
         elif [[ "${TERM_PROGRAM:-}" == "Apple_Terminal" ]]; then
             # Terminal.app - quit the application
@@ -527,7 +505,7 @@ main() {
         log_info "Skipping terminal restart."
         echo "To apply changes manually:"
         echo "  • In VS Code: Close terminal and open new one"
-        echo "  • In iTerm2/Terminal: Quit and reopen application"
+        echo "  • In Ghostty/Terminal: Quit and reopen application"
         echo "  • In any terminal: Run 'exec zsh'"
     fi
 }

@@ -105,6 +105,9 @@ if command -v zinit >/dev/null 2>&1; then
     # Apply Catppuccin Frappé theme for syntax highlighting
     fast-theme XDG:catppuccin-frappe >/dev/null 2>&1
 
+    # Disable syntax highlighting during paste operations to avoid visual noise
+    zle_highlight=('paste:none')
+
     # Load utility plugins
     zinit wait lucid for \
         MichaelAquilina/zsh-you-should-use
@@ -151,7 +154,7 @@ bindkey -e
 # ─── Navigation and Editing ──────────────────────────────────────────────────
 
 # Word navigation (⌥ ← / ⌥ →)
-bindkey '\eb'        backward-word     # ESC b (iTerm "Left Option = Esc+")
+bindkey '\eb'        backward-word     # ESC b
 bindkey '\ef'        forward-word      # ESC f
 bindkey '\e[1;3D'    backward-word     # iTerm Alt‑Left when not Esc+
 bindkey '\e[1;3C'    forward-word      # iTerm Alt‑Right when not Esc+

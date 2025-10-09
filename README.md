@@ -116,7 +116,7 @@ Check Tailscale status:
 tailscale status
 ```
 
-Homebrew bundle: `bootstrap/helpers/Brewfile` installs CLI tools, shells, fonts, apps (iTerm2, VS Code, Chrome), Docker/K8s tooling, and more.
+Homebrew bundle: `bootstrap/helpers/Brewfile` installs CLI tools, shells, fonts, apps Ghostty, VS Code, Chrome), Docker/K8s tooling, and more.
 
 ---
 
@@ -135,7 +135,7 @@ This repo is organized for clarity and XDG compliance. Highlights:
 │       └── ubuntu-apps.list    # Linux tool installation manifest
 ├── config/                     # App configs (symlinked into ~/.config)
 │   ├── bat/ | btop/ | dock/ | fastfetch/ | fsh/ | fzf/ | git/
-│   ├── iterm2/ | lsd/ | npm/ | nvim/ | ohmyposh/ | sublime/
+│   ├── ghostty/ | lsd/ | npm/ | nvim/ | ohmyposh/ | sublime/
 │   ├── tldr/ | tmux/ | vim/
 │   └── dotbot/install.conf.yaml
 ├── docs/                       # Additional documentation

@@ -171,6 +171,55 @@ safe_remove "$HOME/.dotfiles/.zsh" "Old dotfiles zsh directory (moved to ~/.dotf
 safe_remove "$HOME/.tldrc" "TLDR cache directory (cache data, will regenerate in ~/.cache/tldr/)"
 safe_remove "$HOME/.docker" "Docker config directory (move to ~/.config/docker via DOCKER_CONFIG env var)"
 
+# iTerm2 configuration directory (switched to Ghostty)
+safe_remove "$HOME/.config/iterm2" "iTerm2 configuration directory (switched to Ghostty)"
+
+# iTerm2 complete removal (switched to Ghostty)
+if [[ -d "/Applications/iTerm.app" ]] || brew list --cask iterm2 &>/dev/null 2>&1; then
+    echo -e "${YELLOW}Found:${NC} iTerm2 installation (switched to Ghostty)"
+    if [[ -d "/Applications/iTerm.app" ]]; then
+        echo -e "  Application: /Applications/iTerm.app"
+    fi
+    if brew list --cask iterm2 &>/dev/null 2>&1; then
+        echo -e "  Homebrew: iterm2 cask installed"
+    fi
+    
+    if [[ "$ASSUME_YES" == true ]]; then
+        echo -e "  ${BLUE}Removing iTerm2 automatically (non-interactive mode).${NC}"
+        # Force remove the application
+        [[ -d "/Applications/iTerm.app" ]] && sudo /bin/rm -rf "/Applications/iTerm.app"
+        # Uninstall from Homebrew (--zap removes all config files)
+        if brew list --cask iterm2 &>/dev/null 2>&1; then
+            brew uninstall --cask --zap --force iterm2 2>/dev/null || true
+        fi
+        # Clean up any remaining preferences
+        /bin/rm -rf "$HOME/Library/Preferences/com.googlecode.iterm2.plist" 2>/dev/null || true
+        /bin/rm -rf "$HOME/Library/Application Support/iTerm2" 2>/dev/null || true
+        /bin/rm -rf "$HOME/Library/Saved Application State/com.googlecode.iterm2.savedState" 2>/dev/null || true
+        echo -e "${GREEN}✅ iTerm2 completely removed${NC}"
+    elif prompt_yes_no "  Completely remove iTerm2 (app, config, cask)?" "y"; then
+        # Force remove the application
+        if [[ -d "/Applications/iTerm.app" ]]; then
+            echo -e "  ${BLUE}Removing application...${NC}"
+            sudo /bin/rm -rf "/Applications/iTerm.app"
+        fi
+        # Uninstall from Homebrew (--zap removes all config files)
+        if brew list --cask iterm2 &>/dev/null 2>&1; then
+            echo -e "  ${BLUE}Uninstalling Homebrew cask...${NC}"
+            brew uninstall --cask --zap --force iterm2 2>/dev/null || true
+        fi
+        # Clean up any remaining preferences
+        echo -e "  ${BLUE}Cleaning up preferences...${NC}"
+        /bin/rm -rf "$HOME/Library/Preferences/com.googlecode.iterm2.plist" 2>/dev/null || true
+        /bin/rm -rf "$HOME/Library/Application Support/iTerm2" 2>/dev/null || true
+        /bin/rm -rf "$HOME/Library/Saved Application State/com.googlecode.iterm2.savedState" 2>/dev/null || true
+        echo -e "${GREEN}✅ iTerm2 completely removed${NC}"
+    else
+        echo -e "${YELLOW}⏭️  Skipped iTerm2 removal${NC}"
+    fi
+    echo ""
+fi
+
 # Check for VS Code Kubernetes extension cache (but don't auto-remove - it's large and might be actively used)
 if [[ -d "$HOME/.vs-kubernetes" ]]; then
     echo -e "${YELLOW}Found:${NC} VS Code Kubernetes extension tools cache"
@@ -227,10 +276,10 @@ else
         echo -e "${GREEN}✨ Shell session restarted with cleaned XDG configuration! ✨${NC}"
         exec zsh
         
-    elif [[ "${TERM_PROGRAM:-}" == "iTerm.app" ]]; then
-        # iTerm2 - quit the application
-        echo -e "${BLUE}iTerm2 detected: Quitting application...${NC}"
-        osascript -e 'tell application "iTerm2" to quit'
+    elif [[ "${TERM_PROGRAM:-}" == "ghostty" ]]; then
+        # Ghostty - quit the application
+        echo -e "${BLUE}Ghostty detected: Quitting application...${NC}"
+        osascript -e 'tell application "Ghostty" to quit'
         
     elif [[ "${TERM_PROGRAM:-}" == "Apple_Terminal" ]]; then
         # Terminal.app - quit the application
@@ -263,7 +312,7 @@ else
         echo -e "${YELLOW}⏭️  Skipped applying changes.${NC}"
         echo -e "${BLUE}To apply changes manually:${NC}"
         echo -e "  • In VS Code: Close terminal and open new one"
-        echo -e "  • In iTerm2/Terminal: Quit and reopen application"
+        echo -e "  • In Ghostty/Terminal: Quit and reopen application"
         echo -e "  • In any terminal: Run 'exec zsh'"
     fi
 fi

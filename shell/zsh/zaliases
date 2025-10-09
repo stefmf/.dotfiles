@@ -27,13 +27,17 @@ function reload() {
     unalias -a 2>/dev/null || true
     unfunction '*' 2>/dev/null || true
     
-    # Clear zinit cache and restart cleanly
+    # Clear zinit cache
     if [[ -n "$ZINIT_HOME" ]] && command -v zinit >/dev/null 2>&1; then
         zinit cclear 2>/dev/null || true
     fi
     
-    # Restart zsh cleanly instead of just sourcing
-    exec zsh
+    # Source zshrc to reload config (preserves shell integration)
+    # Using exec zsh breaks Ghostty's shell integration and title updates
+    source "$HOME/.zshrc"
+    
+    # Force prompt re-render
+    zle && zle reset-prompt
 }
 
 alias rl='reload'                   # Short alias for reload

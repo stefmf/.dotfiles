@@ -1,0 +1,146 @@
+# ============================================================================
+# Ghostty Configuration
+# ============================================================================
+# Docs: https://ghostty.org/docs/config/reference
+# Configurator: https://ghostty.zerebos.com/
+
+# ============================================================================
+# Theme & Colors (Catppuccin Frappe)
+# ============================================================================
+theme = Catppuccin Frappe
+background = #303446
+foreground = #c6d0f5
+selection-background = #626880
+selection-foreground = #c6d0f5
+
+# Color Palette (256 colors)
+palette = 0=#51576d
+palette = 1=#e78284
+palette = 2=#a6d189
+palette = 3=#e5c890
+palette = 4=#8caaee
+palette = 5=#f4b8e4
+palette = 6=#81c8be
+palette = 7=#a5adce
+palette = 8=#626880
+palette = 9=#e67172
+palette = 10=#8ec772
+palette = 11=#d9ba73
+palette = 12=#7b9ef0
+palette = 13=#f2a4db
+palette = 14=#5abfb5
+palette = 15=#b5bfe2
+
+# ============================================================================
+# Cursor
+# ============================================================================
+cursor-color = #f2d5cf
+cursor-text = #303446
+cursor-style = underline
+cursor-style-blink = true
+
+# ============================================================================
+# Window Appearance
+# ============================================================================
+window-colorspace = display-p3
+window-padding-balance = true
+window-padding-x = 5
+window-padding-y = 5
+
+# Add subtle breathing room between lines (2px vertical spacing)
+adjust-cell-height = 2
+window-theme = auto
+window-inherit-working-directory = true
+window-inherit-font-size = true
+background-opacity = 0.8
+background-blur = 20
+bold-is-bright = true
+
+# Ensure text is always readable (WCAG 2.0 contrast ratio)
+# 3 = readable, 1.1 = just prevents invisible text
+minimum-contrast = 3
+
+# Make unfocused splits slightly dimmed for better focus awareness
+unfocused-split-opacity = 0.7
+
+# ============================================================================
+# Shell Integration & Title
+# ============================================================================
+# Enable shell integration for zsh
+shell-integration = zsh
+
+shell-integration-features = cursor,sudo,title,ssh-env
+
+# ============================================================================
+# Links & URLs
+# ============================================================================
+# Show URL preview tooltips when hovering over URLs (since 1.2.0)
+# Set to "osc8" to only show previews for OSC 8 hyperlinks
+link-previews = true
+
+# Note: link-url is enabled by default (Cmd+Click on URLs works out of the box)
+# Note: Custom link regex (link config) is not yet implemented (GitHub issue #1972)
+
+# ============================================================================
+# macOS Specific
+# ============================================================================
+macos-icon = custom
+macos-custom-icon = ~/.config/ghostty/Ghostty.icns
+
+# Hide the folder icon (proxy icon) in the titlebar
+macos-titlebar-proxy-icon = hidden
+
+# ============================================================================
+# Clipboard & Mouse
+# ============================================================================
+# Trim trailing whitespace when copying
+clipboard-trim-trailing-spaces = true
+
+# Hide mouse while typing
+mouse-hide-while-typing = true
+
+# Option+click (macOS) or Alt+click (Linux) to move cursor at prompts
+# Requires shell integration (already enabled above)
+cursor-click-to-move = true
+
+# ============================================================================
+# Quick Terminal (Global Hotkey Terminal)
+# ============================================================================
+# Dropdown terminal you can summon from ANYWHERE with Cmd+Shift+T
+# Position: top, bottom, left, right, center
+quick-terminal-position = center
+
+# Size: percentage (30%) or pixels (400px)
+# For top/bottom: controls height
+# For left/right: controls width
+quick-terminal-size = 35%
+
+quick-terminal-autohide = true
+quick-terminal-animation-duration = 0.2
+
+# ============================================================================
+# Scrollback & Performance
+# ============================================================================
+# 100MB scrollback buffer (default is much smaller)
+scrollback-limit = 100000000
+
+# ============================================================================
+# macOS Behavior
+# ============================================================================
+# Option key as Alt (useful for terminal keybindings like Alt+B, Alt+F)
+# macos-option-as-alt = true  # Uncomment if you want option to work as alt
+
+# Keep Ghostty running in background for quick terminal to work globally
+quit-after-last-window-closed = false
+
+# ============================================================================
+# Auto-Update
+# ============================================================================
+auto-update = download
+auto-update-channel = stable
+
+# ============================================================================
+# Keybindings
+# ============================================================================
+# Global hotkey to toggle quick terminal from anywhere (requires accessibility permissions)
+keybind = global:cmd+shift+t=toggle_quick_terminal

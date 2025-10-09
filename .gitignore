@@ -13,14 +13,6 @@
 # AWS CLI (contains credentials and sensitive config)
 config/aws/
 
-# iTerm2
-.config/iterm2/*
-!.config/iterm2/com.googlecode.iterm2.plist
-!.config/iterm2/DynamicProfiles/
-!.config/iterm2/themes/
-.config/iterm2/AppSupport/
-.config/iterm2/sockets/
-
 # Synced by Application
 .vscode/
 
